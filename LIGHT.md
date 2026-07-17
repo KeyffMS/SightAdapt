@@ -1,149 +1,158 @@
 # SightAdapt Light
 
-## 1. Cel
+## 1. Purpose
 
-Wersja Light jest minimalną, samodzielną aplikacją, której zadaniem jest zmiana kolorystyki obrazu jednego lub kilku okien bez ingerowania w proces źródłowy.
+SightAdapt Light is the minimal standalone edition of SightAdapt. Its task is to change the visual appearance of one or more application windows without modifying the source process.
 
-Podstawowy scenariusz:
+Primary user flow:
 
-1. użytkownik aktywuje okno dowolnej aplikacji;
-2. naciska `Ctrl+Win+2`;
-3. SightAdapt rozpoznaje aktywne okno;
-4. uruchamia przechwytywanie tego okna;
-5. stosuje aktywny profil kolorystyczny;
-6. wyświetla przetworzony obraz w nakładce;
-7. ponowne naciśnięcie skrótu wyłącza efekt.
+1. The user activates any application window.
+2. The user presses `Ctrl+Win+2`.
+3. SightAdapt resolves the active top-level window.
+4. SightAdapt starts capturing that specific window.
+5. The active visual profile is applied on the GPU.
+6. The processed image is displayed in an overlay aligned with the source window.
+7. Pressing the shortcut again disables the effect.
 
-## 2. Zakres wersji Light
+The first milestone is intentionally narrow: make per-window inversion and LUT processing reliable enough to use throughout a normal workday.
 
-### 2.1 Funkcje wymagane
+## 2. Light scope
 
-- przechwytywanie konkretnego okna na podstawie `HWND`;
-- odwrócenie kolorów;
-- zastosowanie pliku LUT;
-- regulacja jasności;
-- regulacja kontrastu;
-- regulacja nasycenia;
-- skala szarości;
-- szybkie włączanie i wyłączanie;
-- globalny skrót klawiaturowy;
-- profile per aplikacja;
-- automatyczne dopasowanie nakładki do położenia okna;
-- obsługa minimalizacji i zamykania aplikacji;
-- obsługa wielu monitorów;
-- obsługa skalowania DPI;
-- działanie w tle;
-- ikona w zasobniku systemowym;
-- automatyczny start po zalogowaniu jako opcja;
-- log diagnostyczny bez danych ekranowych;
-- konfiguracja w pliku JSON;
-- import i eksport profili.
+### 2.1 Required features
 
-### 2.2 Funkcje poza zakresem
+- capture a specific window identified by `HWND`;
+- invert colors;
+- load and apply LUT files;
+- adjust brightness;
+- adjust contrast;
+- adjust saturation;
+- optionally convert the image to grayscale;
+- enable or disable processing instantly;
+- register configurable global keyboard shortcuts;
+- create per-application profiles;
+- align the overlay with the source window;
+- react to move, resize, minimize, restore, hide, show, and close events;
+- support multiple monitors;
+- support mixed DPI scaling;
+- run in the background;
+- provide a system tray icon;
+- optionally start when the user signs in;
+- write diagnostic logs that never contain captured images;
+- store configuration in versioned JSON;
+- import and export profiles.
 
-W wersji Light nie będą implementowane:
+### 2.2 Explicitly out of scope
+
+The Light version will not implement:
 
 - OCR;
-- synteza mowy;
-- modyfikacja czcionek w obcej aplikacji;
-- zmiana układu kontrolek;
-- automatyczne klikanie;
-- przekazywanie przeskalowanych współrzędnych myszy;
+- text-to-speech;
+- direct modification of fonts inside another application;
+- layout or control-size modification;
+- automated clicking;
+- remapping mouse coordinates for a scaled interactive view;
 - DLL injection;
-- globalne hooki myszy;
-- sterownik systemowy;
-- nagrywanie obrazu;
-- zdalne przesyłanie obrazu;
-- rozbudowany edytor dostępności;
-- obsługa semantyczna UI Automation poza identyfikacją okna.
+- process-memory modification;
+- kernel-mode drivers;
+- screen recording;
+- remote image transfer;
+- a full accessibility-shell editor;
+- semantic UI Automation features beyond basic target-window identification.
 
-## 3. Platformy
+## 3. Supported platforms
 
-### 3.1 System bazowy
+### 3.1 Baseline platform
 
-Pierwszą platformą testową jest:
+Initial test baseline:
 
 - Windows 10 22H2 x64.
 
-### 3.2 Zgodność z Windows 11
+Windows 10 is the first compatibility target because many potential users remain dependent on applications and workstations deployed on that system.
 
-Kod musi być projektowany tak, aby:
+### 3.2 Windows 11 compatibility
 
-- nie używał nieudokumentowanych struktur systemowych;
-- nie zakładał stałych rozmiarów ramek okna;
-- korzystał z per-monitor DPI awareness;
-- używał oficjalnych interfejsów Win32, WinRT i DirectX;
-- pozwalał wykrywać dostępność nowszych funkcji w runtime;
-- nie uzależniał działania od konkretnego wyglądu paska zadań;
-- nie opierał się na numerze wersji systemu, jeśli można wykryć konkretną funkcję.
+The implementation must preserve Windows 11 compatibility wherever possible by following these rules:
 
-Minimalna wersja systemu jest sprawdzana przy uruchomieniu.
+- use documented Win32, WinRT, DirectX, and .NET APIs;
+- avoid undocumented window-manager structures;
+- do not assume fixed border or title-bar dimensions;
+- use per-monitor DPI awareness;
+- detect optional features at runtime instead of relying only on OS version checks;
+- do not depend on the visual design or location of the taskbar;
+- keep capture and rendering backends behind interfaces;
+- test every public release on Windows 10 and Windows 11.
 
-## 4. Decyzje technologiczne
+## 4. Technology decisions
 
-### 4.1 Język i runtime
+### 4.1 Language and runtime
 
 - C#;
 - .NET 10;
-- kompilacja x64;
-- publikacja self-contained jako podstawowy wariant wydania.
+- x64 only;
+- self-contained publishing as the default release format.
 
-Nie przewiduje się kompilacji x86.
+An x86 build is not planned. Native x64 reduces interoperability complexity and avoids limitations present in older magnification and capture paths.
 
-### 4.2 Interfejs użytkownika
+### 4.2 User interface
 
-- WPF dla panelu ustawień;
-- osobne natywne okna Win32 dla nakładek;
-- ikona w zasobniku systemowym;
-- brak głównego okna widocznego przez cały czas.
+- WPF for settings and profile management;
+- native Win32 windows for overlays;
+- system tray integration;
+- no permanently visible main window.
 
-### 4.3 Integracja Win32
+WPF is used only for configuration. The overlay renderer must not depend on WPF composition.
 
-Rekomendowane użycie:
+### 4.3 Win32 interoperability
 
-- `Microsoft.Windows.CsWin32`;
-- własne, minimalne wrappery SafeHandle;
-- unikanie ręcznego powielania deklaracji P/Invoke.
+Recommended approach:
 
-### 4.4 Przechwytywanie
+- `Microsoft.Windows.CsWin32` for generated P/Invoke declarations;
+- small project-owned wrappers around handles and unmanaged resources;
+- `SafeHandle` where practical;
+- deterministic disposal for COM and GPU objects;
+- no large hand-maintained P/Invoke layer unless an API is unavailable through generation.
 
-Podstawowy backend:
+### 4.4 Capture backend
+
+Primary backend:
 
 - Windows Graphics Capture;
 - `IGraphicsCaptureItemInterop::CreateForWindow`;
 - `Direct3D11CaptureFramePool`;
-- klatki pozostają w pamięci GPU.
+- frames retained as GPU textures.
 
-Backend zapasowy, planowany dopiero po ustabilizowaniu głównego:
+Planned fallback after the primary backend is stable:
 
 - Desktop Duplication API.
 
-### 4.5 Renderowanie
+The fallback is not part of the first MVP because it captures a monitor rather than a logical window and requires additional cropping, occlusion, and multi-monitor logic.
+
+### 4.5 Rendering
 
 - Direct3D 11;
 - DXGI;
-- HLSL;
-- Vortice.Windows jako binding .NET;
-- jeden pełnoekranowy prostokąt renderowany do nakładki;
-- efekty realizowane shaderem pikselowym;
-- brak kopiowania całej klatki do tablic zarządzanych.
+- HLSL pixel shaders;
+- Vortice.Windows as the preferred .NET binding;
+- a single full-window quad rendered into the overlay surface;
+- no full-frame copy into managed arrays;
+- no CPU-based per-pixel loop.
 
-### 4.6 Nakładka
+### 4.6 Overlay window
 
-Nakładka jest osobnym oknem:
+Each overlay is a separate native window that is:
 
-- bez ramki;
-- bez aktywacji;
-- bez wpisu w `Alt+Tab`;
-- bez przyjmowania fokusu;
-- przepuszczającym mysz;
-- zsynchronizowanym z oknem źródłowym;
-- ukrywanym przy minimalizacji;
-- zamykanym po utracie prawidłowego `HWND`.
+- borderless;
+- non-activating;
+- excluded from `Alt+Tab`;
+- unable to receive keyboard focus;
+- input-transparent;
+- synchronized with the source window;
+- hidden while the source is minimized or hidden;
+- destroyed when its source `HWND` becomes invalid.
 
-Domyślnie nakładka ma skalę 1:1.
+The default visual scale is 1:1. Whole-window interactive magnification is not part of Light because scaling breaks the relationship between visible coordinates and the original application's input coordinates.
 
-## 5. Architektura
+## 5. Architecture
 
 ```text
 Global Hotkey
@@ -163,174 +172,195 @@ Overlay Session Manager
      └── Overlay Window
 ```
 
-### 5.1 Moduły
+### 5.1 Modules
 
 #### `SightAdapt.App`
 
-Odpowiada za:
+Responsibilities:
 
-- uruchomienie procesu;
-- tray;
-- okno ustawień;
-- globalne skróty;
-- autostart;
-- komunikaty dla użytkownika.
+- process startup and shutdown;
+- system tray;
+- settings window;
+- profile editor;
+- global shortcuts;
+- autostart configuration;
+- user-facing error messages.
 
 #### `SightAdapt.Core`
 
-Odpowiada za:
+Responsibilities:
 
-- modele profili;
-- walidację konfiguracji;
-- dopasowanie profilu;
-- stan sesji;
-- logikę niezależną od Windows.
+- profile models;
+- configuration schema;
+- validation;
+- matching rules;
+- session state;
+- platform-independent business logic.
+
+`SightAdapt.Core` must not reference WPF, Win32 UI types, or Direct3D.
 
 #### `SightAdapt.Platform.Win32`
 
-Odpowiada za:
+Responsibilities:
 
-- enumerację okien;
-- pobranie aktywnego `HWND`;
-- identyfikację procesu;
-- śledzenie zdarzeń okna;
-- DPI;
-- pozycję i widoczne granice;
-- zarządzanie stylami nakładki;
-- globalne hotkeye.
+- window enumeration;
+- active-window resolution;
+- process identification;
+- executable-path lookup;
+- WinEvent subscriptions;
+- DPI handling;
+- visible window bounds;
+- overlay styles;
+- Z-order synchronization;
+- global hotkey registration.
 
 #### `SightAdapt.Capture.Wgc`
 
-Odpowiada za:
+Responsibilities:
 
-- tworzenie `GraphicsCaptureItem`;
-- frame pool;
-- odbiór nowych klatek;
-- zmianę rozmiaru źródła;
-- zatrzymanie sesji;
-- obsługę utraty urządzenia.
+- create a `GraphicsCaptureItem` from `HWND`;
+- create and manage the frame pool;
+- expose new GPU frames;
+- react to source-size changes;
+- stop capture cleanly;
+- handle capture-session termination;
+- recover from device-loss scenarios when possible.
 
 #### `SightAdapt.Rendering.D3D11`
 
-Odpowiada za:
+Responsibilities:
 
-- urządzenie Direct3D;
-- swapchain;
-- kompilację shaderów;
-- bufor parametrów efektu;
-- LUT;
-- prezentację klatki;
-- pomiary czasu GPU.
+- create the Direct3D device;
+- create swap chains and render targets;
+- compile or load shaders;
+- update effect constant buffers;
+- load and cache LUT textures;
+- render and present frames;
+- collect CPU/GPU timing metrics.
 
 #### `SightAdapt.Overlays`
 
-Odpowiada za:
+Responsibilities:
 
-- utworzenie okna nakładki;
-- synchronizację kolejności Z;
-- ukrywanie i pokazywanie;
-- bezpieczne zamykanie;
-- zabezpieczenie przed przechwytywaniem własnego okna.
+- create overlay windows;
+- attach render surfaces;
+- maintain correct position and dimensions;
+- maintain appropriate Z-order;
+- show, hide, and dispose overlays safely;
+- prevent recursive capture where the platform allows it.
 
-## 6. Śledzenie okna
+## 6. Window tracking
 
-Podstawowym mechanizmem są zdarzenia systemowe:
+The implementation should be event-driven.
 
-- `SetWinEventHook`;
+Primary system events:
+
 - `EVENT_SYSTEM_FOREGROUND`;
 - `EVENT_OBJECT_LOCATIONCHANGE`;
 - `EVENT_OBJECT_SHOW`;
 - `EVENT_OBJECT_HIDE`;
 - `EVENT_OBJECT_DESTROY`;
-- zdarzenia minimalizacji.
+- minimize and restore events.
 
-Dodatkowy timer kontrolny może działać z niską częstotliwością, na przykład raz na sekundę, wyłącznie w celu wykrycia utraconych zdarzeń.
+Use `SetWinEventHook` with an out-of-context callback. The callback must do minimal work and enqueue updates for a dedicated application thread.
 
-Nie należy przesuwać nakładki w pętli o wysokiej częstotliwości bez potrzeby.
+A low-frequency verification timer, for example once per second, may be used only to detect missed events. It must not be the main tracking mechanism.
 
-### 6.1 Granice okna
+### 6.1 Window bounds
 
-Preferowana kolejność:
+Preferred order:
 
-1. `DwmGetWindowAttribute` z `DWMWA_EXTENDED_FRAME_BOUNDS`;
-2. fallback do `GetWindowRect`;
-3. korekcja zgodnie z DPI monitora.
+1. `DwmGetWindowAttribute` with `DWMWA_EXTENDED_FRAME_BOUNDS`;
+2. fallback to `GetWindowRect`;
+3. apply DPI-aware correction where required.
 
-## 7. DPI
+The implementation must not assume that `GetWindowRect` exactly matches the visible frame.
 
-Proces musi być per-monitor DPI aware.
+## 7. DPI model
 
-Wymagania:
+The process must be per-monitor DPI aware.
 
-- deklaracja DPI awareness w manifeście;
-- współrzędne przechowywane w pikselach fizycznych;
-- reagowanie na zmianę monitora;
-- testowanie 100%, 125%, 150%, 175%, 200%;
-- brak założenia, że wszystkie monitory mają identyczne DPI.
+Requirements:
 
-## 8. Pipeline efektów
+- declare DPI awareness in the application manifest;
+- use physical pixel coordinates for overlay placement and capture surfaces;
+- react when the source window moves to a monitor with different DPI;
+- test 100%, 125%, 150%, 175%, and 200% scaling;
+- support monitor arrangements with different scaling values;
+- avoid mixing logical WPF coordinates with physical Win32 coordinates without explicit conversion.
 
-Rekomendowana kolejność:
+## 8. Effect pipeline
+
+Recommended processing order:
 
 ```text
-Źródłowa tekstura
+Source texture
     ↓
-Konwersja przestrzeni / normalizacja
+Input normalization
     ↓
-Macierz kolorów
+Color matrix
     ↓
-Jasność i kontrast
+Brightness and contrast
     ↓
 Gamma
     ↓
 LUT
     ↓
-Opcjonalne wyostrzenie
+Optional sharpening
     ↓
-Wyjście
+Output surface
 ```
 
-W pierwszym publicznym MVP wystarczy:
+The first public MVP needs only:
 
-- invert;
+- inversion;
 - grayscale;
 - brightness;
 - contrast;
 - saturation;
 - LUT.
 
-### 8.1 Odwrócenie kolorów
+### 8.1 Color inversion
 
-Podstawowe odwrócenie:
+Basic inversion:
 
 ```hlsl
 rgb = 1.0 - rgb;
 ```
 
-Alfa nie powinna być odwracana.
+The alpha channel must not be inverted.
 
-### 8.2 LUT
+The project may later add luminance-preserving or perceptual inversion profiles, but they are not required for the initial implementation.
 
-Wspierane formaty początkowe:
+### 8.2 LUT support
 
-- `.cube` 3D LUT;
-- opcjonalnie prosty wewnętrzny format JSON dla macierzy i krzywych.
+Initial supported format:
 
-Wymagania:
+- `.cube` 3D LUT.
 
-- walidacja rozmiaru;
-- limit wielkości;
-- czytelny komunikat o błędzie;
-- brak wykonywania kodu z pliku profilu;
-- cache tekstur LUT.
+Optional internal representation:
 
-## 9. Model profilu
+- versioned JSON describing matrices, curves, and parameters.
+
+Requirements:
+
+- validate dimensions and data count;
+- enforce a maximum file size;
+- reject malformed values;
+- show a clear error message;
+- never execute code from a profile or LUT file;
+- cache uploaded LUT textures;
+- release unused GPU resources.
+
+## 9. Profile model
+
+Example:
 
 ```json
 {
   "schemaVersion": 1,
   "id": "accounting-high-contrast",
-  "name": "Księgowość — wysoki kontrast",
+  "name": "Accounting — high contrast",
   "enabled": true,
   "match": {
     "executablePath": "C:\\Program Files\\Vendor\\App.exe",
@@ -352,22 +382,20 @@ Wymagania:
 }
 ```
 
-### 9.1 Dopasowanie
+### 9.1 Matching priority
 
-Priorytet:
+1. full executable path;
+2. process name;
+3. window class;
+4. window-title rule.
 
-1. pełna ścieżka pliku wykonywalnego;
-2. nazwa procesu;
-3. klasa okna;
-4. tytuł okna.
+Window titles are unstable and should be used only as an optional additional condition. Regular expressions must have a timeout to prevent catastrophic backtracking.
 
-Wyrażenia regularne tytułów muszą mieć timeout.
+## 10. Session lifecycle
 
-## 10. Zarządzanie sesją
+One overlay session corresponds to one source top-level window.
 
-Jedna sesja odpowiada jednemu oknu źródłowemu.
-
-Stan sesji:
+Suggested lifecycle:
 
 ```text
 Created
@@ -383,7 +411,7 @@ Stopping
 Disposed
 ```
 
-Możliwe stany błędów:
+Expected failure reasons:
 
 - `TargetWindowClosed`;
 - `CaptureUnavailable`;
@@ -393,144 +421,153 @@ Możliwe stany błędów:
 - `PermissionDenied`;
 - `UnsupportedSystem`.
 
-Każdy błąd musi prowadzić do ukrycia lub zamknięcia nakładki.
+Every failure path must hide or destroy the overlay before showing an error.
 
-## 11. Bezpieczeństwo użytkownika
+## 11. User safety
 
-### 11.1 Skrót awaryjny
+### 11.1 Emergency shortcut
 
-`Ctrl+Win+Shift+2`:
+`Ctrl+Win+Shift+2` must:
 
-- zamyka wszystkie nakładki;
-- zatrzymuje wszystkie sesje;
-- działa nawet wtedy, gdy panel ustawień nie odpowiada;
-- nie wykonuje zapisu ustawień przed wyłączeniem efektu.
+- hide or destroy every overlay immediately;
+- stop every capture session;
+- work even when the settings UI is unresponsive;
+- avoid blocking on profile persistence;
+- remain registered whenever the main process is running.
 
-### 11.2 Watchdog wewnętrzny
+### 11.2 Internal watchdog
 
-Aplikacja powinna:
+The application should:
 
-- wykrywać brak prezentacji kolejnych klatek;
-- po określonym czasie ukryć zamrożoną nakładkę;
-- odtworzyć urządzenie Direct3D po utracie urządzenia;
-- nigdy nie pozostawić nieaktualnego obrazu blokującego widok aplikacji.
+- detect when frame presentation has stopped;
+- hide a stale overlay after a short timeout;
+- recreate Direct3D resources after recoverable device loss;
+- never leave a frozen image covering the target application;
+- terminate a failed session independently of other sessions.
 
-### 11.3 Brak ingerencji
+### 11.3 Non-interference policy
 
-Zakazane w wersji Light:
+Forbidden in Light:
 
-- `SetWindowsHookEx` dla globalnej myszy;
-- wstrzykiwanie biblioteki;
-- modyfikowanie pamięci procesu;
-- wysyłanie nieudokumentowanych komunikatów;
-- zmiana stylów okna źródłowego;
-- uruchamianie jako administrator bez wyraźnej potrzeby.
+- global mouse hooks;
+- DLL injection;
+- target-process memory modification;
+- undocumented messages;
+- modification of source-window styles;
+- administrator elevation without a specific documented need.
 
-## 12. Prywatność
+## 12. Privacy
 
-- klatki nie są zapisywane;
-- klatki nie opuszczają GPU, o ile nie wymaga tego diagnostyka deweloperska;
-- brak funkcji zrzutu ekranu;
-- brak uploadu;
-- brak telemetryki opt-out;
-- log zawiera tylko dane techniczne, np. kod błędu, typ GPU, wersję programu;
-- ścieżki aplikacji mogą być maskowane w raportach błędów.
+- captured frames are not saved;
+- captured frames remain on the GPU whenever possible;
+- no screenshot feature in Light;
+- no upload functionality;
+- no default telemetry;
+- logs contain only technical data such as error codes, application version, and GPU information;
+- executable paths should be redactable in diagnostic reports;
+- debug capture tools must never be enabled in production by default.
 
-## 13. Działanie w tle
+## 13. Background operation
 
-- zwykły proces użytkownika;
-- ikona w trayu;
-- opcjonalny autostart;
-- brak usługi Windows;
-- brak wymogu uprawnień administratora;
-- profil uruchamiany tylko dla dopasowanego okna;
-- renderowanie zatrzymywane po ukryciu lub minimalizacji celu.
+- run as a normal interactive user process;
+- provide a system tray icon;
+- optionally start at sign-in;
+- do not use a Windows service for capture or overlays;
+- do not require administrator rights for normal targets;
+- start rendering only for enabled sessions;
+- suspend or stop rendering when the target is hidden or minimized.
 
-## 14. Wydajność
+## 14. Performance requirements
 
-Cele dla jednej nakładki 1920×1080:
+Target for one 1920×1080 overlay on a typical office computer:
 
-- średnie użycie CPU poniżej 5% na typowym komputerze biurowym;
-- przetwarzanie w całości na GPU;
-- brak alokacji zarządzanych na każdą klatkę;
-- brak kopiowania tekstury do CPU;
-- narzut opóźnienia docelowo poniżej jednej klatki;
-- automatyczne ograniczenie liczby klatek dla statycznego obrazu, jeśli backend na to pozwala.
+- average CPU usage below 5% during ordinary operation;
+- GPU-based image processing;
+- no managed allocation per frame;
+- no full-frame GPU-to-CPU copy;
+- additional latency preferably below one display frame;
+- resource use that returns to baseline when a session stops.
 
-Pomiary należy wykonywać za pomocą:
+Profiling tools:
 
 - PIX;
 - Windows Performance Recorder;
 - Windows Performance Analyzer;
-- liczników własnych aplikacji.
+- Event Tracing for Windows;
+- application-level frame and session counters.
 
-## 15. Testy
+Performance targets are engineering goals, not guarantees for every GPU or application.
 
-### 15.1 Aplikacje testowe
+## 15. Testing
 
-Minimalny zestaw:
+### 15.1 Test applications
 
-- Notatnik;
-- Eksplorator plików;
-- klasyczna aplikacja Win32;
+Minimum compatibility set:
+
+- Notepad;
+- File Explorer;
+- a classic Win32/GDI test application;
 - WinForms;
 - WPF;
-- przeglądarka Chromium;
-- aplikacja Electron;
-- Qt;
-- aplikacja z renderowaniem DirectX;
-- aplikacja uruchomiona jako administrator.
+- a Chromium-based browser;
+- an Electron application;
+- a Qt application;
+- a DirectX-rendered application;
+- an application running with administrator privileges, to verify documented limitations.
 
-### 15.2 Scenariusze
+### 15.2 Required scenarios
 
-- szybkie włączanie i wyłączanie;
-- zamykanie źródłowego okna;
-- minimalizowanie;
-- maksymalizowanie;
-- przyciąganie do krawędzi;
-- przechodzenie między monitorami;
-- zmiana DPI;
-- blokowanie ekranu;
-- uśpienie i wznowienie;
-- restart sterownika GPU;
-- podłączanie monitora;
-- rozłączanie monitora;
-- zmiana orientacji;
-- praca 8 godzin;
-- 100 kolejnych aktywacji i dezaktywacji.
+- repeated enable and disable actions;
+- close the source window while capture is active;
+- minimize and restore;
+- maximize and unmaximize;
+- snap layouts and edge snapping;
+- move between monitors;
+- mixed DPI values;
+- lock and unlock the session;
+- sleep and resume;
+- GPU device reset or driver restart where testable;
+- connect and disconnect a display;
+- rotate a display;
+- eight-hour endurance run;
+- one hundred consecutive session starts and stops;
+- target-window title change;
+- target-window recreation by the source application;
+- multiple overlapping windows;
+- protected or non-capturable content.
 
-## 16. Kryteria ukończenia Light
+## 16. Completion criteria for Light
 
-Wersja Light jest ukończona, gdy:
+Light is considered complete when:
 
-1. odwracanie kolorów działa stabilnie dla aplikacji testowych;
-2. LUT działa bez kopiowania obrazu do CPU;
-3. nakładka nie przechwytuje myszy ani klawiatury;
-4. skrót awaryjny działa w każdej normalnej sytuacji;
-5. nie występują znane przypadki pozostawienia zamrożonego obrazu po błędzie;
-6. przesuwanie i zmiana rozmiaru są wystarczająco płynne;
-7. aplikacja działa na Windows 10 22H2 oraz Windows 11;
-8. nie występuje narastający wyciek pamięci w teście ośmiogodzinnym;
-9. ustawienia są wersjonowane i migrowalne;
-10. istnieją testy automatyczne dla logiki profili;
-11. publikowane wydanie zawiera sumy kontrolne;
-12. repozytorium zawiera dokumentację kompilacji i zgłaszania błędów;
-13. publiczne wydanie zostało przetestowane z udziałem osób niedowidzących;
-14. lista znanych ograniczeń jest jawna.
+1. color inversion is stable across the compatibility test set;
+2. LUT processing runs without a full-frame CPU copy;
+3. overlays never receive mouse or keyboard input;
+4. the emergency shortcut works in all normal desktop scenarios;
+5. no known failure leaves a stale overlay covering the target;
+6. move and resize tracking is acceptably smooth;
+7. the application runs on Windows 10 22H2 and Windows 11;
+8. an eight-hour endurance test shows no continuously growing memory leak;
+9. settings are versioned and migratable;
+10. matching and profile logic have automated tests;
+11. release packages include checksums;
+12. the repository contains build and bug-reporting instructions;
+13. a public build has been evaluated with people who have low vision;
+14. known limitations are documented.
 
-## 17. Elementy przygotowujące wersję Hard
+## 17. Architectural preparation for Hard
 
-Już w Light należy zachować:
+Light must already provide:
 
-- interfejs `IWindowFrameSource`;
-- interfejs `IEffectPipeline`;
-- interfejs `IOverlaySession`;
-- wersjonowany model profilu;
-- możliwość dodawania efektów bez zmiany capture backendu;
-- rozdzielenie logiki UI od renderera;
-- obsługę wielu sesji, nawet jeśli interfejs MVP eksponuje tylko jedną;
-- identyfikator okna źródłowego i procesu;
-- kanał zdarzeń dla fokusu oraz położenia;
-- architekturę modułową bez zależności `Core` od WPF.
+- `IWindowFrameSource`;
+- `IEffectPipeline`;
+- `IOverlaySession`;
+- a versioned profile model;
+- effect extensibility independent of the capture backend;
+- strict separation between settings UI and renderer;
+- internal support for multiple sessions even if the first UI emphasizes one active window;
+- stable source-window and process identification;
+- event channels for window position, visibility, and focus changes;
+- a `Core` project with no WPF dependency.
 
-Nie należy jednak implementować funkcji Hard przed ukończeniem Light.
+These interfaces are preparation points only. Hard-specific features must not be implemented before Light meets its completion criteria.
