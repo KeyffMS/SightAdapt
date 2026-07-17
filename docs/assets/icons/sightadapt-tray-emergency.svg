@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+  <defs>
+    <linearGradient id="bg" x1="28" y1="24" x2="226" y2="232" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#13203B"/>
+      <stop offset="1" stop-color="#202A55"/>
+    </linearGradient>
+    <linearGradient id="iris" x1="88" y1="78" x2="170" y2="176" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFD166"/>
+      <stop offset="0.52" stop-color="#FF9F43"/>
+      <stop offset="1" stop-color="#FF5E69"/>
+    </linearGradient>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="6" stdDeviation="8" flood-color="#050817" flood-opacity=".35"/>
+    </filter>
+  </defs>
+
+  <!-- Stable silhouette for 16 px tray rendering -->
+  <rect x="12" y="12" width="232" height="232" rx="58" fill="url(#bg)"/>
+  <rect x="19" y="19" width="218" height="218" rx="51" fill="none" stroke="#FFFFFF" stroke-opacity=".16" stroke-width="6"/>
+
+  <!-- Eye -->
+  <path d="M42 128C66 84 96 64 128 64s62 20 86 64c-24 44-54 64-86 64s-62-20-86-64Z"
+        fill="#F7FAFF" filter="url(#shadow)"/>
+
+  <!-- Adaptive color lens -->
+  <circle cx="128" cy="128" r="47" fill="url(#iris)"/>
+  <path d="M96 94a47 47 0 0 0 64 68L96 94Z" fill="#16304D" opacity=".30"/>
+  <circle cx="128" cy="128" r="22" fill="#10182F"/>
+  <circle cx="115" cy="112" r="9" fill="#FFFFFF" opacity=".92"/>
+
+  <!-- Small adjustment notch: readable at 24+ px, harmless at 16 px -->
+  <path d="M182 80l8-8 14 14-8 8-14-14Z" fill="#FFF0B3"/>
+</svg>
