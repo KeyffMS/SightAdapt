@@ -142,6 +142,14 @@ internal sealed class ModernButton : Button
 
     public ModernButton()
     {
+        SetStyle(
+            ControlStyles.AllPaintingInWmPaint |
+            ControlStyles.OptimizedDoubleBuffer |
+            ControlStyles.ResizeRedraw |
+            ControlStyles.SupportsTransparentBackColor |
+            ControlStyles.UserPaint,
+            true);
+
         AutoSize = true;
         BackColor = Color.Transparent;
         Cursor = Cursors.Hand;
@@ -151,13 +159,6 @@ internal sealed class ModernButton : Button
         MinimumSize = new Size(112, 40);
         Padding = new Padding(16, 0, 16, 0);
         UseVisualStyleBackColor = false;
-
-        SetStyle(
-            ControlStyles.AllPaintingInWmPaint |
-            ControlStyles.OptimizedDoubleBuffer |
-            ControlStyles.ResizeRedraw |
-            ControlStyles.UserPaint,
-            true);
     }
 
     public ModernButtonStyle VisualStyle { get; set; } = ModernButtonStyle.Secondary;
@@ -433,6 +434,9 @@ internal sealed class DarkMenuRenderer : ToolStripProfessionalRenderer
         using var path = DrawingHelpers.CreateRoundedRectangle(bounds, 7);
         using var brush = new SolidBrush(AppTheme.SurfaceHover);
         eventArgs.Graphics.FillPath(brush, path);
+
+        using var accentBrush = new SolidBrush(AppTheme.Accent);
+        eventArgs.Graphics.FillRectangle(accentBrush, bounds.Left, bounds.Top + 5, 3, bounds.Height - 10);
     }
 
     protected override void OnRenderSeparator(ToolStripSeparatorRenderEventArgs eventArgs)
@@ -442,26 +446,29 @@ internal sealed class DarkMenuRenderer : ToolStripProfessionalRenderer
         eventArgs.Graphics.DrawLine(pen, 12, y, eventArgs.Item.Width - 12, y);
     }
 
-    protected override void OnRenderArrow(ToolStripArrowRenderEventArgs eventArgs)
-    {
-        eventArgs.ArrowColor = AppTheme.TextSecondary;
-        base.OnRenderArrow(eventArgs);
-    }
-
     protected override void OnRenderItemText(ToolStripItemTextRenderEventArgs eventArgs)
     {
-        eventArgs.TextColor = eventArgs.Item.Enabled
-            ? eventArgs.Item.ForeColor
-            : string.Equals(eventArgs.Item.Tag as string, "status", StringComparison.Ordinal)
-                ? AppTheme.TextSecondary
-                : AppTheme.TextMuted;
-        base.OnRenderItemText(eventArgs);
+        var textColor = !eventArgs.Item.Enabled
+            ? AppTheme.TextSecondary
+            : eventArgs.Item.Text.StartsWith("Emergency", StringComparison.OrdinalIgnoreCase)
+                ? AppTheme.Danger
+                : eventArgs.Item.Checked
+                    ? AppTheme.AccentHover
+                    : AppTheme.TextPrimary;
+
+        TextRenderer.DrawText(
+            eventArgs.Graphics,
+            eventArgs.Text,
+            eventArgs.TextFont,
+            eventArgs.TextRectangle,
+            textColor,
+            eventArgs.TextFormat);
     }
 
     protected override void OnRenderItemCheck(ToolStripItemImageRenderEventArgs eventArgs)
     {
         eventArgs.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
-        var size = 18;
+        const int size = 18;
         var bounds = new Rectangle(
             eventArgs.ImageRectangle.X + 2,
             eventArgs.Item.ContentRectangle.Top + (eventArgs.Item.ContentRectangle.Height - size) / 2,
@@ -481,11 +488,12 @@ internal sealed class DarkMenuRenderer : ToolStripProfessionalRenderer
         };
         eventArgs.Graphics.DrawLines(
             pen,
-            [
+            new[]
+            {
                 new Point(bounds.Left + 4, bounds.Top + 9),
                 new Point(bounds.Left + 8, bounds.Top + 13),
                 new Point(bounds.Left + 14, bounds.Top + 5),
-            ]);
+            });
     }
 }
 
