@@ -208,7 +208,7 @@ internal sealed class ConfigurationForm : Form
         {
             BackColor = AppTheme.HeaderBackground,
             Dock = DockStyle.Fill,
-            Margin = Padding.Empty,
+            Margin = System.Windows.Forms.Padding.Empty,
         };
         header.Controls.Add(textLayout);
         header.Controls.Add(accentStrip);
@@ -242,7 +242,7 @@ internal sealed class ConfigurationForm : Form
             BackColor = AppTheme.Surface,
             ColumnCount = 1,
             Dock = DockStyle.Fill,
-            Margin = Padding.Empty,
+            Margin = System.Windows.Forms.Padding.Empty,
             RowCount = 2,
         };
         descriptionLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
@@ -256,7 +256,7 @@ internal sealed class ConfigurationForm : Form
             BackColor = AppTheme.Surface,
             ColumnCount = 3,
             Dock = DockStyle.Fill,
-            Margin = Padding.Empty,
+            Margin = System.Windows.Forms.Padding.Empty,
             Padding = new Padding(18, 12, 18, 12),
             RowCount = 1,
         };
@@ -301,7 +301,7 @@ internal sealed class ConfigurationForm : Form
             FlatStyle = FlatStyle.Flat,
         };
         enabledColumn.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
-        enabledColumn.DefaultCellStyle.Padding = Padding.Empty;
+        enabledColumn.DefaultCellStyle.Padding = System.Windows.Forms.Padding.Empty;
 
         grid.Columns.Add(enabledColumn);
         grid.Columns.Add(new DataGridViewTextBoxColumn
@@ -349,7 +349,7 @@ internal sealed class ConfigurationForm : Form
             ColumnCount = 2,
             Dock = DockStyle.Top,
             Height = 52,
-            Margin = Padding.Empty,
+            Margin = System.Windows.Forms.Padding.Empty,
             RowCount = 1,
         };
         headerLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
@@ -362,7 +362,7 @@ internal sealed class ConfigurationForm : Form
         {
             BackColor = AppTheme.Surface,
             Dock = DockStyle.Fill,
-            Margin = Padding.Empty,
+            Margin = System.Windows.Forms.Padding.Empty,
         };
         gridHost.Controls.Add(_profilesGrid);
         gridHost.Controls.Add(_emptyStateLabel);
@@ -370,7 +370,7 @@ internal sealed class ConfigurationForm : Form
         var card = new RoundedPanel
         {
             Dock = DockStyle.Fill,
-            Margin = Padding.Empty,
+            Margin = System.Windows.Forms.Padding.Empty,
             Padding = new Padding(1),
         };
         card.Controls.Add(gridHost);
@@ -420,7 +420,7 @@ internal sealed class ConfigurationForm : Form
             AutoSize = true,
             BackColor = AppTheme.WindowBackground,
             FlowDirection = FlowDirection.LeftToRight,
-            Margin = Padding.Empty,
+            Margin = System.Windows.Forms.Padding.Empty,
             WrapContents = false,
         };
         leftButtons.Controls.AddRange([addCurrentButton, browseButton, removeButton]);
