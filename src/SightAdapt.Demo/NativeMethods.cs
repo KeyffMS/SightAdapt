@@ -33,6 +33,8 @@ internal static class NativeMethods
     public const int SwHide = 0;
     public const uint GaRoot = 2;
     public const int DwmwaExtendedFrameBounds = 9;
+    public const int DwmwaUseImmersiveDarkModeBefore20H1 = 19;
+    public const int DwmwaUseImmersiveDarkMode = 20;
     public const uint ProcessQueryLimitedInformation = 0x1000;
 
     public const string WcMagnifier = "Magnifier";
@@ -131,6 +133,13 @@ internal static class NativeMethods
         nint window,
         int attribute,
         out Rect value,
+        int valueSize);
+
+    [DllImport("dwmapi.dll")]
+    public static extern int DwmSetWindowAttribute(
+        nint window,
+        int attribute,
+        ref int value,
         int valueSize);
 
     [DllImport("user32.dll", SetLastError = true)]
