@@ -19,34 +19,40 @@ SightAdapt is intended to help people with low vision use applications that:
 
 SightAdapt does not modify another application's files or process memory. It captures the target window, processes its image, and displays the result in a separate input-transparent overlay.
 
-## Current demo
+## Current alpha
 
-The repository contains **SightAdapt Demo 0.2** in [`src/SightAdapt.Demo`](src/SightAdapt.Demo). It runs in the notification area and applies color inversion to application windows through an input-transparent overlay.
+The repository contains **SightAdapt 0.3.1 Alpha** in [`src/SightAdapt.Demo`](src/SightAdapt.Demo). It runs in the notification area and applies color inversion to application windows through an input-transparent overlay.
 
-Demo 0.2 adds:
+The current alpha provides:
 
-- persistent per-application profiles;
-- automatic inversion when a configured application becomes active;
-- `Ctrl+Alt+Shift+I` to add the active application;
+- persistent per-application profile assignments;
+- automatic inversion when an enabled application profile becomes active;
+- `Ctrl+Alt+I` for a local inversion toggle;
+- `Ctrl+Alt+Shift+I` for a persistent application-profile toggle;
 - a WinForms configuration panel;
-- per-user JSON settings stored in `%LOCALAPPDATA%\SightAdapt\settings.json`;
-- an emergency action that disables the overlay and automatic mode.
+- versioned per-user JSON settings stored in `%LOCALAPPDATA%\SightAdapt\settings.json`;
+- migration of older `effect: invert` settings;
+- tray-menu emergency shutdown that disables the overlay and automatic mode;
+- automated architecture and persistence tests.
 
 See [DEMO.md](DEMO.md) for controls, build instructions, profile behavior, architecture notes, and known limitations.
 
-The demo uses the Windows Magnification API to validate the interaction model with minimal code and no third-party runtime dependencies. The production Light implementation is still planned around Windows Graphics Capture and Direct3D 11.
+The current alpha uses the Windows Magnification API to validate the interaction model with minimal code and no third-party runtime dependencies. The production Light implementation is still planned around Windows Graphics Capture and Direct3D 11.
 
 ## Documentation
 
+- [docs/README.md](docs/README.md) — documentation index.
+- [docs/ARCHITECTURE_0.3.1.md](docs/ARCHITECTURE_0.3.1.md) — current architecture-hardening boundary.
+- [docs/ROADMAP_0.4.md](docs/ROADMAP_0.4.md) — configurable color-profile roadmap.
 - [LIGHT.md](LIGHT.md) — scope, architecture, safety requirements, tests, and completion criteria for the Light version.
 - [HARD.md](HARD.md) — target architecture for the extended accessibility shell.
 
 ## Core assumptions
 
 - primary language: **C#**;
-- current demo runtime: **.NET 8 x64**;
+- current alpha runtime: **.NET 8 x64**;
 - planned production migration target: **.NET 10 x64**;
-- current demo settings UI: **WinForms**;
+- current alpha settings UI: **WinForms**;
 - planned production settings UI: **WPF**;
 - system integration: **Win32**;
 - window capture: **Windows Graphics Capture**;
@@ -73,15 +79,16 @@ The project priorities are, in order:
 7. predictable behavior;
 8. feature count only after the previous requirements are met.
 
-## Demo 0.2 controls
+## Current keyboard controls
+
+SightAdapt registers exactly two global shortcuts:
 
 | Shortcut | Action |
 |---|---|
-| `Ctrl+Win+2` or `Ctrl+Alt+I` | Manually enable or disable inversion for the active window |
-| `Ctrl+Alt+Shift+I` | Add the active application to automatic inversion |
-| `Ctrl+Win+Shift+2` or `Ctrl+Alt+Shift+F12` | Emergency shutdown and disable automatic mode |
+| `Ctrl+Alt+I` | Locally enable or disable inversion for the active window without changing saved settings |
+| `Ctrl+Alt+Shift+I` | Add, disable, or re-enable the active application's persistent automatic profile |
 
-The configuration panel and the same commands are also available from the notification-area icon. Future production shortcuts remain configurable by design.
+No alternative `Ctrl+Win` shortcuts or emergency keyboard shortcut are registered. Emergency shutdown remains available from the notification-area menu.
 
 ## Development model
 
@@ -170,7 +177,7 @@ The Light version is ready for public release only when:
 
 - normal operation does not require administrator privileges;
 - it runs on Windows 10 22H2 and supported Windows 11 versions;
-- the user can always disable overlays with the emergency shortcut;
+- the user can always disable overlays with the emergency tray command;
 - renderer failure does not block the desktop;
 - overlays never capture input;
 - the image pipeline does not copy every frame to CPU memory;
