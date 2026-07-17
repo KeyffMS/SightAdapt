@@ -1,104 +1,104 @@
 # SightAdapt
 
-Open-source'owa aplikacja dostępnościowa dla Windows 10 i Windows 11, umożliwiająca zmianę sposobu wyświetlania wybranych okien aplikacji, nawet gdy same aplikacje nie oferują odpowiednich ustawień.
+SightAdapt is an open-source visual accessibility application for Windows 10 and Windows 11. It changes how selected application windows are displayed, even when those applications do not provide suitable accessibility or appearance settings.
 
-Projekt jest rozwijany etapami:
+The project is developed in two stages:
 
-1. **Light** — szybka, stabilna nakładka odwracająca kolory lub stosująca LUT do wskazanego okna.
-2. **Hard** — rozszerzona powłoka dostępnościowa, budowana dopiero po osiągnięciu pełnej stabilności wersji Light.
+1. **Light** — a fast and stable overlay that applies color inversion, color transforms, or LUTs to a selected application window.
+2. **Hard** — an extended accessibility shell built only after the Light version is proven stable.
 
-## Cel projektu
+## Project goal
 
-Celem jest umożliwienie osobom niedowidzącym korzystania z aplikacji, które:
+SightAdapt is intended to help people with low vision use applications that:
 
-- nie mają trybu wysokiego kontrastu;
-- nie obsługują motywów dostępnościowych;
-- używają niewłaściwych kombinacji kolorów;
-- nie pozwalają na indywidualną korekcję obrazu;
-- nie udostępniają odpowiednich opcji powiększania i wyróżniania elementów.
+- do not provide a high-contrast mode;
+- do not support accessibility themes;
+- use unreadable color combinations;
+- do not allow per-user image correction;
+- do not provide suitable magnification or focus-highlighting options.
 
-Aplikacja nie modyfikuje plików ani pamięci obcych programów. Wyświetla przetworzony obraz ich okien w osobnej, przezroczystej dla wejścia nakładce.
+SightAdapt does not modify another application's files or process memory. It captures the target window, processes its image on the GPU, and displays the result in a separate input-transparent overlay.
 
-## Dokumentacja
+## Documentation
 
-- [LIGHT.md](LIGHT.md) — zakres, architektura i kryteria ukończenia wersji Light.
-- [HARD.md](HARD.md) — docelowa architektura rozszerzonej powłoki dostępnościowej.
+- [LIGHT.md](LIGHT.md) — scope, architecture, safety requirements, tests, and completion criteria for the Light version.
+- [HARD.md](HARD.md) — target architecture for the extended accessibility shell.
 
-## Główne założenia
+## Core assumptions
 
-- podstawowy język: **C#**;
-- środowisko uruchomieniowe: **.NET 10 x64**;
-- interfejs ustawień: **WPF**;
-- integracja systemowa: **Win32**;
-- przechwytywanie okna: **Windows Graphics Capture**;
-- renderowanie: **Direct3D 11 + HLSL**;
-- nakładka: natywne okno Win32 i powierzchnia GPU;
-- zgodność początkowa: **Windows 10 22H2**;
-- zgodność rozwijana równolegle: **Windows 11**;
-- bez DLL injection;
-- bez sterowników;
-- bez przechowywania obrazu ekranu;
-- bez obowiązkowej telemetrii;
-- pełna publikacja kodu źródłowego na GitHubie.
+- primary language: **C#**;
+- runtime: **.NET 10 x64**;
+- settings UI: **WPF**;
+- system integration: **Win32**;
+- window capture: **Windows Graphics Capture**;
+- rendering: **Direct3D 11 + HLSL**;
+- overlay: native Win32 window backed by a GPU surface;
+- initial compatibility target: **Windows 10 22H2**;
+- parallel compatibility target: **Windows 11**;
+- no DLL injection;
+- no kernel drivers;
+- no screen-image storage;
+- no mandatory telemetry;
+- all source code published on GitHub.
 
-## Priorytety
+## Priorities
 
-Kolejność priorytetów projektu:
+The project priorities are, in order:
 
-1. bezpieczeństwo użytkownika;
-2. możliwość natychmiastowego wyłączenia efektu;
-3. stabilność nakładki;
-4. brak wpływu na działanie przetwarzanej aplikacji;
-5. małe opóźnienie;
-6. niski narzut CPU i GPU;
-7. przewidywalność działania;
-8. dopiero później liczba funkcji.
+1. user safety;
+2. immediate emergency shutdown of all visual effects;
+3. overlay stability;
+4. no interference with the target application;
+5. low latency;
+6. low CPU and GPU overhead;
+7. predictable behavior;
+8. feature count only after the previous requirements are met.
 
-## Domyślne sterowanie
+## Default controls
 
-| Skrót | Działanie |
+| Shortcut | Action |
 |---|---|
-| `Ctrl+Win+2` | Włącz lub wyłącz profil dla aktywnego okna |
-| `Ctrl+Win+Shift+2` | Awaryjnie wyłącz wszystkie nakładki |
-| `Ctrl+Win+3` | Przełącz na następny profil kolorystyczny |
-| `Ctrl+Win+0` | Otwórz panel ustawień |
+| `Ctrl+Win+2` | Enable or disable the profile for the active window |
+| `Ctrl+Win+Shift+2` | Emergency shutdown of all overlays |
+| `Ctrl+Win+3` | Switch to the next visual profile |
+| `Ctrl+Win+0` | Open the settings panel |
 
-Skróty muszą być konfigurowalne.
+All shortcuts must be configurable.
 
-## Model rozwoju
+## Development model
 
-### Faza A — Light
+### Phase A — Light
 
-Wersja Light musi zapewnić:
+The Light version must provide:
 
-- przechwycenie wybranego okna;
-- odwrócenie kolorów;
-- zastosowanie LUT;
-- działanie globalnego skrótu;
-- automatyczne śledzenie położenia okna;
-- pełne przepuszczanie myszy i klawiatury;
-- brak migotania;
-- obsługę wielu monitorów;
-- zgodność z różnymi skalami DPI;
-- stabilne działanie przez wiele godzin.
+- capture of a selected application window;
+- color inversion;
+- LUT support;
+- a global enable/disable shortcut;
+- automatic tracking of window position and size;
+- complete mouse and keyboard pass-through;
+- flicker-free operation;
+- multi-monitor support;
+- mixed-DPI support;
+- stable operation for many hours.
 
-Rozwój funkcjonalny wersji Hard nie rozpoczyna się przed osiągnięciem kryteriów stabilności opisanych w `LIGHT.md`.
+Development of Hard-only functionality must not begin before the stability criteria in [LIGHT.md](LIGHT.md) are met.
 
-### Faza B — Hard
+### Phase B — Hard
 
-Wersja Hard dodaje warstwę semantyczną i narzędzia dostępnościowe:
+The Hard version adds a semantic accessibility layer and additional assistive tools:
 
-- zarządzanie wieloma aktywnymi nakładkami;
-- podświetlenie fokusu;
-- lupę;
-- panel powiększonego tekstu;
-- integrację z UI Automation;
-- profile per aplikacja;
-- opcjonalny OCR;
-- opcjonalną syntezę mowy;
-- reguły obsługi dialogów i okien potomnych.
+- management of multiple active overlays;
+- focus highlighting;
+- magnification;
+- a large-text panel;
+- UI Automation integration;
+- per-application profiles;
+- optional local OCR;
+- optional text-to-speech;
+- rules for dialogs, owned windows, and child windows.
 
-## Proponowana struktura repozytorium
+## Proposed repository structure
 
 ```text
 SightAdapt/
@@ -126,42 +126,42 @@ SightAdapt/
 └── tools/
 ```
 
-## Licencja
+## License
 
-Rekomendowana licencja: **MIT**.
+Recommended license: **MIT**.
 
-Pozwala ona na:
+It permits:
 
-- użycie prywatne i komercyjne;
-- modyfikowanie kodu;
-- redystrybucję;
-- tworzenie forków;
-- integrację z innymi projektami dostępnościowymi.
+- private and commercial use;
+- modification;
+- redistribution;
+- forks;
+- integration with other accessibility projects.
 
-Projekt powinien dodatkowo zawierać:
+The repository should also contain:
 
 - `SECURITY.md`;
-- politykę prywatności;
-- opis zagrożeń;
-- informację, że nakładka nie gwarantuje działania z treściami chronionymi DRM;
-- informację o ograniczeniach dla aplikacji uruchomionych z wyższymi uprawnieniami.
+- a privacy policy;
+- a threat-model document;
+- a statement that protected or DRM-controlled content may not be capturable;
+- a statement describing limitations when the target application runs with elevated privileges.
 
-## Definicja ukończenia projektu Light
+## Definition of done for Light
 
-Wersję Light uznaje się za gotową do publicznej publikacji dopiero wtedy, gdy:
+The Light version is ready for public release only when:
 
-- nie wymaga uprawnień administratora do zwykłego działania;
-- działa co najmniej na Windows 10 22H2 i aktualnym Windows 11;
-- użytkownik może zawsze wyłączyć nakładkę skrótem awaryjnym;
-- awaria renderera nie blokuje pulpitu;
-- nakładka nie przechwytuje wejścia;
-- przetwarzanie nie wykonuje kopiowania każdej klatki do pamięci CPU;
-- aplikacja poprawnie reaguje na minimalizowanie, zamykanie i przenoszenie okien;
-- test długotrwały trwa co najmniej 8 godzin bez narastania zużycia pamięci;
-- nie występuje rekurencyjne przechwytywanie własnej nakładki;
-- profil można przypisać do pliku wykonywalnego aplikacji;
-- ustawienia można wyeksportować i zaimportować.
+- normal operation does not require administrator privileges;
+- it runs on Windows 10 22H2 and supported Windows 11 versions;
+- the user can always disable overlays with the emergency shortcut;
+- renderer failure does not block the desktop;
+- overlays never capture input;
+- the image pipeline does not copy every frame to CPU memory;
+- the application correctly handles window move, resize, minimize, restore, and close events;
+- an eight-hour endurance test shows no continuously increasing memory usage;
+- the overlay is not recursively captured;
+- a profile can be assigned to an application executable;
+- settings can be imported and exported.
 
-## Status dokumentu
+## Document status
 
-Dokument określa założenia startowe. Zmiany architektoniczne powinny być zapisywane jako ADR w katalogu `docs/adr`.
+This documentation defines the initial engineering baseline. Significant architecture decisions should be recorded as Architecture Decision Records in `docs/adr`.
