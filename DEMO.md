@@ -1,21 +1,19 @@
 # SightAdapt Demo 0.2
 
-This is the second executable proof of concept for SightAdapt. It adds persistent per-application profiles and automatic inversion to the original active-window overlay demo.
+This executable proof of concept validates per-window inversion, persistent application profiles, automatic activation, and a modern dark user interface for SightAdapt.
 
 ## Implemented features
 
 - runs in the Windows notification area;
+- uses a modern dark interface for the tray menu and application-profile panel;
 - tracks the currently active top-level application window;
-- toggles color inversion for that window manually;
-- stores per-application inversion profiles;
-- automatically enables inversion when a configured application becomes active;
-- adds the active application with a global keyboard shortcut;
-- provides a configuration panel for adding, enabling, disabling, and removing profiles;
-- allows selecting an application executable through a file picker;
-- stores settings in `%LOCALAPPDATA%\SightAdapt\settings.json`;
+- toggles color inversion for that window;
 - keeps the overlay aligned while the target window moves or resizes;
 - passes mouse and keyboard input through to the original application;
 - hides the overlay when the target is minimized or no longer active;
+- stores per-application profiles in the current user's local settings directory;
+- automatically enables inversion when a configured application becomes active;
+- supports adding the active application through a global shortcut;
 - provides an emergency shortcut that disables the overlay and automatic mode;
 - supports per-monitor DPI awareness;
 - targets Windows 10 version 2004 or newer and Windows 11.
@@ -25,58 +23,31 @@ This is the second executable proof of concept for SightAdapt. It adds persisten
 | Action | Preferred shortcut | Fallback shortcut |
 |---|---|---|
 | Toggle inversion for the active window | `Ctrl+Win+2` | `Ctrl+Alt+I` |
-| Add the active application to automatic inversion | `Ctrl+Alt+Shift+I` | Tray menu or configuration panel |
+| Add or enable the active application profile | `Ctrl+Win+Shift+I` | `Ctrl+Alt+Shift+I` |
 | Emergency disable and turn off automatic mode | `Ctrl+Win+Shift+2` | `Ctrl+Alt+Shift+F12` |
 
-The toggle and emergency commands use their fallback shortcut when Windows or another application reserves the preferred shortcut. The add-application shortcut is intentionally fixed to `Ctrl+Alt+Shift+I`.
+The fallback is registered automatically when Windows or another application reserves the preferred shortcut. The same commands are available from the notification-area icon.
 
-The same commands are available from the notification-area icon. The tray menu also contains:
+## Application profiles
 
-- **Automatic mode** — globally enables or disables automatic profiles;
-- **Configure applications...** — opens the profile panel;
-- **Add current application** — adds the most recently active supported application;
-- **Emergency disable all overlays** — removes the current overlay and turns automatic mode off.
+Use **Configure applications...** from the notification-area menu to open the profile panel. The panel provides:
 
-## Profile behavior
+- a global automatic-mode switch;
+- a dark, DPI-aware application list;
+- adding the currently active application;
+- selecting an application executable manually;
+- enabling or disabling individual profiles;
+- removing profiles.
 
-Pressing `Ctrl+Alt+Shift+I` while an application is active:
+You can also press the add-application shortcut while an application window is active. SightAdapt records the executable name and full path and enables automatic mode.
 
-1. resolves the application's process and full executable path;
-2. adds or updates its inversion profile;
-3. enables that profile;
-4. enables automatic mode;
-5. saves the settings file.
-
-Profiles are matched primarily by full executable path. This avoids applying a profile to an unrelated executable that happens to use the same file name.
-
-Manual inversion remains available through `Ctrl+Alt+I`. Manually disabling an automatically applied overlay suppresses it until the foreground application changes.
-
-## Settings file
-
-Settings are stored per Windows user at:
+Settings are stored at:
 
 ```text
 %LOCALAPPDATA%\SightAdapt\settings.json
 ```
 
-Example:
-
-```json
-{
-  "automaticMode": true,
-  "applications": [
-    {
-      "displayName": "Notepad",
-      "executableName": "notepad.exe",
-      "executablePath": "C:\\Windows\\System32\\notepad.exe",
-      "enabled": true,
-      "effect": "invert"
-    }
-  ]
-}
-```
-
-The file is written atomically through a temporary file to reduce the risk of partial settings after interruption.
+The configuration uses `System.Text.Json` and contains no captured screen content.
 
 ## Build
 
@@ -110,11 +81,11 @@ dotnet publish src/SightAdapt.Demo/SightAdapt.Demo.csproj `
   -o artifacts/win-x64
 ```
 
-The demo targets .NET 8. Its implementation uses standard .NET APIs, WinForms, `System.Text.Json`, and explicit Win32 interop so that a later move to .NET 10 does not require a platform redesign.
-
 ## Technical scope
 
 The demo intentionally uses the Windows Magnification API because it provides the shortest dependency-free route to validating the overlay interaction model and inversion color matrix.
+
+The interface uses Windows Forms with custom owner-drawn controls, a shared dark color palette, a dark notification-area menu renderer, and DWM dark-title-bar integration. It does not introduce third-party UI dependencies and remains compatible with the planned migration from .NET 8 to .NET 10.
 
 This is not the final Light capture backend. The planned production architecture remains:
 
@@ -123,7 +94,7 @@ This is not the final Light capture backend. The planned production architecture
 - GPU shader and LUT processing;
 - native overlay composition.
 
-The demo code isolates the current overlay implementation so it can later be replaced without changing user-facing controls or the profile format.
+The demo code isolates the current overlay implementation so it can later be replaced without changing user-facing controls.
 
 ## Known limitations
 
@@ -131,8 +102,7 @@ The demo code isolates the current overlay implementation so it can later be rep
 - only color inversion is implemented;
 - the effect is visible only while the selected target is the foreground window;
 - owned dialogs and pop-up windows are not automatically included;
-- the current profile resolver is intended primarily for classic desktop `.exe` applications;
-- packaged Microsoft Store applications and applications that use launcher or host processes may require additional identity handling;
+- application identity is based on the executable path;
 - protected or DRM-controlled content may not be capturable;
 - elevated applications may not work from a non-elevated SightAdapt process;
 - some GPU drivers or remote-desktop sessions may not support the magnifier control correctly;
@@ -140,4 +110,4 @@ The demo code isolates the current overlay implementation so it can later be rep
 
 ## Safety behavior
 
-The overlay never intentionally receives input. If the target window becomes invalid, minimized, hidden, or inactive, the overlay is hidden or closed. The emergency shortcut and tray command remove the current overlay and turn automatic mode off so a configured application cannot immediately reactivate the effect.
+The overlay never intentionally receives input. If the target window becomes invalid, minimized, hidden, or inactive, the overlay is hidden or closed. The emergency shortcut and tray command remove the current overlay and disable automatic mode.
