@@ -8,7 +8,10 @@ internal sealed class ConfigurationForm : Form
     private readonly SettingsStore _settingsStore;
     private readonly Func<ApplicationIdentity?> _getCurrentApplication;
     private readonly Action _settingsChanged;
-    private readonly CheckBox _automaticModeCheckBox;
+    private readonly ToggleSwitch _automaticModeSwitch;
+    private readonly Label _automaticModeStateLabel;
+    private readonly Label _profileCountLabel;
+    private readonly Label _emptyStateLabel;
     private readonly DataGridView _profilesGrid;
     private bool _refreshing;
 
@@ -25,134 +28,104 @@ internal sealed class ConfigurationForm : Form
         _settingsChanged = settingsChanged
             ?? throw new ArgumentNullException(nameof(settingsChanged));
 
-        Text = "SightAdapt Demo 0.2 - Application profiles";
+        Text = "SightAdapt Demo 0.2 · Application profiles";
         StartPosition = FormStartPosition.CenterScreen;
-        MinimumSize = new Size(720, 420);
-        Size = new Size(920, 520);
+        MinimumSize = new Size(820, 560);
+        Size = new Size(1040, 650);
         ShowIcon = false;
+        BackColor = AppTheme.WindowBackground;
+        AppTheme.ApplyTo(this);
 
-        _automaticModeCheckBox = new CheckBox
+        var header = CreateHeader();
+
+        _automaticModeSwitch = new ToggleSwitch
         {
-            AutoSize = true,
-            Text = "Enable automatic mode",
-            Margin = new Padding(12, 13, 12, 8),
+            AccessibleName = "Enable automatic mode",
+            Anchor = AnchorStyles.Left,
+            Margin = new Padding(0, 0, 16, 0),
         };
-        _automaticModeCheckBox.CheckedChanged += AutomaticModeCheckedChanged;
+        _automaticModeSwitch.CheckedChanged += AutomaticModeCheckedChanged;
+
+        _automaticModeStateLabel = new Label
+        {
+            Anchor = AnchorStyles.Right,
+            AutoSize = true,
+            Font = AppTheme.CreateUiFont(8.5f, FontStyle.Bold),
+            Margin = new Padding(12, 0, 0, 0),
+            Padding = new Padding(12, 6, 12, 6),
+            TextAlign = ContentAlignment.MiddleCenter,
+        };
+
+        var automaticCard = CreateAutomaticModeCard();
+
+        _profileCountLabel = new Label
+        {
+            Anchor = AnchorStyles.Right,
+            AutoSize = true,
+            ForeColor = AppTheme.TextSecondary,
+            Font = AppTheme.CreateUiFont(9f, FontStyle.Bold),
+            Margin = new Padding(0, 0, 18, 0),
+            TextAlign = ContentAlignment.MiddleRight,
+        };
+
+        _profilesGrid = CreateProfilesGrid();
+        _emptyStateLabel = new Label
+        {
+            BackColor = AppTheme.Surface,
+            Dock = DockStyle.Fill,
+            ForeColor = AppTheme.TextSecondary,
+            Font = AppTheme.CreateUiFont(10.5f),
+            Padding = new Padding(32),
+            Text = "No application profiles yet.\n\nAdd the currently active application or select an executable file.",
+            TextAlign = ContentAlignment.MiddleCenter,
+            Visible = false,
+        };
+
+        var profilesCard = CreateProfilesCard();
+        var actionBar = CreateActionBar();
 
         var settingsPathLabel = new Label
         {
             AutoEllipsis = true,
             Dock = DockStyle.Fill,
-            Text = $"Settings: {_settingsStore.SettingsPath}",
+            ForeColor = AppTheme.TextMuted,
+            Font = AppTheme.CreateUiFont(8.5f),
+            Text = $"Settings are stored locally: {_settingsStore.SettingsPath}",
             TextAlign = ContentAlignment.MiddleLeft,
-            Padding = new Padding(8, 0, 8, 0),
         };
 
-        var headerPanel = new TableLayoutPanel
+        var contentLayout = new TableLayoutPanel
         {
-            ColumnCount = 2,
-            Dock = DockStyle.Top,
-            Height = 48,
-        };
-        headerPanel.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-        headerPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        headerPanel.Controls.Add(_automaticModeCheckBox, 0, 0);
-        headerPanel.Controls.Add(settingsPathLabel, 1, 0);
-
-        _profilesGrid = new DataGridView
-        {
-            AllowUserToAddRows = false,
-            AllowUserToDeleteRows = false,
-            AllowUserToResizeRows = false,
-            AutoGenerateColumns = false,
-            BackgroundColor = SystemColors.Window,
-            BorderStyle = BorderStyle.Fixed3D,
+            BackColor = AppTheme.WindowBackground,
+            ColumnCount = 1,
             Dock = DockStyle.Fill,
-            EditMode = DataGridViewEditMode.EditOnEnter,
-            MultiSelect = false,
-            ReadOnly = false,
-            RowHeadersVisible = false,
-            SelectionMode = DataGridViewSelectionMode.FullRowSelect,
+            Padding = new Padding(24, 20, 24, 18),
+            RowCount = 4,
         };
-        _profilesGrid.Columns.Add(new DataGridViewCheckBoxColumn
-        {
-            Name = "Enabled",
-            HeaderText = "Enabled",
-            Width = 70,
-        });
-        _profilesGrid.Columns.Add(new DataGridViewTextBoxColumn
-        {
-            Name = "Application",
-            HeaderText = "Application",
-            ReadOnly = true,
-            Width = 190,
-        });
-        _profilesGrid.Columns.Add(new DataGridViewTextBoxColumn
-        {
-            Name = "Executable",
-            HeaderText = "Executable",
-            ReadOnly = true,
-            Width = 140,
-        });
-        _profilesGrid.Columns.Add(new DataGridViewTextBoxColumn
-        {
-            Name = "Path",
-            HeaderText = "Full path",
-            AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill,
-            ReadOnly = true,
-        });
-        _profilesGrid.CellValueChanged += ProfilesGridCellValueChanged;
-        _profilesGrid.CurrentCellDirtyStateChanged += ProfilesGridCurrentCellDirtyStateChanged;
+        contentLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        contentLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 88));
+        contentLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+        contentLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 68));
+        contentLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 26));
+        contentLayout.Controls.Add(automaticCard, 0, 0);
+        contentLayout.Controls.Add(profilesCard, 0, 1);
+        contentLayout.Controls.Add(actionBar, 0, 2);
+        contentLayout.Controls.Add(settingsPathLabel, 0, 3);
 
-        var addCurrentButton = new Button
+        var rootLayout = new TableLayoutPanel
         {
-            AutoSize = true,
-            Text = "Add current application",
+            BackColor = AppTheme.WindowBackground,
+            ColumnCount = 1,
+            Dock = DockStyle.Fill,
+            RowCount = 2,
         };
-        addCurrentButton.Click += (_, _) => AddCurrentApplication();
+        rootLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        rootLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 104));
+        rootLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+        rootLayout.Controls.Add(header, 0, 0);
+        rootLayout.Controls.Add(contentLayout, 0, 1);
 
-        var browseButton = new Button
-        {
-            AutoSize = true,
-            Text = "Browse for .exe...",
-        };
-        browseButton.Click += (_, _) => BrowseForApplication();
-
-        var removeButton = new Button
-        {
-            AutoSize = true,
-            Text = "Remove selected",
-        };
-        removeButton.Click += (_, _) => RemoveSelectedProfile();
-
-        var closeButton = new Button
-        {
-            AutoSize = true,
-            DialogResult = DialogResult.Cancel,
-            Text = "Close",
-        };
-        closeButton.Click += (_, _) => Close();
-
-        var buttonPanel = new FlowLayoutPanel
-        {
-            AutoSize = true,
-            Dock = DockStyle.Bottom,
-            FlowDirection = FlowDirection.LeftToRight,
-            Padding = new Padding(8),
-            WrapContents = false,
-        };
-        buttonPanel.Controls.AddRange([
-            addCurrentButton,
-            browseButton,
-            removeButton,
-            closeButton,
-        ]);
-
-        Controls.Add(_profilesGrid);
-        Controls.Add(buttonPanel);
-        Controls.Add(headerPanel);
-
-        CancelButton = closeButton;
+        Controls.Add(rootLayout);
         RefreshProfiles();
     }
 
@@ -162,7 +135,8 @@ internal sealed class ConfigurationForm : Form
 
         try
         {
-            _automaticModeCheckBox.Checked = _settings.AutomaticMode;
+            _automaticModeSwitch.Checked = _settings.AutomaticMode;
+            UpdateAutomaticModeState();
             _profilesGrid.Rows.Clear();
 
             foreach (var profile in _settings.Applications)
@@ -175,11 +149,297 @@ internal sealed class ConfigurationForm : Form
 
                 _profilesGrid.Rows[index].Tag = profile;
             }
+
+            var count = _settings.Applications.Count;
+            _profileCountLabel.Text = count == 1 ? "1 PROFILE" : $"{count} PROFILES";
+            _emptyStateLabel.Visible = count == 0;
+            _profilesGrid.Visible = count > 0;
         }
         finally
         {
             _refreshing = false;
         }
+    }
+
+    private Panel CreateHeader()
+    {
+        var titleLabel = new Label
+        {
+            AutoSize = true,
+            Dock = DockStyle.Fill,
+            ForeColor = AppTheme.TextPrimary,
+            Font = AppTheme.CreateUiFont(20f, FontStyle.Bold),
+            Text = "Application profiles",
+            TextAlign = ContentAlignment.BottomLeft,
+        };
+
+        var subtitleLabel = new Label
+        {
+            AutoEllipsis = true,
+            Dock = DockStyle.Fill,
+            ForeColor = AppTheme.TextSecondary,
+            Font = AppTheme.CreateUiFont(9.5f),
+            Text = "Choose which Windows applications should receive automatic visual correction.",
+            TextAlign = ContentAlignment.TopLeft,
+        };
+
+        var textLayout = new TableLayoutPanel
+        {
+            BackColor = AppTheme.HeaderBackground,
+            ColumnCount = 1,
+            Dock = DockStyle.Fill,
+            Padding = new Padding(26, 18, 24, 14),
+            RowCount = 2,
+        };
+        textLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        textLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 58));
+        textLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 42));
+        textLayout.Controls.Add(titleLabel, 0, 0);
+        textLayout.Controls.Add(subtitleLabel, 0, 1);
+
+        var accentStrip = new Panel
+        {
+            BackColor = AppTheme.Accent,
+            Dock = DockStyle.Left,
+            Width = 5,
+        };
+
+        var header = new Panel
+        {
+            BackColor = AppTheme.HeaderBackground,
+            Dock = DockStyle.Fill,
+            Margin = Padding.Empty,
+        };
+        header.Controls.Add(textLayout);
+        header.Controls.Add(accentStrip);
+        return header;
+    }
+
+    private RoundedPanel CreateAutomaticModeCard()
+    {
+        var titleLabel = new Label
+        {
+            AutoSize = true,
+            Dock = DockStyle.Fill,
+            ForeColor = AppTheme.TextPrimary,
+            Font = AppTheme.CreateUiFont(10.5f, FontStyle.Bold),
+            Text = "Automatic mode",
+            TextAlign = ContentAlignment.BottomLeft,
+        };
+
+        var descriptionLabel = new Label
+        {
+            AutoEllipsis = true,
+            Dock = DockStyle.Fill,
+            ForeColor = AppTheme.TextSecondary,
+            Font = AppTheme.CreateUiFont(9f),
+            Text = "Apply inversion whenever a configured application becomes active.",
+            TextAlign = ContentAlignment.TopLeft,
+        };
+
+        var descriptionLayout = new TableLayoutPanel
+        {
+            BackColor = AppTheme.Surface,
+            ColumnCount = 1,
+            Dock = DockStyle.Fill,
+            Margin = Padding.Empty,
+            RowCount = 2,
+        };
+        descriptionLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        descriptionLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 55));
+        descriptionLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 45));
+        descriptionLayout.Controls.Add(titleLabel, 0, 0);
+        descriptionLayout.Controls.Add(descriptionLabel, 0, 1);
+
+        var layout = new TableLayoutPanel
+        {
+            BackColor = AppTheme.Surface,
+            ColumnCount = 3,
+            Dock = DockStyle.Fill,
+            Margin = Padding.Empty,
+            Padding = new Padding(18, 12, 18, 12),
+            RowCount = 1,
+        };
+        layout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 64));
+        layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        layout.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+        layout.Controls.Add(_automaticModeSwitch, 0, 0);
+        layout.Controls.Add(descriptionLayout, 1, 0);
+        layout.Controls.Add(_automaticModeStateLabel, 2, 0);
+
+        var card = new RoundedPanel
+        {
+            Dock = DockStyle.Fill,
+            Margin = new Padding(0, 0, 0, 14),
+        };
+        card.Controls.Add(layout);
+        return card;
+    }
+
+    private DataGridView CreateProfilesGrid()
+    {
+        var grid = new DataGridView
+        {
+            AllowUserToAddRows = false,
+            AllowUserToDeleteRows = false,
+            AllowUserToResizeRows = false,
+            AutoGenerateColumns = false,
+            Dock = DockStyle.Fill,
+            EditMode = DataGridViewEditMode.EditOnEnter,
+            MultiSelect = false,
+            ReadOnly = false,
+            SelectionMode = DataGridViewSelectionMode.FullRowSelect,
+        };
+        AppTheme.StyleGrid(grid);
+
+        var enabledColumn = new DataGridViewCheckBoxColumn
+        {
+            Name = "Enabled",
+            HeaderText = "ACTIVE",
+            Width = 78,
+            FlatStyle = FlatStyle.Flat,
+        };
+        enabledColumn.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
+        enabledColumn.DefaultCellStyle.Padding = Padding.Empty;
+
+        grid.Columns.Add(enabledColumn);
+        grid.Columns.Add(new DataGridViewTextBoxColumn
+        {
+            Name = "Application",
+            HeaderText = "APPLICATION",
+            ReadOnly = true,
+            Width = 210,
+        });
+        grid.Columns.Add(new DataGridViewTextBoxColumn
+        {
+            Name = "Executable",
+            HeaderText = "EXECUTABLE",
+            ReadOnly = true,
+            Width = 150,
+        });
+        grid.Columns.Add(new DataGridViewTextBoxColumn
+        {
+            Name = "Path",
+            HeaderText = "FULL PATH",
+            AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill,
+            ReadOnly = true,
+        });
+
+        grid.CellValueChanged += ProfilesGridCellValueChanged;
+        grid.CurrentCellDirtyStateChanged += ProfilesGridCurrentCellDirtyStateChanged;
+        return grid;
+    }
+
+    private RoundedPanel CreateProfilesCard()
+    {
+        var titleLabel = new Label
+        {
+            Anchor = AnchorStyles.Left,
+            AutoSize = true,
+            ForeColor = AppTheme.TextPrimary,
+            Font = AppTheme.CreateUiFont(10.5f, FontStyle.Bold),
+            Margin = new Padding(18, 0, 0, 0),
+            Text = "Configured applications",
+        };
+
+        var headerLayout = new TableLayoutPanel
+        {
+            BackColor = AppTheme.SurfaceRaised,
+            ColumnCount = 2,
+            Dock = DockStyle.Top,
+            Height = 52,
+            Margin = Padding.Empty,
+            RowCount = 1,
+        };
+        headerLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        headerLayout.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        headerLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+        headerLayout.Controls.Add(titleLabel, 0, 0);
+        headerLayout.Controls.Add(_profileCountLabel, 1, 0);
+
+        var gridHost = new Panel
+        {
+            BackColor = AppTheme.Surface,
+            Dock = DockStyle.Fill,
+            Margin = Padding.Empty,
+        };
+        gridHost.Controls.Add(_profilesGrid);
+        gridHost.Controls.Add(_emptyStateLabel);
+
+        var card = new RoundedPanel
+        {
+            Dock = DockStyle.Fill,
+            Margin = Padding.Empty,
+            Padding = new Padding(1),
+        };
+        card.Controls.Add(gridHost);
+        card.Controls.Add(headerLayout);
+        return card;
+    }
+
+    private Control CreateActionBar()
+    {
+        var addCurrentButton = new ModernButton
+        {
+            Text = "Add current app",
+            VisualStyle = ModernButtonStyle.Primary,
+            MinimumSize = new Size(150, 40),
+        };
+        addCurrentButton.Click += (_, _) => AddCurrentApplication();
+
+        var browseButton = new ModernButton
+        {
+            Text = "Browse for .exe",
+            VisualStyle = ModernButtonStyle.Secondary,
+            MinimumSize = new Size(140, 40),
+        };
+        browseButton.Click += (_, _) => BrowseForApplication();
+
+        var removeButton = new ModernButton
+        {
+            Text = "Remove selected",
+            VisualStyle = ModernButtonStyle.Danger,
+            MinimumSize = new Size(145, 40),
+        };
+        removeButton.Click += (_, _) => RemoveSelectedProfile();
+
+        var closeButton = new ModernButton
+        {
+            DialogResult = DialogResult.Cancel,
+            Text = "Close",
+            VisualStyle = ModernButtonStyle.Ghost,
+            MinimumSize = new Size(96, 40),
+        };
+        closeButton.Click += (_, _) => Close();
+        CancelButton = closeButton;
+
+        var leftButtons = new FlowLayoutPanel
+        {
+            Anchor = AnchorStyles.Left,
+            AutoSize = true,
+            BackColor = AppTheme.WindowBackground,
+            FlowDirection = FlowDirection.LeftToRight,
+            Margin = Padding.Empty,
+            WrapContents = false,
+        };
+        leftButtons.Controls.AddRange([addCurrentButton, browseButton, removeButton]);
+
+        var actionLayout = new TableLayoutPanel
+        {
+            BackColor = AppTheme.WindowBackground,
+            ColumnCount = 2,
+            Dock = DockStyle.Fill,
+            Margin = new Padding(0, 12, 0, 8),
+            RowCount = 1,
+        };
+        actionLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        actionLayout.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        actionLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+        actionLayout.Controls.Add(leftButtons, 0, 0);
+        actionLayout.Controls.Add(closeButton, 1, 0);
+        closeButton.Anchor = AnchorStyles.Right;
+        return actionLayout;
     }
 
     private void AutomaticModeCheckedChanged(object? sender, EventArgs eventArgs)
@@ -189,8 +449,20 @@ internal sealed class ConfigurationForm : Form
             return;
         }
 
-        _settings.AutomaticMode = _automaticModeCheckBox.Checked;
+        _settings.AutomaticMode = _automaticModeSwitch.Checked;
+        UpdateAutomaticModeState();
         _settingsChanged();
+    }
+
+    private void UpdateAutomaticModeState()
+    {
+        _automaticModeStateLabel.Text = _settings.AutomaticMode ? "ACTIVE" : "PAUSED";
+        _automaticModeStateLabel.BackColor = _settings.AutomaticMode
+            ? AppTheme.SuccessSoft
+            : AppTheme.SurfaceRaised;
+        _automaticModeStateLabel.ForeColor = _settings.AutomaticMode
+            ? AppTheme.Success
+            : AppTheme.TextSecondary;
     }
 
     private void ProfilesGridCurrentCellDirtyStateChanged(object? sender, EventArgs eventArgs)
