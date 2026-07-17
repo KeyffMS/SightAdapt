@@ -111,7 +111,7 @@ public sealed class VisualProfileTests
 
         Assert.IsTrue(result.WasCreated);
         Assert.IsTrue(result.IsEnabled);
-        Assert.HasCount(1, settings.Applications);
+        Assert.AreEqual(1, settings.Applications.Count);
         Assert.AreEqual(VisualProfile.DefaultInvertId, result.Profile.VisualProfileId);
     }
 
@@ -145,6 +145,6 @@ public sealed class VisualProfileTests
         Assert.IsTrue(enabled.IsEnabled);
         Assert.AreEqual("custom-profile", enabled.Profile.VisualProfileId);
         Assert.AreEqual("Reader updated", enabled.Profile.DisplayName);
-        Assert.HasCount(1, settings.Applications);
+        Assert.AreEqual(1, settings.Applications.Count);
     }
 }
