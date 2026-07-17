@@ -1,3 +1,5 @@
+using System.ComponentModel;
+using System.Diagnostics;
 using System.Drawing;
 
 namespace SightAdapt.Demo;
@@ -28,15 +30,13 @@ internal sealed class ConfigurationForm : Form
         _settingsChanged = settingsChanged
             ?? throw new ArgumentNullException(nameof(settingsChanged));
 
-        Text = "SightAdapt Demo 0.2 · Application profiles";
+        Text = ProductInfo.WindowTitle;
         StartPosition = FormStartPosition.CenterScreen;
-        MinimumSize = new Size(820, 560);
-        Size = new Size(1040, 650);
+        MinimumSize = new Size(900, 650);
+        Size = new Size(1060, 760);
         ShowIcon = false;
         BackColor = AppTheme.WindowBackground;
         AppTheme.ApplyTo(this);
-
-        var header = CreateHeader();
 
         _automaticModeSwitch = new ToggleSwitch
         {
@@ -55,8 +55,6 @@ internal sealed class ConfigurationForm : Form
             Padding = new Padding(12, 6, 12, 6),
             TextAlign = ContentAlignment.MiddleCenter,
         };
-
-        var automaticCard = CreateAutomaticModeCard();
 
         _profileCountLabel = new Label
         {
@@ -81,9 +79,6 @@ internal sealed class ConfigurationForm : Form
             Visible = false,
         };
 
-        var profilesCard = CreateProfilesCard();
-        var actionBar = CreateActionBar();
-
         var settingsPathLabel = new Label
         {
             AutoEllipsis = true,
@@ -99,18 +94,20 @@ internal sealed class ConfigurationForm : Form
             BackColor = AppTheme.WindowBackground,
             ColumnCount = 1,
             Dock = DockStyle.Fill,
-            Padding = new Padding(24, 20, 24, 18),
-            RowCount = 4,
+            Padding = new Padding(24, 20, 24, 16),
+            RowCount = 5,
         };
         contentLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         contentLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 88));
         contentLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         contentLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 68));
-        contentLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 26));
-        contentLayout.Controls.Add(automaticCard, 0, 0);
-        contentLayout.Controls.Add(profilesCard, 0, 1);
-        contentLayout.Controls.Add(actionBar, 0, 2);
-        contentLayout.Controls.Add(settingsPathLabel, 0, 3);
+        contentLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 98));
+        contentLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 24));
+        contentLayout.Controls.Add(CreateAutomaticModeCard(), 0, 0);
+        contentLayout.Controls.Add(CreateProfilesCard(), 0, 1);
+        contentLayout.Controls.Add(CreateActionBar(), 0, 2);
+        contentLayout.Controls.Add(CreateProjectInfoCard(), 0, 3);
+        contentLayout.Controls.Add(settingsPathLabel, 0, 4);
 
         var rootLayout = new TableLayoutPanel
         {
@@ -122,7 +119,7 @@ internal sealed class ConfigurationForm : Form
         rootLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         rootLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 104));
         rootLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-        rootLayout.Controls.Add(header, 0, 0);
+        rootLayout.Controls.Add(CreateHeader(), 0, 0);
         rootLayout.Controls.Add(contentLayout, 0, 1);
 
         Controls.Add(rootLayout);
@@ -161,7 +158,7 @@ internal sealed class ConfigurationForm : Form
         }
     }
 
-    private Panel CreateHeader()
+    private static Panel CreateHeader()
     {
         var titleLabel = new Label
         {
@@ -208,7 +205,7 @@ internal sealed class ConfigurationForm : Form
         {
             BackColor = AppTheme.HeaderBackground,
             Dock = DockStyle.Fill,
-            Margin = System.Windows.Forms.Padding.Empty,
+            Margin = Padding.Empty,
         };
         header.Controls.Add(textLayout);
         header.Controls.Add(accentStrip);
@@ -242,7 +239,7 @@ internal sealed class ConfigurationForm : Form
             BackColor = AppTheme.Surface,
             ColumnCount = 1,
             Dock = DockStyle.Fill,
-            Margin = System.Windows.Forms.Padding.Empty,
+            Margin = Padding.Empty,
             RowCount = 2,
         };
         descriptionLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
@@ -256,7 +253,7 @@ internal sealed class ConfigurationForm : Form
             BackColor = AppTheme.Surface,
             ColumnCount = 3,
             Dock = DockStyle.Fill,
-            Margin = System.Windows.Forms.Padding.Empty,
+            Margin = Padding.Empty,
             Padding = new Padding(18, 12, 18, 12),
             RowCount = 1,
         };
@@ -277,7 +274,7 @@ internal sealed class ConfigurationForm : Form
         return card;
     }
 
-    private DataGridView CreateProfilesGrid()
+    private static DataGridView CreateBaseGrid()
     {
         var grid = new DataGridView
         {
@@ -292,16 +289,26 @@ internal sealed class ConfigurationForm : Form
             SelectionMode = DataGridViewSelectionMode.FullRowSelect,
         };
         AppTheme.StyleGrid(grid);
+        return grid;
+    }
+
+    private DataGridView CreateProfilesGrid()
+    {
+        var grid = CreateBaseGrid();
 
         var enabledColumn = new DataGridViewCheckBoxColumn
         {
             Name = "Enabled",
             HeaderText = "ACTIVE",
-            Width = 78,
+            Width = 92,
+            MinimumWidth = 92,
+            Resizable = DataGridViewTriState.False,
             FlatStyle = FlatStyle.Flat,
+            SortMode = DataGridViewColumnSortMode.NotSortable,
         };
+        enabledColumn.HeaderCell.Style.Alignment = DataGridViewContentAlignment.MiddleCenter;
         enabledColumn.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
-        enabledColumn.DefaultCellStyle.Padding = System.Windows.Forms.Padding.Empty;
+        enabledColumn.DefaultCellStyle.Padding = Padding.Empty;
 
         grid.Columns.Add(enabledColumn);
         grid.Columns.Add(new DataGridViewTextBoxColumn
@@ -309,21 +316,27 @@ internal sealed class ConfigurationForm : Form
             Name = "Application",
             HeaderText = "APPLICATION",
             ReadOnly = true,
-            Width = 210,
+            Width = 220,
+            MinimumWidth = 170,
+            SortMode = DataGridViewColumnSortMode.NotSortable,
         });
         grid.Columns.Add(new DataGridViewTextBoxColumn
         {
             Name = "Executable",
             HeaderText = "EXECUTABLE",
             ReadOnly = true,
-            Width = 150,
+            Width = 165,
+            MinimumWidth = 130,
+            SortMode = DataGridViewColumnSortMode.NotSortable,
         });
         grid.Columns.Add(new DataGridViewTextBoxColumn
         {
             Name = "Path",
             HeaderText = "FULL PATH",
             AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill,
+            MinimumWidth = 260,
             ReadOnly = true,
+            SortMode = DataGridViewColumnSortMode.NotSortable,
         });
 
         grid.CellValueChanged += ProfilesGridCellValueChanged;
@@ -349,7 +362,7 @@ internal sealed class ConfigurationForm : Form
             ColumnCount = 2,
             Dock = DockStyle.Top,
             Height = 52,
-            Margin = System.Windows.Forms.Padding.Empty,
+            Margin = Padding.Empty,
             RowCount = 1,
         };
         headerLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
@@ -362,7 +375,7 @@ internal sealed class ConfigurationForm : Form
         {
             BackColor = AppTheme.Surface,
             Dock = DockStyle.Fill,
-            Margin = System.Windows.Forms.Padding.Empty,
+            Margin = Padding.Empty,
         };
         gridHost.Controls.Add(_profilesGrid);
         gridHost.Controls.Add(_emptyStateLabel);
@@ -370,7 +383,7 @@ internal sealed class ConfigurationForm : Form
         var card = new RoundedPanel
         {
             Dock = DockStyle.Fill,
-            Margin = System.Windows.Forms.Padding.Empty,
+            Margin = Padding.Empty,
             Padding = new Padding(1),
         };
         card.Controls.Add(gridHost);
@@ -385,6 +398,7 @@ internal sealed class ConfigurationForm : Form
             Text = "Add current app",
             VisualStyle = ModernButtonStyle.Primary,
             MinimumSize = new Size(150, 40),
+            Margin = new Padding(0, 0, 8, 0),
         };
         addCurrentButton.Click += (_, _) => AddCurrentApplication();
 
@@ -393,6 +407,7 @@ internal sealed class ConfigurationForm : Form
             Text = "Browse for .exe",
             VisualStyle = ModernButtonStyle.Secondary,
             MinimumSize = new Size(140, 40),
+            Margin = new Padding(0, 0, 8, 0),
         };
         browseButton.Click += (_, _) => BrowseForApplication();
 
@@ -401,6 +416,7 @@ internal sealed class ConfigurationForm : Form
             Text = "Remove selected",
             VisualStyle = ModernButtonStyle.Danger,
             MinimumSize = new Size(145, 40),
+            Margin = Padding.Empty,
         };
         removeButton.Click += (_, _) => RemoveSelectedProfile();
 
@@ -410,6 +426,7 @@ internal sealed class ConfigurationForm : Form
             Text = "Close",
             VisualStyle = ModernButtonStyle.Ghost,
             MinimumSize = new Size(96, 40),
+            Margin = Padding.Empty,
         };
         closeButton.Click += (_, _) => Close();
         CancelButton = closeButton;
@@ -420,7 +437,7 @@ internal sealed class ConfigurationForm : Form
             AutoSize = true,
             BackColor = AppTheme.WindowBackground,
             FlowDirection = FlowDirection.LeftToRight,
-            Margin = System.Windows.Forms.Padding.Empty,
+            Margin = Padding.Empty,
             WrapContents = false,
         };
         leftButtons.Controls.AddRange([addCurrentButton, browseButton, removeButton]);
@@ -440,6 +457,123 @@ internal sealed class ConfigurationForm : Form
         actionLayout.Controls.Add(closeButton, 1, 0);
         closeButton.Anchor = AnchorStyles.Right;
         return actionLayout;
+    }
+
+    private static RoundedPanel CreateProjectInfoCard()
+    {
+        var productLabel = new Label
+        {
+            AutoSize = true,
+            Dock = DockStyle.Fill,
+            ForeColor = AppTheme.TextPrimary,
+            Font = AppTheme.CreateUiFont(10.5f, FontStyle.Bold),
+            Text = ProductInfo.DisplayName,
+            TextAlign = ContentAlignment.BottomLeft,
+        };
+
+        var taglineLabel = new Label
+        {
+            AutoEllipsis = true,
+            Dock = DockStyle.Fill,
+            ForeColor = AppTheme.TextSecondary,
+            Font = AppTheme.CreateUiFont(8.8f),
+            Text = ProductInfo.Tagline,
+            TextAlign = ContentAlignment.TopLeft,
+        };
+
+        var productLayout = new TableLayoutPanel
+        {
+            BackColor = AppTheme.Surface,
+            ColumnCount = 1,
+            Dock = DockStyle.Fill,
+            Margin = Padding.Empty,
+            RowCount = 2,
+        };
+        productLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        productLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 54));
+        productLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 46));
+        productLayout.Controls.Add(productLabel, 0, 0);
+        productLayout.Controls.Add(taglineLabel, 0, 1);
+
+        var licenseLabel = CreateInfoLabel(ProductInfo.License, FontStyle.Bold);
+        var authorLabel = CreateInfoLabel(ProductInfo.Author, FontStyle.Regular);
+        var repositoryLink = new LinkLabel
+        {
+            ActiveLinkColor = AppTheme.AccentHover,
+            AutoEllipsis = true,
+            AutoSize = true,
+            BackColor = AppTheme.Surface,
+            Font = AppTheme.CreateUiFont(8.8f, FontStyle.Bold),
+            LinkBehavior = LinkBehavior.HoverUnderline,
+            LinkColor = AppTheme.AccentHover,
+            Margin = Padding.Empty,
+            Text = ProductInfo.RepositoryDisplay,
+            VisitedLinkColor = AppTheme.Accent,
+        };
+        repositoryLink.LinkClicked += (_, _) => OpenRepository();
+
+        var metadataLayout = new FlowLayoutPanel
+        {
+            Anchor = AnchorStyles.Right,
+            AutoSize = true,
+            BackColor = AppTheme.Surface,
+            FlowDirection = FlowDirection.TopDown,
+            Margin = Padding.Empty,
+            WrapContents = false,
+        };
+        metadataLayout.Controls.Add(licenseLabel);
+        metadataLayout.Controls.Add(authorLabel);
+        metadataLayout.Controls.Add(repositoryLink);
+
+        var layout = new TableLayoutPanel
+        {
+            BackColor = AppTheme.Surface,
+            ColumnCount = 2,
+            Dock = DockStyle.Fill,
+            Margin = Padding.Empty,
+            Padding = new Padding(18, 12, 18, 12),
+            RowCount = 1,
+        };
+        layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 58));
+        layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 42));
+        layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+        layout.Controls.Add(productLayout, 0, 0);
+        layout.Controls.Add(metadataLayout, 1, 0);
+
+        var card = new RoundedPanel
+        {
+            Dock = DockStyle.Fill,
+            Margin = new Padding(0, 4, 0, 10),
+        };
+        card.Controls.Add(layout);
+        return card;
+    }
+
+    private static Label CreateInfoLabel(string text, FontStyle style)
+    {
+        return new Label
+        {
+            AutoSize = true,
+            BackColor = AppTheme.Surface,
+            ForeColor = style == FontStyle.Bold ? AppTheme.TextPrimary : AppTheme.TextSecondary,
+            Font = AppTheme.CreateUiFont(8.8f, style),
+            Margin = new Padding(0, 0, 0, 3),
+            Text = text,
+        };
+    }
+
+    private static void OpenRepository()
+    {
+        try
+        {
+            Process.Start(new ProcessStartInfo(ProductInfo.RepositoryUrl)
+            {
+                UseShellExecute = true,
+            });
+        }
+        catch (Win32Exception)
+        {
+        }
     }
 
     private void AutomaticModeCheckedChanged(object? sender, EventArgs eventArgs)
@@ -498,7 +632,7 @@ internal sealed class ConfigurationForm : Form
             MessageBox.Show(
                 this,
                 "No supported application window is available. Activate an application before opening this panel, or browse for its .exe file.",
-                "SightAdapt Demo 0.2",
+                ProductInfo.DisplayName,
                 MessageBoxButtons.OK,
                 MessageBoxIcon.Information);
             return;
@@ -534,7 +668,7 @@ internal sealed class ConfigurationForm : Form
             MessageBox.Show(
                 this,
                 exception.Message,
-                "SightAdapt Demo 0.2",
+                ProductInfo.DisplayName,
                 MessageBoxButtons.OK,
                 MessageBoxIcon.Warning);
         }
@@ -570,7 +704,7 @@ internal sealed class ConfigurationForm : Form
             added
                 ? $"{identity.DisplayName} was added to automatic inversion."
                 : $"{identity.DisplayName} is already configured and was enabled.",
-            "SightAdapt Demo 0.2",
+            ProductInfo.DisplayName,
             MessageBoxButtons.OK,
             MessageBoxIcon.Information);
     }
@@ -586,7 +720,7 @@ internal sealed class ConfigurationForm : Form
         var answer = MessageBox.Show(
             this,
             $"Remove {profile.DisplayName} from SightAdapt?",
-            "SightAdapt Demo 0.2",
+            ProductInfo.DisplayName,
             MessageBoxButtons.YesNo,
             MessageBoxIcon.Question,
             MessageBoxDefaultButton.Button2);
