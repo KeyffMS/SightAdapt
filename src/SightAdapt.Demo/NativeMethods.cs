@@ -33,6 +33,7 @@ internal static class NativeMethods
     public const int SwHide = 0;
     public const uint GaRoot = 2;
     public const int DwmwaExtendedFrameBounds = 9;
+    public const uint ProcessQueryLimitedInformation = 0x1000;
 
     public const string WcMagnifier = "Magnifier";
 
@@ -159,6 +160,24 @@ internal static class NativeMethods
     [return: MarshalAs(UnmanagedType.Bool)]
     public static extern bool InvalidateRect(nint window, nint rect, bool erase);
 
+    [DllImport("kernel32.dll", SetLastError = true)]
+    private static extern nint OpenProcess(
+        uint desiredAccess,
+        [MarshalAs(UnmanagedType.Bool)] bool inheritHandle,
+        uint processId);
+
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool QueryFullProcessImageName(
+        nint process,
+        uint flags,
+        StringBuilder executablePath,
+        ref uint pathLength);
+
+    [DllImport("kernel32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool CloseHandle(nint handle);
+
     public static bool TryGetVisibleWindowBounds(nint window, out Rect rect)
     {
         if (DwmGetWindowAttribute(
@@ -187,6 +206,41 @@ internal static class NativeMethods
         return GetClassName(window, builder, builder.Capacity) > 0
             ? builder.ToString()
             : string.Empty;
+    }
+
+    public static bool TryGetProcessPath(nint window, out string executablePath)
+    {
+        executablePath = string.Empty;
+
+        GetWindowThreadProcessId(window, out var processId);
+        if (processId == 0)
+        {
+            return false;
+        }
+
+        var process = OpenProcess(ProcessQueryLimitedInformation, false, processId);
+        if (process == nint.Zero)
+        {
+            return false;
+        }
+
+        try
+        {
+            var builder = new StringBuilder(32768);
+            var length = (uint)builder.Capacity;
+
+            if (!QueryFullProcessImageName(process, 0, builder, ref length))
+            {
+                return false;
+            }
+
+            executablePath = builder.ToString();
+            return !string.IsNullOrWhiteSpace(executablePath);
+        }
+        finally
+        {
+            CloseHandle(process);
+        }
     }
 }
 
