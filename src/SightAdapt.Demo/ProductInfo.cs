@@ -3,7 +3,7 @@ namespace SightAdapt.Demo;
 internal static class ProductInfo
 {
     public const string ProductName = "SightAdapt";
-    public const string VersionLabel = "0.3 Alpha";
+    public const string VersionLabel = "0.3.1 Alpha";
     public const string DisplayName = ProductName + " " + VersionLabel;
     public const string WindowTitle = DisplayName + " · Application profiles";
     public const string Tagline = "Automatic visual accessibility for Windows applications";
