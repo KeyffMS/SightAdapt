@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Diagnostics;
 
 namespace SightAdapt.Demo;
@@ -74,6 +75,9 @@ internal static class ApplicationDiscovery
         {
         }
         catch (UnauthorizedAccessException)
+        {
+        }
+        catch (Win32Exception)
         {
         }
 
