@@ -7,15 +7,25 @@ internal sealed class SightAdaptContext : ApplicationContext
     private readonly NotifyIcon _notifyIcon;
     private readonly ToolStripMenuItem _statusItem;
     private readonly ToolStripMenuItem _toggleItem;
+    private readonly ToolStripMenuItem _automaticModeItem;
     private readonly HotkeyWindow _hotkeys;
     private readonly System.Windows.Forms.Timer _foregroundTracker;
+    private readonly SettingsStore _settingsStore;
+    private readonly SightAdaptSettings _settings;
 
     private MagnifierOverlay? _overlay;
+    private ConfigurationForm? _configurationForm;
+    private OverlayActivationMode _overlayMode;
     private nint _lastExternalWindow;
+    private nint _automaticSuppressedWindow;
+    private bool _updatingAutomaticMode;
     private bool _disposed;
 
     public SightAdaptContext()
     {
+        _settingsStore = new SettingsStore();
+        _settings = _settingsStore.Load();
+
         _statusItem = new ToolStripMenuItem("Overlay disabled")
         {
             Enabled = false,
@@ -24,8 +34,21 @@ internal sealed class SightAdaptContext : ApplicationContext
         _toggleItem = new ToolStripMenuItem("Toggle inversion for active window");
         _toggleItem.Click += (_, _) => ToggleForActiveWindow();
 
-        var disableItem = new ToolStripMenuItem("Disable all overlays");
-        disableItem.Click += (_, _) => DisableOverlay();
+        var addApplicationItem = new ToolStripMenuItem("Add current application");
+        addApplicationItem.Click += (_, _) => AddActiveApplication();
+
+        _automaticModeItem = new ToolStripMenuItem("Automatic mode")
+        {
+            CheckOnClick = true,
+            Checked = _settings.AutomaticMode,
+        };
+        _automaticModeItem.CheckedChanged += AutomaticModeItemCheckedChanged;
+
+        var configureItem = new ToolStripMenuItem("Configure applications...");
+        configureItem.Click += (_, _) => ShowConfiguration();
+
+        var disableItem = new ToolStripMenuItem("Emergency disable all overlays");
+        disableItem.Click += (_, _) => EmergencyDisable();
 
         var exitItem = new ToolStripMenuItem("Exit SightAdapt Demo");
         exitItem.Click += (_, _) => ExitThread();
@@ -35,6 +58,10 @@ internal sealed class SightAdaptContext : ApplicationContext
             _statusItem,
             new ToolStripSeparator(),
             _toggleItem,
+            addApplicationItem,
+            _automaticModeItem,
+            configureItem,
+            new ToolStripSeparator(),
             disableItem,
             new ToolStripSeparator(),
             exitItem,
@@ -43,7 +70,7 @@ internal sealed class SightAdaptContext : ApplicationContext
         _notifyIcon = new NotifyIcon
         {
             Icon = SystemIcons.Information,
-            Text = "SightAdapt Demo",
+            Text = "SightAdapt Demo 0.2",
             ContextMenuStrip = menu,
             Visible = true,
         };
@@ -59,16 +86,23 @@ internal sealed class SightAdaptContext : ApplicationContext
         _foregroundTracker.Tick += (_, _) => TrackForegroundWindow();
 
         var toggleText = _hotkeys.ToggleShortcut ?? "tray menu";
+        var addText = _hotkeys.AddApplicationShortcut ?? "tray menu";
         var emergencyText = _hotkeys.EmergencyShortcut ?? "tray menu";
 
-        _notifyIcon.BalloonTipTitle = "SightAdapt Demo is running";
+        _notifyIcon.BalloonTipTitle = "SightAdapt Demo 0.2 is running";
         _notifyIcon.BalloonTipText =
-            $"Toggle inversion: {toggleText}. Emergency disable: {emergencyText}.";
+            $"Toggle: {toggleText}. Add application: {addText}. Emergency disable: {emergencyText}.";
         _notifyIcon.ShowBalloonTip(5000);
+
+        if (!string.IsNullOrWhiteSpace(_settingsStore.LastLoadWarning))
+        {
+            ShowNotification(_settingsStore.LastLoadWarning);
+        }
     }
 
     protected override void ExitThreadCore()
     {
+        _configurationForm?.Close();
         DisableOverlay();
         base.ExitThreadCore();
     }
@@ -78,6 +112,7 @@ internal sealed class SightAdaptContext : ApplicationContext
         if (!_disposed && disposing)
         {
             DisableOverlay();
+            _configurationForm?.Dispose();
             _foregroundTracker.Dispose();
             _hotkeys.Dispose();
             _notifyIcon.Visible = false;
@@ -94,10 +129,13 @@ internal sealed class SightAdaptContext : ApplicationContext
         {
             ToggleForActiveWindow();
         }
+        else if (id == HotkeyWindow.AddApplicationId)
+        {
+            AddActiveApplication();
+        }
         else if (id == HotkeyWindow.EmergencyId)
         {
-            DisableOverlay();
-            ShowNotification("All SightAdapt overlays were disabled.");
+            EmergencyDisable();
         }
     }
 
@@ -110,9 +148,72 @@ internal sealed class SightAdaptContext : ApplicationContext
             return;
         }
 
-        if (_overlay is not null && !_overlay.IsDisposed && _overlay.TargetHandle == target)
+        if (_overlay is not null &&
+            !_overlay.IsDisposed &&
+            _overlay.TargetHandle == target)
         {
             DisableOverlay();
+
+            if (_settings.AutomaticMode && IsConfiguredApplication(target))
+            {
+                _automaticSuppressedWindow = target;
+            }
+
+            return;
+        }
+
+        _automaticSuppressedWindow = nint.Zero;
+        ActivateOverlay(target, OverlayActivationMode.Manual);
+    }
+
+    private void AddActiveApplication()
+    {
+        var target = ResolveTargetWindow();
+        if (target == nint.Zero ||
+            !ApplicationDiscovery.TryGetIdentity(target, out var identity))
+        {
+            ShowNotification(
+                "The active application's executable path could not be read. Use the configuration panel to select its .exe file.");
+            return;
+        }
+
+        var profile = _settings.Applications.FirstOrDefault(
+            candidate => string.Equals(
+                candidate.ExecutablePath,
+                identity.ExecutablePath,
+                StringComparison.OrdinalIgnoreCase));
+
+        var added = profile is null;
+        if (profile is null)
+        {
+            profile = new ApplicationProfile();
+            _settings.Applications.Add(profile);
+        }
+
+        profile.DisplayName = identity.DisplayName;
+        profile.ExecutableName = identity.ExecutableName;
+        profile.ExecutablePath = identity.ExecutablePath;
+        profile.Enabled = true;
+        profile.Effect = "invert";
+
+        _settings.AutomaticMode = true;
+        _automaticSuppressedWindow = nint.Zero;
+        HandleSettingsChanged();
+
+        ShowNotification(
+            added
+                ? $"Added to automatic inversion: {identity.DisplayName} ({identity.ExecutableName})."
+                : $"{identity.DisplayName} is already configured and was enabled.");
+    }
+
+    private void ActivateOverlay(nint target, OverlayActivationMode mode)
+    {
+        if (_overlay is not null &&
+            !_overlay.IsDisposed &&
+            _overlay.TargetHandle == target)
+        {
+            _overlayMode = mode;
+            UpdateOverlayStatus(target, mode);
             return;
         }
 
@@ -124,12 +225,8 @@ internal sealed class SightAdaptContext : ApplicationContext
             overlay.FormClosed += OverlayClosed;
             overlay.Show();
             _overlay = overlay;
-
-            var title = NativeMethods.GetWindowTitle(target);
-            _statusItem.Text = string.IsNullOrWhiteSpace(title)
-                ? "Inversion enabled"
-                : $"Inverting: {Truncate(title, 48)}";
-            _toggleItem.Text = "Disable inversion";
+            _overlayMode = mode;
+            UpdateOverlayStatus(target, mode);
         }
         catch (Exception exception)
         {
@@ -148,6 +245,7 @@ internal sealed class SightAdaptContext : ApplicationContext
             _overlay = null;
         }
 
+        _overlayMode = OverlayActivationMode.None;
         _statusItem.Text = "Overlay disabled";
         _toggleItem.Text = "Toggle inversion for active window";
     }
@@ -158,6 +256,7 @@ internal sealed class SightAdaptContext : ApplicationContext
         {
             _overlay?.Dispose();
             _overlay = null;
+            _overlayMode = OverlayActivationMode.None;
             _statusItem.Text = "Overlay disabled";
             _toggleItem.Text = "Toggle inversion for active window";
         }
@@ -168,9 +267,63 @@ internal sealed class SightAdaptContext : ApplicationContext
         var candidate = NativeMethods.GetForegroundWindow();
         candidate = NativeMethods.GetAncestor(candidate, NativeMethods.GaRoot);
 
-        if (IsSupportedTarget(candidate))
+        if (!IsSupportedTarget(candidate))
         {
-            _lastExternalWindow = candidate;
+            return;
+        }
+
+        _lastExternalWindow = candidate;
+
+        if (_automaticSuppressedWindow != nint.Zero &&
+            candidate != _automaticSuppressedWindow)
+        {
+            _automaticSuppressedWindow = nint.Zero;
+        }
+
+        EvaluateAutomaticForWindow(candidate);
+    }
+
+    private void EvaluateAutomaticForWindow(nint target)
+    {
+        if (!_settings.AutomaticMode ||
+            _overlayMode == OverlayActivationMode.Manual ||
+            !IsSupportedTarget(target))
+        {
+            return;
+        }
+
+        if (target == _automaticSuppressedWindow)
+        {
+            if (_overlayMode == OverlayActivationMode.Automatic)
+            {
+                DisableOverlay();
+            }
+
+            return;
+        }
+
+        if (!ApplicationDiscovery.TryGetIdentity(target, out var identity))
+        {
+            if (_overlayMode == OverlayActivationMode.Automatic)
+            {
+                DisableOverlay();
+            }
+
+            return;
+        }
+
+        var shouldInvert = _settings.Applications.Any(
+            profile => profile.Enabled &&
+                string.Equals(profile.Effect, "invert", StringComparison.OrdinalIgnoreCase) &&
+                profile.Matches(identity));
+
+        if (shouldInvert)
+        {
+            ActivateOverlay(target, OverlayActivationMode.Automatic);
+        }
+        else if (_overlayMode == OverlayActivationMode.Automatic)
+        {
+            DisableOverlay();
         }
     }
 
@@ -188,6 +341,22 @@ internal sealed class SightAdaptContext : ApplicationContext
         return IsSupportedTarget(_lastExternalWindow)
             ? _lastExternalWindow
             : nint.Zero;
+    }
+
+    private ApplicationIdentity? GetCurrentApplicationIdentity()
+    {
+        var target = ResolveTargetWindow();
+        return target != nint.Zero &&
+            ApplicationDiscovery.TryGetIdentity(target, out var identity)
+                ? identity
+                : null;
+    }
+
+    private bool IsConfiguredApplication(nint target)
+    {
+        return ApplicationDiscovery.TryGetIdentity(target, out var identity) &&
+            _settings.Applications.Any(
+                profile => profile.Enabled && profile.Matches(identity));
     }
 
     private static bool IsSupportedTarget(nint window)
@@ -215,10 +384,107 @@ internal sealed class SightAdaptContext : ApplicationContext
             "NotifyIconOverflowWindow");
     }
 
+    private void AutomaticModeItemCheckedChanged(object? sender, EventArgs eventArgs)
+    {
+        if (_updatingAutomaticMode)
+        {
+            return;
+        }
+
+        _settings.AutomaticMode = _automaticModeItem.Checked;
+        HandleSettingsChanged();
+    }
+
+    private void HandleSettingsChanged()
+    {
+        _updatingAutomaticMode = true;
+
+        try
+        {
+            _automaticModeItem.Checked = _settings.AutomaticMode;
+        }
+        finally
+        {
+            _updatingAutomaticMode = false;
+        }
+
+        try
+        {
+            _settingsStore.Save(_settings);
+        }
+        catch (Exception exception) when (
+            exception is IOException or UnauthorizedAccessException or InvalidOperationException)
+        {
+            ShowNotification($"Settings could not be saved: {exception.Message}");
+        }
+
+        _configurationForm?.RefreshProfiles();
+
+        if (!_settings.AutomaticMode)
+        {
+            _automaticSuppressedWindow = nint.Zero;
+
+            if (_overlayMode == OverlayActivationMode.Automatic)
+            {
+                DisableOverlay();
+            }
+
+            return;
+        }
+
+        var target = ResolveTargetWindow();
+        if (target != nint.Zero)
+        {
+            EvaluateAutomaticForWindow(target);
+        }
+    }
+
+    private void EmergencyDisable()
+    {
+        _settings.AutomaticMode = false;
+        _automaticSuppressedWindow = nint.Zero;
+        HandleSettingsChanged();
+        DisableOverlay();
+        ShowNotification("All overlays were disabled. Automatic mode is off.");
+    }
+
+    private void ShowConfiguration()
+    {
+        if (_configurationForm is not null && !_configurationForm.IsDisposed)
+        {
+            _configurationForm.Show();
+            _configurationForm.Activate();
+            return;
+        }
+
+        var form = new ConfigurationForm(
+            _settings,
+            _settingsStore,
+            GetCurrentApplicationIdentity,
+            HandleSettingsChanged);
+
+        form.FormClosed += (_, _) => _configurationForm = null;
+        _configurationForm = form;
+        form.Show();
+    }
+
+    private void UpdateOverlayStatus(nint target, OverlayActivationMode mode)
+    {
+        var title = NativeMethods.GetWindowTitle(target);
+        var modeText = mode == OverlayActivationMode.Automatic
+            ? "Automatic"
+            : "Manual";
+
+        _statusItem.Text = string.IsNullOrWhiteSpace(title)
+            ? $"{modeText} inversion enabled"
+            : $"{modeText}: {Truncate(title, 40)}";
+        _toggleItem.Text = "Disable inversion";
+    }
+
     private void ShowNotification(string message)
     {
-        _notifyIcon.BalloonTipTitle = "SightAdapt Demo";
-        _notifyIcon.BalloonTipText = message;
+        _notifyIcon.BalloonTipTitle = "SightAdapt Demo 0.2";
+        _notifyIcon.BalloonTipText = Truncate(message, 240);
         _notifyIcon.ShowBalloonTip(4000);
     }
 
@@ -227,5 +493,12 @@ internal sealed class SightAdaptContext : ApplicationContext
         return value.Length <= maximumLength
             ? value
             : value[..(maximumLength - 1)] + "…";
+    }
+
+    private enum OverlayActivationMode
+    {
+        None,
+        Manual,
+        Automatic,
     }
 }
