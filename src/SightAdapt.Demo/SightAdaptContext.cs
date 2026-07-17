@@ -63,7 +63,7 @@ internal sealed class SightAdaptContext : ApplicationContext
         disableItem.Click += (_, _) => EmergencyDisable();
         AppTheme.StyleMenuItem(disableItem, AppTheme.Danger, FontStyle.Bold, "danger");
 
-        var exitItem = new ToolStripMenuItem("Exit SightAdapt Demo");
+        var exitItem = new ToolStripMenuItem("Exit SightAdapt");
         exitItem.Click += (_, _) => ExitThread();
         AppTheme.StyleMenuItem(exitItem, AppTheme.TextSecondary);
 
@@ -84,7 +84,7 @@ internal sealed class SightAdaptContext : ApplicationContext
         _notifyIcon = new NotifyIcon
         {
             Icon = _trayIcons.Inactive,
-            Text = "SightAdapt Demo 0.2 · Inactive",
+            Text = $"{ProductInfo.DisplayName} · Inactive",
             ContextMenuStrip = menu,
             Visible = true,
         };
@@ -109,7 +109,7 @@ internal sealed class SightAdaptContext : ApplicationContext
         var addText = _hotkeys.AddApplicationShortcut ?? "tray menu";
         var emergencyText = _hotkeys.EmergencyShortcut ?? "tray menu";
 
-        _notifyIcon.BalloonTipTitle = "SightAdapt Demo 0.2 is running";
+        _notifyIcon.BalloonTipTitle = $"{ProductInfo.DisplayName} is running";
         _notifyIcon.BalloonTipText =
             $"Toggle: {toggleText}. Add application: {addText}. Emergency disable: {emergencyText}.";
         _notifyIcon.ShowBalloonTip(5000);
@@ -555,9 +555,9 @@ internal sealed class SightAdaptContext : ApplicationContext
         _notifyIcon.Icon = _trayIcons.Get(state);
         _notifyIcon.Text = state switch
         {
-            TrayIconState.Active => "SightAdapt Demo 0.2 · Active",
-            TrayIconState.Emergency => "SightAdapt Demo 0.2 · All overlays stopped",
-            _ => "SightAdapt Demo 0.2 · Inactive",
+            TrayIconState.Active => $"{ProductInfo.DisplayName} · Active",
+            TrayIconState.Emergency => $"{ProductInfo.DisplayName} · All overlays stopped",
+            _ => $"{ProductInfo.DisplayName} · Inactive",
         };
 
         if (state == TrayIconState.Inactive && _overlay is null)
@@ -568,7 +568,7 @@ internal sealed class SightAdaptContext : ApplicationContext
 
     private void ShowNotification(string message)
     {
-        _notifyIcon.BalloonTipTitle = "SightAdapt Demo 0.2";
+        _notifyIcon.BalloonTipTitle = ProductInfo.DisplayName;
         _notifyIcon.BalloonTipText = Truncate(message, 240);
         _notifyIcon.ShowBalloonTip(4000);
     }
