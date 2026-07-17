@@ -6,10 +6,11 @@ namespace SightAdapt.Demo;
 internal sealed class MagnifierOverlay : Form
 {
     private readonly System.Windows.Forms.Timer _updateTimer;
+    private readonly IVisualTransform _visualTransform;
     private nint _magnifierWindow;
     private bool _initialized;
 
-    public MagnifierOverlay(nint targetHandle)
+    public MagnifierOverlay(nint targetHandle, IVisualTransform visualTransform)
     {
         if (targetHandle == nint.Zero)
         {
@@ -17,6 +18,8 @@ internal sealed class MagnifierOverlay : Form
         }
 
         TargetHandle = targetHandle;
+        _visualTransform = visualTransform
+            ?? throw new ArgumentNullException(nameof(visualTransform));
 
         AutoScaleMode = AutoScaleMode.None;
         BackColor = Color.Black;
@@ -87,10 +90,11 @@ internal sealed class MagnifierOverlay : Form
             throw new Win32Exception("Could not initialize the magnifier transform.");
         }
 
-        var colorEffect = MagColorEffect.Invert;
+        var colorEffect = _visualTransform.CreateColorEffect();
         if (!NativeMethods.MagSetColorEffect(_magnifierWindow, ref colorEffect))
         {
-            throw new Win32Exception("Could not apply the inversion color matrix.");
+            throw new Win32Exception(
+                $"Could not apply the '{_visualTransform.Id}' visual transform.");
         }
 
         var excludedWindows = new[] { Handle };
