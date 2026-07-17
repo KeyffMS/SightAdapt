@@ -48,9 +48,10 @@ internal sealed class SightAdaptContext : ApplicationContext
         _toggleItem.Click += (_, _) => ToggleForActiveWindow();
         AppTheme.StyleMenuItem(_toggleItem);
 
-        var addApplicationItem = new ToolStripMenuItem("Add current application");
-        addApplicationItem.Click += (_, _) => AddActiveApplication();
-        AppTheme.StyleMenuItem(addApplicationItem);
+        var toggleProfileItem = new ToolStripMenuItem(
+            "Toggle automatic profile for current application");
+        toggleProfileItem.Click += (_, _) => ToggleActiveApplicationProfile();
+        AppTheme.StyleMenuItem(toggleProfileItem);
 
         _automaticModeItem = new ToolStripMenuItem("Automatic mode")
         {
@@ -77,7 +78,7 @@ internal sealed class SightAdaptContext : ApplicationContext
             _statusItem,
             new ToolStripSeparator(),
             _toggleItem,
-            addApplicationItem,
+            toggleProfileItem,
             _automaticModeItem,
             configureItem,
             new ToolStripSeparator(),
@@ -112,13 +113,13 @@ internal sealed class SightAdaptContext : ApplicationContext
 
         ApplyApplicationState(_stateController.Current);
 
-        var toggleText = _hotkeys.ToggleShortcut ?? "tray menu";
-        var addText = _hotkeys.AddApplicationShortcut ?? "tray menu";
-        var emergencyText = _hotkeys.EmergencyShortcut ?? "tray menu";
+        var localToggleText = _hotkeys.LocalToggleShortcut ?? "tray menu";
+        var profileToggleText = _hotkeys.ProfileToggleShortcut ?? "tray menu";
 
         _notifyIcon.BalloonTipTitle = $"{ProductInfo.DisplayName} is running";
         _notifyIcon.BalloonTipText =
-            $"Toggle: {toggleText}. Add application: {addText}. Emergency disable: {emergencyText}.";
+            $"Local toggle: {localToggleText}. Saved profile toggle: {profileToggleText}. " +
+            "Emergency disable is available from the tray menu.";
         _notifyIcon.ShowBalloonTip(5000);
 
         if (_settingsStore.SettingsWereMigrated)
@@ -165,17 +166,13 @@ internal sealed class SightAdaptContext : ApplicationContext
 
     private void HandleHotkey(int id)
     {
-        if (id == HotkeyWindow.ToggleId)
+        if (id == HotkeyWindow.LocalToggleId)
         {
             ToggleForActiveWindow();
         }
-        else if (id == HotkeyWindow.AddApplicationId)
+        else if (id == HotkeyWindow.ProfileToggleId)
         {
-            AddActiveApplication();
-        }
-        else if (id == HotkeyWindow.EmergencyId)
-        {
-            EmergencyDisable();
+            ToggleActiveApplicationProfile();
         }
     }
 
@@ -204,45 +201,33 @@ internal sealed class SightAdaptContext : ApplicationContext
         ActivateOverlay(target, ApplicationRunState.ManualActive);
     }
 
-    private void AddActiveApplication()
+    private void ToggleActiveApplicationProfile()
     {
         var target = ResolveTargetWindow();
         if (target == nint.Zero ||
             !ApplicationDiscovery.TryGetIdentity(target, out var identity))
         {
             ShowNotification(
-                "The active application's executable path could not be read. Use the configuration panel to select its .exe file.");
+                "The active application's executable path could not be read. " +
+                "Use the configuration panel to select its .exe file.");
             return;
         }
 
-        var profile = _settings.Applications.FirstOrDefault(
-            candidate => string.Equals(
-                candidate.ExecutablePath,
-                identity.ExecutablePath,
-                StringComparison.OrdinalIgnoreCase));
+        var result = ApplicationProfileToggleService.Toggle(_settings, identity);
 
-        var added = profile is null;
-        if (profile is null)
+        if (result.IsEnabled)
         {
-            profile = new ApplicationProfile();
-            _settings.Applications.Add(profile);
+            _settings.AutomaticMode = true;
+            _automaticSuppressedWindow = nint.Zero;
         }
 
-        profile.DisplayName = identity.DisplayName;
-        profile.ExecutableName = identity.ExecutableName;
-        profile.ExecutablePath = identity.ExecutablePath;
-        profile.Enabled = true;
-        profile.VisualProfileId = VisualProfile.DefaultInvertId;
-        profile.LegacyEffect = null;
-
-        _settings.AutomaticMode = true;
-        _automaticSuppressedWindow = nint.Zero;
         HandleSettingsChanged();
 
-        ShowNotification(
-            added
-                ? $"Added to automatic inversion: {identity.DisplayName} ({identity.ExecutableName})."
-                : $"{identity.DisplayName} is already configured and was enabled.");
+        ShowNotification(result.IsEnabled
+            ? result.WasCreated
+                ? $"Automatic profile added and enabled: {identity.DisplayName}."
+                : $"Automatic profile enabled: {identity.DisplayName}."
+            : $"Automatic profile disabled: {identity.DisplayName}.");
     }
 
     private void ActivateOverlay(
