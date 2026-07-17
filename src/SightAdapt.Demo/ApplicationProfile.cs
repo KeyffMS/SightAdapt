@@ -1,10 +1,19 @@
+using System.Text.Json.Serialization;
+
 namespace SightAdapt.Demo;
 
 internal sealed class SightAdaptSettings
 {
+    public const int CurrentSchemaVersion = 2;
+
+    public int SchemaVersion { get; set; } = CurrentSchemaVersion;
+
     public bool AutomaticMode { get; set; } = true;
 
     public List<ApplicationProfile> Applications { get; set; } = [];
+
+    public List<VisualProfile> VisualProfiles { get; set; } =
+        [VisualProfile.CreateDefaultInvert()];
 }
 
 internal sealed class ApplicationProfile
@@ -17,10 +26,16 @@ internal sealed class ApplicationProfile
 
     public bool Enabled { get; set; } = true;
 
-    public string Effect { get; set; } = "invert";
+    public string VisualProfileId { get; set; } = VisualProfile.DefaultInvertId;
+
+    [JsonPropertyName("effect")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? LegacyEffect { get; set; }
 
     public bool Matches(ApplicationIdentity identity)
     {
+        ArgumentNullException.ThrowIfNull(identity);
+
         if (!string.IsNullOrWhiteSpace(ExecutablePath) &&
             !string.IsNullOrWhiteSpace(identity.ExecutablePath))
         {
@@ -34,6 +49,27 @@ internal sealed class ApplicationProfile
             ExecutableName,
             identity.ExecutableName,
             StringComparison.OrdinalIgnoreCase);
+    }
+}
+
+internal sealed class VisualProfile
+{
+    public const string DefaultInvertId = "default-invert";
+
+    public string Id { get; set; } = DefaultInvertId;
+
+    public string Name { get; set; } = "Invert";
+
+    public string TransformId { get; set; } = InvertVisualTransform.TransformId;
+
+    public static VisualProfile CreateDefaultInvert()
+    {
+        return new VisualProfile
+        {
+            Id = DefaultInvertId,
+            Name = "Invert",
+            TransformId = InvertVisualTransform.TransformId,
+        };
     }
 }
 
