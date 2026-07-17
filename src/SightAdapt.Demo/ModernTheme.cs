@@ -448,17 +448,19 @@ internal sealed class DarkMenuRenderer : ToolStripProfessionalRenderer
 
     protected override void OnRenderItemText(ToolStripItemTextRenderEventArgs eventArgs)
     {
+        var itemText = eventArgs.Item.Text ?? string.Empty;
+        var isChecked = eventArgs.Item is ToolStripMenuItem menuItem && menuItem.Checked;
         var textColor = !eventArgs.Item.Enabled
             ? AppTheme.TextSecondary
-            : eventArgs.Item.Text.StartsWith("Emergency", StringComparison.OrdinalIgnoreCase)
+            : itemText.StartsWith("Emergency", StringComparison.OrdinalIgnoreCase)
                 ? AppTheme.Danger
-                : eventArgs.Item.Checked
+                : isChecked
                     ? AppTheme.AccentHover
                     : AppTheme.TextPrimary;
 
         TextRenderer.DrawText(
             eventArgs.Graphics,
-            eventArgs.Text,
+            eventArgs.Text ?? string.Empty,
             eventArgs.TextFont,
             eventArgs.TextRectangle,
             textColor,
