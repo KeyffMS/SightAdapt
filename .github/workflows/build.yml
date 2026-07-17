@@ -1,4 +1,4 @@
-name: Build SightAdapt
+name: Build and test SightAdapt
 
 on:
   push:
@@ -22,8 +22,11 @@ jobs:
         with:
           dotnet-version: 8.0.x
 
-      - name: Restore
+      - name: Restore application
         run: dotnet restore src/SightAdapt.Demo/SightAdapt.Demo.csproj
+
+      - name: Restore tests
+        run: dotnet restore tests/SightAdapt.Tests/SightAdapt.Tests.csproj
 
       - name: Build
         shell: pwsh
@@ -34,12 +37,23 @@ jobs:
           $output | ForEach-Object { Write-Host $_ }
           exit $exitCode
 
+      - name: Test
+        shell: pwsh
+        run: |
+          $output = & dotnet test tests/SightAdapt.Tests/SightAdapt.Tests.csproj --configuration Release --no-restore 2>&1
+          $exitCode = $LASTEXITCODE
+          $output | Set-Content -Path test-output.txt -Encoding utf8
+          $output | ForEach-Object { Write-Host $_ }
+          exit $exitCode
+
       - name: Upload build diagnostics
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: SightAdapt-build-diagnostics
-          path: build-output.txt
+          path: |
+            build-output.txt
+            test-output.txt
           if-no-files-found: warn
           retention-days: 7
 
@@ -55,6 +69,6 @@ jobs:
       - name: Upload Windows alpha
         uses: actions/upload-artifact@v4
         with:
-          name: SightAdapt-0.3-Alpha-win-x64
+          name: SightAdapt-0.3.1-Alpha-win-x64
           path: artifacts/win-x64/
           if-no-files-found: error
