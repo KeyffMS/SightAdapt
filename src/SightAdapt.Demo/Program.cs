@@ -17,8 +17,8 @@ internal static class Program
         {
             MessageBox.Show(
                 "Windows Magnification API could not be initialized. " +
-                "SightAdapt Demo requires a WDDM-capable graphics driver.",
-                "SightAdapt Demo 0.2",
+                "SightAdapt requires a WDDM-capable graphics driver.",
+                ProductInfo.DisplayName,
                 MessageBoxButtons.OK,
                 MessageBoxIcon.Error);
             return;
@@ -32,8 +32,8 @@ internal static class Program
         catch (Exception exception)
         {
             MessageBox.Show(
-                $"SightAdapt Demo stopped because of an unexpected error.\n\n{exception.Message}",
-                "SightAdapt Demo 0.2",
+                $"SightAdapt stopped because of an unexpected error.\n\n{exception.Message}",
+                ProductInfo.DisplayName,
                 MessageBoxButtons.OK,
                 MessageBoxIcon.Error);
         }
