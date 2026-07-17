@@ -1,4 +1,4 @@
-name: Build demo
+name: Build SightAdapt
 
 on:
   push:
@@ -43,7 +43,7 @@ jobs:
           if-no-files-found: warn
           retention-days: 7
 
-      - name: Publish self-contained demo
+      - name: Publish self-contained alpha
         run: >-
           dotnet publish src/SightAdapt.Demo/SightAdapt.Demo.csproj
           --configuration Release
@@ -52,9 +52,9 @@ jobs:
           -p:PublishSingleFile=true
           --output artifacts/win-x64
 
-      - name: Upload Windows demo
+      - name: Upload Windows alpha
         uses: actions/upload-artifact@v4
         with:
-          name: SightAdapt-Demo-0.2-win-x64
+          name: SightAdapt-0.3-Alpha-win-x64
           path: artifacts/win-x64/
           if-no-files-found: error
