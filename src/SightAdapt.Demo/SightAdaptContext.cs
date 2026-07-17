@@ -94,9 +94,10 @@ internal sealed class SightAdaptContext : ApplicationContext
             $"Toggle: {toggleText}. Add application: {addText}. Emergency disable: {emergencyText}.";
         _notifyIcon.ShowBalloonTip(5000);
 
-        if (!string.IsNullOrWhiteSpace(_settingsStore.LastLoadWarning))
+        var loadWarning = _settingsStore.LastLoadWarning;
+        if (!string.IsNullOrWhiteSpace(loadWarning))
         {
-            ShowNotification(_settingsStore.LastLoadWarning);
+            ShowNotification(loadWarning);
         }
     }
 
@@ -280,6 +281,14 @@ internal sealed class SightAdaptContext : ApplicationContext
             _automaticSuppressedWindow = nint.Zero;
         }
 
+        if (_overlayMode == OverlayActivationMode.Manual &&
+            (_overlay is null ||
+             _overlay.IsDisposed ||
+             _overlay.TargetHandle != candidate))
+        {
+            DisableOverlay();
+        }
+
         EvaluateAutomaticForWindow(candidate);
     }
 
@@ -356,7 +365,9 @@ internal sealed class SightAdaptContext : ApplicationContext
     {
         return ApplicationDiscovery.TryGetIdentity(target, out var identity) &&
             _settings.Applications.Any(
-                profile => profile.Enabled && profile.Matches(identity));
+                profile => profile.Enabled &&
+                    string.Equals(profile.Effect, "invert", StringComparison.OrdinalIgnoreCase) &&
+                    profile.Matches(identity));
     }
 
     private static bool IsSupportedTarget(nint window)
