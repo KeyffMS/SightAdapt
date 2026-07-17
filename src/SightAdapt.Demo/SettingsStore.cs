@@ -12,8 +12,14 @@ internal sealed class SettingsStore
         WriteIndented = true,
     };
 
-    public SettingsStore()
+    public SettingsStore(string? settingsPath = null)
     {
+        if (!string.IsNullOrWhiteSpace(settingsPath))
+        {
+            SettingsPath = Path.GetFullPath(settingsPath);
+            return;
+        }
+
         var applicationData = Environment.GetFolderPath(
             Environment.SpecialFolder.LocalApplicationData);
 
@@ -24,9 +30,12 @@ internal sealed class SettingsStore
 
     public string? LastLoadWarning { get; private set; }
 
+    public bool SettingsWereMigrated { get; private set; }
+
     public SightAdaptSettings Load()
     {
         LastLoadWarning = null;
+        SettingsWereMigrated = false;
 
         if (!File.Exists(SettingsPath))
         {
@@ -40,7 +49,7 @@ internal sealed class SettingsStore
                 stream,
                 _serializerOptions) ?? new SightAdaptSettings();
 
-            Normalize(settings);
+            SettingsWereMigrated = Normalize(settings);
             return settings;
         }
         catch (JsonException exception)
@@ -88,37 +97,104 @@ internal sealed class SettingsStore
         }
     }
 
-    private static void Normalize(SightAdaptSettings settings)
+    internal static bool Normalize(SightAdaptSettings settings)
     {
+        ArgumentNullException.ThrowIfNull(settings);
+
+        var changed = settings.SchemaVersion != SightAdaptSettings.CurrentSchemaVersion;
+        settings.SchemaVersion = SightAdaptSettings.CurrentSchemaVersion;
+
+        settings.VisualProfiles ??= [];
         settings.Applications ??= [];
 
-        var normalized = new List<ApplicationProfile>();
-        var paths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var normalizedVisualProfiles = new List<VisualProfile>();
+        var visualProfileIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-        foreach (var profile in settings.Applications)
+        foreach (var visualProfile in settings.VisualProfiles)
         {
-            profile.DisplayName = profile.DisplayName.Trim();
-            profile.ExecutableName = profile.ExecutableName.Trim();
-            profile.ExecutablePath = profile.ExecutablePath.Trim();
-            profile.Effect = string.IsNullOrWhiteSpace(profile.Effect)
-                ? "invert"
-                : profile.Effect.Trim().ToLowerInvariant();
+            visualProfile.Id = visualProfile.Id.Trim();
+            visualProfile.Name = visualProfile.Name.Trim();
+            visualProfile.TransformId = visualProfile.TransformId.Trim().ToLowerInvariant();
 
-            if (string.IsNullOrWhiteSpace(profile.ExecutablePath) ||
-                string.IsNullOrWhiteSpace(profile.ExecutableName) ||
-                !paths.Add(profile.ExecutablePath))
+            if (string.IsNullOrWhiteSpace(visualProfile.Id) ||
+                !visualProfileIds.Add(visualProfile.Id))
             {
+                changed = true;
                 continue;
             }
 
-            if (string.IsNullOrWhiteSpace(profile.DisplayName))
+            if (string.IsNullOrWhiteSpace(visualProfile.Name))
             {
-                profile.DisplayName = Path.GetFileNameWithoutExtension(profile.ExecutableName);
+                visualProfile.Name = visualProfile.Id;
+                changed = true;
             }
 
-            normalized.Add(profile);
+            if (string.IsNullOrWhiteSpace(visualProfile.TransformId))
+            {
+                visualProfile.TransformId = InvertVisualTransform.TransformId;
+                changed = true;
+            }
+
+            normalizedVisualProfiles.Add(visualProfile);
         }
 
-        settings.Applications = normalized;
+        if (!visualProfileIds.Contains(VisualProfile.DefaultInvertId))
+        {
+            normalizedVisualProfiles.Insert(0, VisualProfile.CreateDefaultInvert());
+            visualProfileIds.Add(VisualProfile.DefaultInvertId);
+            changed = true;
+        }
+
+        var normalizedApplications = new List<ApplicationProfile>();
+        var executablePaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var applicationProfile in settings.Applications)
+        {
+            applicationProfile.DisplayName = applicationProfile.DisplayName.Trim();
+            applicationProfile.ExecutableName = applicationProfile.ExecutableName.Trim();
+            applicationProfile.ExecutablePath = applicationProfile.ExecutablePath.Trim();
+            applicationProfile.VisualProfileId = applicationProfile.VisualProfileId.Trim();
+
+            if (!string.IsNullOrWhiteSpace(applicationProfile.LegacyEffect))
+            {
+                applicationProfile.VisualProfileId = VisualProfile.DefaultInvertId;
+                applicationProfile.LegacyEffect = null;
+                changed = true;
+            }
+
+            if (string.IsNullOrWhiteSpace(applicationProfile.VisualProfileId) ||
+                !visualProfileIds.Contains(applicationProfile.VisualProfileId))
+            {
+                applicationProfile.VisualProfileId = VisualProfile.DefaultInvertId;
+                changed = true;
+            }
+
+            if (string.IsNullOrWhiteSpace(applicationProfile.ExecutablePath) ||
+                string.IsNullOrWhiteSpace(applicationProfile.ExecutableName) ||
+                !executablePaths.Add(applicationProfile.ExecutablePath))
+            {
+                changed = true;
+                continue;
+            }
+
+            if (string.IsNullOrWhiteSpace(applicationProfile.DisplayName))
+            {
+                applicationProfile.DisplayName =
+                    Path.GetFileNameWithoutExtension(applicationProfile.ExecutableName);
+                changed = true;
+            }
+
+            normalizedApplications.Add(applicationProfile);
+        }
+
+        if (normalizedVisualProfiles.Count != settings.VisualProfiles.Count ||
+            normalizedApplications.Count != settings.Applications.Count)
+        {
+            changed = true;
+        }
+
+        settings.VisualProfiles = normalizedVisualProfiles;
+        settings.Applications = normalizedApplications;
+        return changed;
     }
 }
