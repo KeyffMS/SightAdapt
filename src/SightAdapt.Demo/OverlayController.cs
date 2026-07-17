@@ -95,7 +95,7 @@ internal sealed class OverlayController : IDisposable
             return;
         }
 
-        var overlay = _overlay;
+        var overlay = _overlay!;
         _overlay = null;
         VisualProfileId = null;
 
