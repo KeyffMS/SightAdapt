@@ -19,6 +19,14 @@ SightAdapt is intended to help people with low vision use applications that:
 
 SightAdapt does not modify another application's files or process memory. It captures the target window, processes its image on the GPU, and displays the result in a separate input-transparent overlay.
 
+## Current demo
+
+The repository now contains an initial Windows proof of concept in [`src/SightAdapt.Demo`](src/SightAdapt.Demo). It runs in the notification area and applies color inversion to the active application window through an input-transparent overlay.
+
+See [DEMO.md](DEMO.md) for controls, build instructions, architecture notes, and known limitations.
+
+The demo uses the Windows Magnification API to validate the interaction model with minimal code and no third-party runtime dependencies. The production Light implementation is still planned around Windows Graphics Capture and Direct3D 11.
+
 ## Documentation
 
 - [LIGHT.md](LIGHT.md) — scope, architecture, safety requirements, tests, and completion criteria for the Light version.
