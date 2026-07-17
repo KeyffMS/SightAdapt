@@ -32,6 +32,17 @@ internal sealed class ApplicationProfile
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? LegacyEffect { get; set; }
 
+    [JsonIgnore]
+    public string Effect
+    {
+        get => InvertVisualTransform.TransformId;
+        set
+        {
+            VisualProfileId = VisualProfile.DefaultInvertId;
+            LegacyEffect = null;
+        }
+    }
+
     public bool Matches(ApplicationIdentity identity)
     {
         ArgumentNullException.ThrowIfNull(identity);
