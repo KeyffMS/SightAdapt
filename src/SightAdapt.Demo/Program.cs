@@ -11,6 +11,7 @@ internal static class Program
         Application.SetHighDpiMode(HighDpiMode.PerMonitorV2);
         Application.EnableVisualStyles();
         Application.SetCompatibleTextRenderingDefault(false);
+        ToolStripManager.Renderer = new DarkMenuRenderer();
 
         if (!NativeMethods.MagInitialize())
         {
