@@ -2,9 +2,8 @@ namespace SightAdapt.Demo;
 
 internal sealed class HotkeyWindow : NativeWindow, IDisposable
 {
-    private const int ToggleHotkeyId = 1;
-    private const int AddApplicationHotkeyId = 2;
-    private const int EmergencyHotkeyId = 3;
+    private const int LocalToggleHotkeyId = 1;
+    private const int ProfileToggleHotkeyId = 2;
 
     private readonly Action<int> _handler;
     private readonly HashSet<int> _registeredIds = [];
@@ -20,51 +19,31 @@ internal sealed class HotkeyWindow : NativeWindow, IDisposable
             Parent = NativeMethods.HwndMessage,
         });
 
-        ToggleShortcut = RegisterWithFallback(
-            ToggleHotkeyId,
-            NativeMethods.ModControl | NativeMethods.ModWin | NativeMethods.ModNoRepeat,
-            (uint)Keys.D2,
-            NativeMethods.ModControl | NativeMethods.ModAlt | NativeMethods.ModNoRepeat,
+        LocalToggleShortcut = RegisterExact(
+            LocalToggleHotkeyId,
+            NativeMethods.ModControl |
+                NativeMethods.ModAlt |
+                NativeMethods.ModNoRepeat,
             (uint)Keys.I,
-            "Ctrl+Win+2",
             "Ctrl+Alt+I");
 
-        AddApplicationShortcut = RegisterExact(
-            AddApplicationHotkeyId,
+        ProfileToggleShortcut = RegisterExact(
+            ProfileToggleHotkeyId,
             NativeMethods.ModControl |
                 NativeMethods.ModAlt |
                 NativeMethods.ModShift |
                 NativeMethods.ModNoRepeat,
             (uint)Keys.I,
             "Ctrl+Alt+Shift+I");
-
-        EmergencyShortcut = RegisterWithFallback(
-            EmergencyHotkeyId,
-            NativeMethods.ModControl |
-                NativeMethods.ModWin |
-                NativeMethods.ModShift |
-                NativeMethods.ModNoRepeat,
-            (uint)Keys.D2,
-            NativeMethods.ModControl |
-                NativeMethods.ModAlt |
-                NativeMethods.ModShift |
-                NativeMethods.ModNoRepeat,
-            (uint)Keys.F12,
-            "Ctrl+Win+Shift+2",
-            "Ctrl+Alt+Shift+F12");
     }
 
-    public string? ToggleShortcut { get; }
+    public string? LocalToggleShortcut { get; }
 
-    public string? AddApplicationShortcut { get; }
+    public string? ProfileToggleShortcut { get; }
 
-    public string? EmergencyShortcut { get; }
+    public static int LocalToggleId => LocalToggleHotkeyId;
 
-    public static int ToggleId => ToggleHotkeyId;
-
-    public static int AddApplicationId => AddApplicationHotkeyId;
-
-    public static int EmergencyId => EmergencyHotkeyId;
+    public static int ProfileToggleId => ProfileToggleHotkeyId;
 
     protected override void WndProc(ref Message message)
     {
@@ -103,29 +82,5 @@ internal sealed class HotkeyWindow : NativeWindow, IDisposable
 
         _registeredIds.Add(id);
         return shortcutText;
-    }
-
-    private string? RegisterWithFallback(
-        int id,
-        uint preferredModifiers,
-        uint preferredKey,
-        uint fallbackModifiers,
-        uint fallbackKey,
-        string preferredText,
-        string fallbackText)
-    {
-        if (NativeMethods.RegisterHotKey(Handle, id, preferredModifiers, preferredKey))
-        {
-            _registeredIds.Add(id);
-            return preferredText;
-        }
-
-        if (NativeMethods.RegisterHotKey(Handle, id, fallbackModifiers, fallbackKey))
-        {
-            _registeredIds.Add(id);
-            return fallbackText;
-        }
-
-        return null;
     }
 }
