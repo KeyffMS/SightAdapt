@@ -17,13 +17,22 @@ SightAdapt is intended to help people with low vision use applications that:
 - do not allow per-user image correction;
 - do not provide suitable magnification or focus-highlighting options.
 
-SightAdapt does not modify another application's files or process memory. It captures the target window, processes its image on the GPU, and displays the result in a separate input-transparent overlay.
+SightAdapt does not modify another application's files or process memory. It captures the target window, processes its image, and displays the result in a separate input-transparent overlay.
 
 ## Current demo
 
-The repository now contains an initial Windows proof of concept in [`src/SightAdapt.Demo`](src/SightAdapt.Demo). It runs in the notification area and applies color inversion to the active application window through an input-transparent overlay.
+The repository contains **SightAdapt Demo 0.2** in [`src/SightAdapt.Demo`](src/SightAdapt.Demo). It runs in the notification area and applies color inversion to application windows through an input-transparent overlay.
 
-See [DEMO.md](DEMO.md) for controls, build instructions, architecture notes, and known limitations.
+Demo 0.2 adds:
+
+- persistent per-application profiles;
+- automatic inversion when a configured application becomes active;
+- `Ctrl+Alt+Shift+I` to add the active application;
+- a WinForms configuration panel;
+- per-user JSON settings stored in `%LOCALAPPDATA%\SightAdapt\settings.json`;
+- an emergency action that disables the overlay and automatic mode.
+
+See [DEMO.md](DEMO.md) for controls, build instructions, profile behavior, architecture notes, and known limitations.
 
 The demo uses the Windows Magnification API to validate the interaction model with minimal code and no third-party runtime dependencies. The production Light implementation is still planned around Windows Graphics Capture and Direct3D 11.
 
@@ -35,8 +44,10 @@ The demo uses the Windows Magnification API to validate the interaction model wi
 ## Core assumptions
 
 - primary language: **C#**;
-- runtime: **.NET 10 x64**;
-- settings UI: **WPF**;
+- current demo runtime: **.NET 8 x64**;
+- planned production migration target: **.NET 10 x64**;
+- current demo settings UI: **WinForms**;
+- planned production settings UI: **WPF**;
 - system integration: **Win32**;
 - window capture: **Windows Graphics Capture**;
 - rendering: **Direct3D 11 + HLSL**;
@@ -62,16 +73,15 @@ The project priorities are, in order:
 7. predictable behavior;
 8. feature count only after the previous requirements are met.
 
-## Default controls
+## Demo 0.2 controls
 
 | Shortcut | Action |
 |---|---|
-| `Ctrl+Win+2` | Enable or disable the profile for the active window |
-| `Ctrl+Win+Shift+2` | Emergency shutdown of all overlays |
-| `Ctrl+Win+3` | Switch to the next visual profile |
-| `Ctrl+Win+0` | Open the settings panel |
+| `Ctrl+Win+2` or `Ctrl+Alt+I` | Manually enable or disable inversion for the active window |
+| `Ctrl+Alt+Shift+I` | Add the active application to automatic inversion |
+| `Ctrl+Win+Shift+2` or `Ctrl+Alt+Shift+F12` | Emergency shutdown and disable automatic mode |
 
-All shortcuts must be configurable.
+The configuration panel and the same commands are also available from the notification-area icon. Future production shortcuts remain configurable by design.
 
 ## Development model
 
@@ -101,7 +111,7 @@ The Hard version adds a semantic accessibility layer and additional assistive to
 - magnification;
 - a large-text panel;
 - UI Automation integration;
-- per-application profiles;
+- extended per-application profile rules;
 - optional local OCR;
 - optional text-to-speech;
 - rules for dialogs, owned windows, and child windows.
