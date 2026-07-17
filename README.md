@@ -23,6 +23,7 @@ SightAdapt does not modify another application's files or process memory. It cap
 
 - [LIGHT.md](LIGHT.md) — scope, architecture, safety requirements, tests, and completion criteria for the Light version.
 - [HARD.md](HARD.md) — target architecture for the extended accessibility shell.
+- [TRAY_ICON.md](docs/TRAY_ICON.md) — proposed system tray icon, visual states, export requirements, and usage guidelines.
 
 ## Core assumptions
 
@@ -107,6 +108,12 @@ SightAdapt/
 ├── SECURITY.md
 ├── CONTRIBUTING.md
 ├── docs/
+│   ├── TRAY_ICON.md
+│   ├── assets/
+│   │   └── icons/
+│   │       ├── sightadapt-tray-active.svg
+│   │       ├── sightadapt-tray-inactive.svg
+│   │       └── sightadapt-tray-emergency.svg
 │   ├── LIGHT.md
 │   ├── HARD.md
 │   ├── architecture/
