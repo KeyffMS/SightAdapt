@@ -5,12 +5,14 @@ namespace SightAdapt.Demo.Tests;
 [TestClass]
 public sealed class VisualProfileTests
 {
+    private const float MatrixTolerance = 0.0001f;
+
     [TestMethod]
     public void InvertTransformCreatesExpectedMatrix()
     {
         var transform = new InvertVisualTransform();
 
-        var effect = transform.CreateColorEffect();
+        var effect = transform.CreateColorEffect(VisualProfile.CreateDefaultInvert());
 
         Assert.AreEqual(-1.0f, effect.M00);
         Assert.AreEqual(-1.0f, effect.M11);
@@ -20,6 +22,44 @@ public sealed class VisualProfileTests
         Assert.AreEqual(1.0f, effect.M41);
         Assert.AreEqual(1.0f, effect.M42);
         Assert.AreEqual(1.0f, effect.M44);
+    }
+
+    [TestMethod]
+    public void DefaultSoftInvertLimitsBlackAndWhiteOutput()
+    {
+        var profile = VisualProfile.CreateDefaultSoftInvert();
+        var transform = new SoftInvertVisualTransform();
+
+        var effect = transform.CreateColorEffect(profile);
+
+        Assert.AreEqual(-0.84f, effect.M00, MatrixTolerance);
+        Assert.AreEqual(-0.84f, effect.M11, MatrixTolerance);
+        Assert.AreEqual(-0.84f, effect.M22, MatrixTolerance);
+        Assert.AreEqual(0.92f, effect.M40, MatrixTolerance);
+        Assert.AreEqual(0.92f, effect.M41, MatrixTolerance);
+        Assert.AreEqual(0.92f, effect.M42, MatrixTolerance);
+        Assert.AreEqual(1.0f, effect.M33, MatrixTolerance);
+        Assert.AreEqual(1.0f, effect.M44, MatrixTolerance);
+    }
+
+    [TestMethod]
+    public void SoftInvertComposesContrastAndBrightness()
+    {
+        var profile = VisualProfile.CreateDefaultSoftInvert();
+        profile.OutputBlack = 0.0f;
+        profile.OutputWhite = 1.0f;
+        profile.Contrast = 1.5f;
+        profile.Brightness = 0.1f;
+        var transform = new SoftInvertVisualTransform();
+
+        var effect = transform.CreateColorEffect(profile);
+
+        Assert.AreEqual(-1.5f, effect.M00, MatrixTolerance);
+        Assert.AreEqual(-1.5f, effect.M11, MatrixTolerance);
+        Assert.AreEqual(-1.5f, effect.M22, MatrixTolerance);
+        Assert.AreEqual(1.35f, effect.M40, MatrixTolerance);
+        Assert.AreEqual(1.35f, effect.M41, MatrixTolerance);
+        Assert.AreEqual(1.35f, effect.M42, MatrixTolerance);
     }
 
     [TestMethod]
@@ -49,7 +89,7 @@ public sealed class VisualProfileTests
     }
 
     [TestMethod]
-    public void DisabledAssignmentDoesNotMatch()
+    public void DisabledAssignmentDoesNotMatchAutomaticResolver()
     {
         var settings = new SightAdaptSettings
         {
@@ -75,6 +115,34 @@ public sealed class VisualProfileTests
     }
 
     [TestMethod]
+    public void DisabledAssignmentRemainsAvailableForLocalProfileSelection()
+    {
+        var settings = new SightAdaptSettings
+        {
+            Applications =
+            [
+                new ApplicationProfile
+                {
+                    DisplayName = "Reader",
+                    ExecutableName = "Reader.exe",
+                    ExecutablePath = "C:\\Apps\\Reader.exe",
+                    Enabled = false,
+                    VisualProfileId = VisualProfile.DefaultSoftInvertId,
+                },
+            ],
+        };
+        var identity = new ApplicationIdentity(
+            "Reader",
+            "Reader.exe",
+            "C:\\Apps\\Reader.exe");
+
+        var assignment = ProfileResolver.FindAssignment(settings, identity);
+
+        Assert.IsNotNull(assignment);
+        Assert.AreEqual(VisualProfile.DefaultSoftInvertId, assignment.VisualProfileId);
+    }
+
+    [TestMethod]
     public void MissingProfileFallsBackToDefaultInvert()
     {
         var settings = new SightAdaptSettings();
@@ -90,6 +158,16 @@ public sealed class VisualProfileTests
     }
 
     [TestMethod]
+    public void CatalogContainsSoftInvertTransform()
+    {
+        var catalog = new VisualTransformCatalog();
+
+        var transform = catalog.GetRequired(SoftInvertVisualTransform.TransformId);
+
+        Assert.IsInstanceOfType<SoftInvertVisualTransform>(transform);
+    }
+
+    [TestMethod]
     public void CatalogRejectsUnknownTransform()
     {
         var catalog = new VisualTransformCatalog();
@@ -99,7 +177,7 @@ public sealed class VisualProfileTests
     }
 
     [TestMethod]
-    public void ProfileToggleCreatesEnabledAssignment()
+    public void ProfileToggleCreatesEnabledSoftInvertAssignment()
     {
         var settings = new SightAdaptSettings();
         var identity = new ApplicationIdentity(
@@ -112,7 +190,7 @@ public sealed class VisualProfileTests
         Assert.IsTrue(result.WasCreated);
         Assert.IsTrue(result.IsEnabled);
         Assert.AreEqual(1, settings.Applications.Count);
-        Assert.AreEqual(VisualProfile.DefaultInvertId, result.Profile.VisualProfileId);
+        Assert.AreEqual(VisualProfile.DefaultSoftInvertId, result.Profile.VisualProfileId);
     }
 
     [TestMethod]
