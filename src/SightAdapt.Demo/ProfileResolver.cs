@@ -2,15 +2,23 @@ namespace SightAdapt.Demo;
 
 internal static class ProfileResolver
 {
-    public static ApplicationProfile? FindEnabledAssignment(
+    public static ApplicationProfile? FindAssignment(
         SightAdaptSettings settings,
         ApplicationIdentity identity)
     {
         ArgumentNullException.ThrowIfNull(settings);
         ArgumentNullException.ThrowIfNull(identity);
 
-        return settings.Applications.FirstOrDefault(
-            profile => profile.Enabled && profile.Matches(identity));
+        return settings.Applications.FirstOrDefault(profile => profile.Matches(identity));
+    }
+
+    public static ApplicationProfile? FindEnabledAssignment(
+        SightAdaptSettings settings,
+        ApplicationIdentity identity)
+    {
+        return FindAssignment(settings, identity) is { Enabled: true } assignment
+            ? assignment
+            : null;
     }
 
     public static VisualProfile ResolveVisualProfile(
