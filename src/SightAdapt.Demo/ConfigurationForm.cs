@@ -6,6 +6,9 @@ namespace SightAdapt.Demo;
 
 internal sealed class ConfigurationForm : Form
 {
+    private const string EnabledColumnName = "Enabled";
+    private const string VisualProfileColumnName = "VisualProfile";
+
     private readonly SightAdaptSettings _settings;
     private readonly SettingsStore _settingsStore;
     private readonly Func<ApplicationIdentity?> _getCurrentApplication;
@@ -15,6 +18,7 @@ internal sealed class ConfigurationForm : Form
     private readonly Label _profileCountLabel;
     private readonly Label _emptyStateLabel;
     private readonly DataGridView _profilesGrid;
+    private readonly ModernButton _editVisualProfileButton;
     private bool _refreshing;
 
     public ConfigurationForm(
@@ -32,8 +36,8 @@ internal sealed class ConfigurationForm : Form
 
         Text = ProductInfo.WindowTitle;
         StartPosition = FormStartPosition.CenterScreen;
-        MinimumSize = new Size(900, 650);
-        Size = new Size(1060, 760);
+        MinimumSize = new Size(980, 680);
+        Size = new Size(1180, 780);
         ShowIcon = false;
         BackColor = AppTheme.WindowBackground;
         AppTheme.ApplyTo(this);
@@ -65,6 +69,16 @@ internal sealed class ConfigurationForm : Form
             Margin = new Padding(0, 0, 18, 0),
             TextAlign = ContentAlignment.MiddleRight,
         };
+
+        _editVisualProfileButton = new ModernButton
+        {
+            Text = "Edit color profile",
+            VisualStyle = ModernButtonStyle.Secondary,
+            MinimumSize = new Size(160, 40),
+            Margin = new Padding(0, 0, 8, 0),
+            Enabled = false,
+        };
+        _editVisualProfileButton.Click += (_, _) => EditSelectedVisualProfile();
 
         _profilesGrid = CreateProfilesGrid();
         _emptyStateLabel = new Label
@@ -132,8 +146,10 @@ internal sealed class ConfigurationForm : Form
 
         try
         {
+            var selectedPath = GetSelectedApplicationProfile()?.ExecutablePath;
             _automaticModeSwitch.Checked = _settings.AutomaticMode;
             UpdateAutomaticModeState();
+            RefreshVisualProfileColumn();
             _profilesGrid.Rows.Clear();
 
             foreach (var profile in _settings.Applications)
@@ -141,16 +157,29 @@ internal sealed class ConfigurationForm : Form
                 var index = _profilesGrid.Rows.Add(
                     profile.Enabled,
                     profile.DisplayName,
+                    profile.VisualProfileId,
                     profile.ExecutableName,
                     profile.ExecutablePath);
 
-                _profilesGrid.Rows[index].Tag = profile;
+                var row = _profilesGrid.Rows[index];
+                row.Tag = profile;
+
+                if (!string.IsNullOrWhiteSpace(selectedPath) &&
+                    string.Equals(
+                        selectedPath,
+                        profile.ExecutablePath,
+                        StringComparison.OrdinalIgnoreCase))
+                {
+                    row.Selected = true;
+                    _profilesGrid.CurrentCell = row.Cells["Application"];
+                }
             }
 
             var count = _settings.Applications.Count;
             _profileCountLabel.Text = count == 1 ? "1 PROFILE" : $"{count} PROFILES";
             _emptyStateLabel.Visible = count == 0;
             _profilesGrid.Visible = count > 0;
+            UpdateSelectedProfileActions();
         }
         finally
         {
@@ -166,7 +195,7 @@ internal sealed class ConfigurationForm : Form
             Dock = DockStyle.Fill,
             ForeColor = AppTheme.TextPrimary,
             Font = AppTheme.CreateUiFont(20f, FontStyle.Bold),
-            Text = "Application profiles",
+            Text = "Application and color profiles",
             TextAlign = ContentAlignment.BottomLeft,
         };
 
@@ -176,7 +205,7 @@ internal sealed class ConfigurationForm : Form
             Dock = DockStyle.Fill,
             ForeColor = AppTheme.TextSecondary,
             Font = AppTheme.CreateUiFont(9.5f),
-            Text = "Choose which Windows applications should receive automatic visual correction.",
+            Text = "Assign visual correction profiles and tune Soft Invert output for each Windows application.",
             TextAlign = ContentAlignment.TopLeft,
         };
 
@@ -230,7 +259,7 @@ internal sealed class ConfigurationForm : Form
             Dock = DockStyle.Fill,
             ForeColor = AppTheme.TextSecondary,
             Font = AppTheme.CreateUiFont(9f),
-            Text = "Apply inversion whenever a configured application becomes active.",
+            Text = "Apply each application's assigned visual profile whenever its window becomes active.",
             TextAlign = ContentAlignment.TopLeft,
         };
 
@@ -274,7 +303,7 @@ internal sealed class ConfigurationForm : Form
         return card;
     }
 
-    private static DataGridView CreateBaseGrid()
+    private DataGridView CreateProfilesGrid()
     {
         var grid = new DataGridView
         {
@@ -289,16 +318,10 @@ internal sealed class ConfigurationForm : Form
             SelectionMode = DataGridViewSelectionMode.FullRowSelect,
         };
         AppTheme.StyleGrid(grid);
-        return grid;
-    }
-
-    private DataGridView CreateProfilesGrid()
-    {
-        var grid = CreateBaseGrid();
 
         var enabledColumn = new DataGridViewCheckBoxColumn
         {
-            Name = "Enabled",
+            Name = EnabledColumnName,
             HeaderText = "ACTIVE",
             Width = 92,
             MinimumWidth = 92,
@@ -316,8 +339,20 @@ internal sealed class ConfigurationForm : Form
             Name = "Application",
             HeaderText = "APPLICATION",
             ReadOnly = true,
-            Width = 220,
-            MinimumWidth = 170,
+            Width = 205,
+            MinimumWidth = 165,
+            SortMode = DataGridViewColumnSortMode.NotSortable,
+        });
+        grid.Columns.Add(new DataGridViewComboBoxColumn
+        {
+            Name = VisualProfileColumnName,
+            HeaderText = "VISUAL PROFILE",
+            DisplayMember = nameof(VisualProfile.Name),
+            ValueMember = nameof(VisualProfile.Id),
+            DisplayStyle = DataGridViewComboBoxDisplayStyle.ComboBox,
+            FlatStyle = FlatStyle.Flat,
+            Width = 185,
+            MinimumWidth = 160,
             SortMode = DataGridViewColumnSortMode.NotSortable,
         });
         grid.Columns.Add(new DataGridViewTextBoxColumn
@@ -325,8 +360,8 @@ internal sealed class ConfigurationForm : Form
             Name = "Executable",
             HeaderText = "EXECUTABLE",
             ReadOnly = true,
-            Width = 165,
-            MinimumWidth = 130,
+            Width = 155,
+            MinimumWidth = 125,
             SortMode = DataGridViewColumnSortMode.NotSortable,
         });
         grid.Columns.Add(new DataGridViewTextBoxColumn
@@ -334,13 +369,15 @@ internal sealed class ConfigurationForm : Form
             Name = "Path",
             HeaderText = "FULL PATH",
             AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill,
-            MinimumWidth = 260,
+            MinimumWidth = 220,
             ReadOnly = true,
             SortMode = DataGridViewColumnSortMode.NotSortable,
         });
 
         grid.CellValueChanged += ProfilesGridCellValueChanged;
         grid.CurrentCellDirtyStateChanged += ProfilesGridCurrentCellDirtyStateChanged;
+        grid.SelectionChanged += (_, _) => UpdateSelectedProfileActions();
+        grid.DataError += (_, eventArgs) => eventArgs.ThrowException = false;
         return grid;
     }
 
@@ -440,7 +477,12 @@ internal sealed class ConfigurationForm : Form
             Margin = Padding.Empty,
             WrapContents = false,
         };
-        leftButtons.Controls.AddRange([addCurrentButton, browseButton, removeButton]);
+        leftButtons.Controls.AddRange([
+            addCurrentButton,
+            browseButton,
+            _editVisualProfileButton,
+            removeButton,
+        ]);
 
         var actionLayout = new TableLayoutPanel
         {
@@ -495,8 +537,6 @@ internal sealed class ConfigurationForm : Form
         productLayout.Controls.Add(productLabel, 0, 0);
         productLayout.Controls.Add(taglineLabel, 0, 1);
 
-        var licenseLabel = CreateInfoLabel(ProductInfo.License, FontStyle.Bold);
-        var authorLabel = CreateInfoLabel(ProductInfo.Author, FontStyle.Regular);
         var repositoryLink = new LinkLabel
         {
             ActiveLinkColor = AppTheme.AccentHover,
@@ -521,8 +561,8 @@ internal sealed class ConfigurationForm : Form
             Margin = Padding.Empty,
             WrapContents = false,
         };
-        metadataLayout.Controls.Add(licenseLabel);
-        metadataLayout.Controls.Add(authorLabel);
+        metadataLayout.Controls.Add(CreateInfoLabel(ProductInfo.License, FontStyle.Bold));
+        metadataLayout.Controls.Add(CreateInfoLabel(ProductInfo.Author, FontStyle.Regular));
         metadataLayout.Controls.Add(repositoryLink);
 
         var layout = new TableLayoutPanel
@@ -571,7 +611,8 @@ internal sealed class ConfigurationForm : Form
                 UseShellExecute = true,
             });
         }
-        catch (Win32Exception)
+        catch (Exception exception) when (
+            exception is Win32Exception or InvalidOperationException)
         {
         }
     }
@@ -599,6 +640,17 @@ internal sealed class ConfigurationForm : Form
             : AppTheme.TextSecondary;
     }
 
+    private void RefreshVisualProfileColumn()
+    {
+        if (_profilesGrid.Columns[VisualProfileColumnName] is not DataGridViewComboBoxColumn column)
+        {
+            return;
+        }
+
+        column.DataSource = null;
+        column.DataSource = _settings.VisualProfiles.ToList();
+    }
+
     private void ProfilesGridCurrentCellDirtyStateChanged(object? sender, EventArgs eventArgs)
     {
         if (_profilesGrid.IsCurrentCellDirty)
@@ -609,7 +661,7 @@ internal sealed class ConfigurationForm : Form
 
     private void ProfilesGridCellValueChanged(object? sender, DataGridViewCellEventArgs eventArgs)
     {
-        if (_refreshing || eventArgs.RowIndex < 0 || eventArgs.ColumnIndex != 0)
+        if (_refreshing || eventArgs.RowIndex < 0 || eventArgs.ColumnIndex < 0)
         {
             return;
         }
@@ -620,8 +672,74 @@ internal sealed class ConfigurationForm : Form
             return;
         }
 
-        profile.Enabled = row.Cells[eventArgs.ColumnIndex].Value is true;
+        var columnName = _profilesGrid.Columns[eventArgs.ColumnIndex].Name;
+        if (columnName == EnabledColumnName)
+        {
+            profile.Enabled = row.Cells[eventArgs.ColumnIndex].Value is true;
+        }
+        else if (columnName == VisualProfileColumnName &&
+                 row.Cells[eventArgs.ColumnIndex].Value is string visualProfileId &&
+                 _settings.VisualProfiles.Any(candidate => string.Equals(
+                     candidate.Id,
+                     visualProfileId,
+                     StringComparison.OrdinalIgnoreCase)))
+        {
+            profile.VisualProfileId = visualProfileId;
+        }
+        else
+        {
+            return;
+        }
+
         _settingsChanged();
+        UpdateSelectedProfileActions();
+    }
+
+    private void UpdateSelectedProfileActions()
+    {
+        var assignment = GetSelectedApplicationProfile();
+        var visualProfile = assignment is null
+            ? null
+            : ProfileResolver.ResolveVisualProfile(_settings, assignment);
+
+        _editVisualProfileButton.Enabled = visualProfile?.SupportsTuning == true;
+        _editVisualProfileButton.Text = visualProfile?.SupportsTuning == true
+            ? $"Edit {visualProfile.Name}"
+            : "Edit color profile";
+    }
+
+    private void EditSelectedVisualProfile()
+    {
+        var assignment = GetSelectedApplicationProfile();
+        if (assignment is null)
+        {
+            return;
+        }
+
+        var visualProfile = ProfileResolver.ResolveVisualProfile(_settings, assignment);
+        if (!visualProfile.SupportsTuning)
+        {
+            MessageBox.Show(
+                this,
+                "Select Soft invert in the VISUAL PROFILE column before editing color parameters.",
+                ProductInfo.DisplayName,
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Information);
+            return;
+        }
+
+        if (VisualProfileEditorForm.Edit(this, visualProfile))
+        {
+            _settingsChanged();
+            RefreshProfiles();
+        }
+    }
+
+    private ApplicationProfile? GetSelectedApplicationProfile()
+    {
+        return _profilesGrid.SelectedRows.Count > 0
+            ? _profilesGrid.SelectedRows[0].Tag as ApplicationProfile
+            : _profilesGrid.CurrentRow?.Tag as ApplicationProfile;
     }
 
     private void AddCurrentApplication()
@@ -676,16 +794,15 @@ internal sealed class ConfigurationForm : Form
 
     private void AddOrUpdateProfile(ApplicationIdentity identity)
     {
-        var profile = _settings.Applications.FirstOrDefault(
-            candidate => string.Equals(
-                candidate.ExecutablePath,
-                identity.ExecutablePath,
-                StringComparison.OrdinalIgnoreCase));
-
+        var profile = _settings.Applications.FirstOrDefault(candidate => candidate.Matches(identity));
         var added = profile is null;
+
         if (profile is null)
         {
-            profile = new ApplicationProfile();
+            profile = new ApplicationProfile
+            {
+                VisualProfileId = VisualProfile.DefaultSoftInvertId,
+            };
             _settings.Applications.Add(profile);
         }
 
@@ -693,7 +810,7 @@ internal sealed class ConfigurationForm : Form
         profile.ExecutableName = identity.ExecutableName;
         profile.ExecutablePath = identity.ExecutablePath;
         profile.Enabled = true;
-        profile.Effect = "invert";
+        profile.LegacyEffect = null;
         _settings.AutomaticMode = true;
 
         _settingsChanged();
@@ -702,7 +819,7 @@ internal sealed class ConfigurationForm : Form
         MessageBox.Show(
             this,
             added
-                ? $"{identity.DisplayName} was added to automatic inversion."
+                ? $"{identity.DisplayName} was added with the Soft invert visual profile."
                 : $"{identity.DisplayName} is already configured and was enabled.",
             ProductInfo.DisplayName,
             MessageBoxButtons.OK,
@@ -711,8 +828,8 @@ internal sealed class ConfigurationForm : Form
 
     private void RemoveSelectedProfile()
     {
-        if (_profilesGrid.SelectedRows.Count == 0 ||
-            _profilesGrid.SelectedRows[0].Tag is not ApplicationProfile profile)
+        var profile = GetSelectedApplicationProfile();
+        if (profile is null)
         {
             return;
         }
