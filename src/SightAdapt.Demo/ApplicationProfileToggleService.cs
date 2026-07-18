@@ -22,7 +22,7 @@ internal static class ApplicationProfileToggleService
             profile = new ApplicationProfile
             {
                 Enabled = true,
-                VisualProfileId = VisualProfile.DefaultInvertId,
+                VisualProfileId = VisualProfile.DefaultSoftInvertId,
             };
             settings.Applications.Add(profile);
         }
@@ -38,7 +38,7 @@ internal static class ApplicationProfileToggleService
 
         if (string.IsNullOrWhiteSpace(profile.VisualProfileId))
         {
-            profile.VisualProfileId = VisualProfile.DefaultInvertId;
+            profile.VisualProfileId = VisualProfile.DefaultSoftInvertId;
         }
 
         return new ApplicationProfileToggleResult(profile, wasCreated, profile.Enabled);
