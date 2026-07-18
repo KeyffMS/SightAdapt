@@ -2,7 +2,8 @@
 
 ## Product and engineering plans
 
-- [SightAdapt 0.4 Alpha roadmap](ROADMAP_0.4.md) — architecture prerequisite, soft color profiles, palette analysis, targeted color corrections, migration, tests, and definition of done.
+- [SightAdapt 0.4 Alpha roadmap](ROADMAP_0.4.md) — staged plan for soft color profiles, palette analysis, targeted color corrections, migration, tests, and completion criteria.
+- [SightAdapt 0.4 Soft Color Profiles](SOFT_COLOR_PROFILES_0.4.md) — implemented profile model, matrix order, editor parameters, settings schema, shortcut behavior, limitations, and acceptance checks.
 
 ## Architecture
 
