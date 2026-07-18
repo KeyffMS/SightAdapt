@@ -44,7 +44,7 @@ internal sealed class SightAdaptContext : ApplicationContext
             FontStyle.Bold,
             "status");
 
-        _toggleItem = new ToolStripMenuItem("Toggle inversion for active window");
+        _toggleItem = new ToolStripMenuItem("Toggle visual correction for active window");
         _toggleItem.Click += (_, _) => ToggleForActiveWindow();
         AppTheme.StyleMenuItem(_toggleItem);
 
@@ -61,7 +61,7 @@ internal sealed class SightAdaptContext : ApplicationContext
         _automaticModeItem.CheckedChanged += AutomaticModeItemCheckedChanged;
         AppTheme.StyleMenuItem(_automaticModeItem);
 
-        var configureItem = new ToolStripMenuItem("Configure applications...");
+        var configureItem = new ToolStripMenuItem("Configure applications and colors...");
         configureItem.Click += (_, _) => ShowConfiguration();
         AppTheme.StyleMenuItem(configureItem, AppTheme.AccentHover, FontStyle.Bold);
 
@@ -197,8 +197,14 @@ internal sealed class SightAdaptContext : ApplicationContext
             return;
         }
 
+        ApplicationProfile? assignment = null;
+        if (ApplicationDiscovery.TryGetIdentity(target, out var identity))
+        {
+            assignment = ProfileResolver.FindAssignment(_settings, identity);
+        }
+
         _automaticSuppressedWindow = nint.Zero;
-        ActivateOverlay(target, ApplicationRunState.ManualActive);
+        ActivateOverlay(target, ApplicationRunState.ManualActive, assignment);
     }
 
     private void ToggleActiveApplicationProfile()
@@ -225,7 +231,7 @@ internal sealed class SightAdaptContext : ApplicationContext
 
         ShowNotification(result.IsEnabled
             ? result.WasCreated
-                ? $"Automatic profile added and enabled: {identity.DisplayName}."
+                ? $"Soft invert profile added and enabled: {identity.DisplayName}."
                 : $"Automatic profile enabled: {identity.DisplayName}."
             : $"Automatic profile disabled: {identity.DisplayName}.");
     }
@@ -427,6 +433,12 @@ internal sealed class SightAdaptContext : ApplicationContext
 
         _configurationForm?.RefreshProfiles();
 
+        if (_stateController.Current.Kind == ApplicationRunState.ManualActive)
+        {
+            RefreshManualOverlayFromSettings();
+            return;
+        }
+
         if (!_settings.AutomaticMode)
         {
             _automaticSuppressedWindow = nint.Zero;
@@ -444,6 +456,24 @@ internal sealed class SightAdaptContext : ApplicationContext
         {
             EvaluateAutomaticForWindow(target);
         }
+    }
+
+    private void RefreshManualOverlayFromSettings()
+    {
+        var target = _stateController.Current.TargetWindow;
+        if (target == nint.Zero || !IsSupportedTarget(target))
+        {
+            DisableOverlay();
+            return;
+        }
+
+        ApplicationProfile? assignment = null;
+        if (ApplicationDiscovery.TryGetIdentity(target, out var identity))
+        {
+            assignment = ProfileResolver.FindAssignment(_settings, identity);
+        }
+
+        ActivateOverlay(target, ApplicationRunState.ManualActive, assignment);
     }
 
     private void EmergencyDisable()
@@ -508,12 +538,12 @@ internal sealed class SightAdaptContext : ApplicationContext
                 break;
             case ApplicationRunState.Emergency:
                 _statusItem.Text = "All overlays stopped · Automatic mode off";
-                _toggleItem.Text = "Toggle inversion for active window";
+                _toggleItem.Text = "Toggle visual correction for active window";
                 SetTrayIcon(TrayIconState.Emergency);
                 break;
             default:
                 _statusItem.Text = "Overlay disabled · Inactive";
-                _toggleItem.Text = "Toggle inversion for active window";
+                _toggleItem.Text = "Toggle visual correction for active window";
                 SetTrayIcon(TrayIconState.Inactive);
                 break;
         }
@@ -527,10 +557,15 @@ internal sealed class SightAdaptContext : ApplicationContext
     private void ApplyActiveState(nint target, string modeText)
     {
         var title = NativeMethods.GetWindowTitle(target);
+        var profileName = _settings.VisualProfiles.FirstOrDefault(profile => string.Equals(
+            profile.Id,
+            _overlayController.VisualProfileId,
+            StringComparison.OrdinalIgnoreCase))?.Name ?? "Visual correction";
+
         _statusItem.Text = string.IsNullOrWhiteSpace(title)
-            ? $"{modeText} inversion enabled · Active"
-            : $"{modeText}: {Truncate(title, 34)} · Active";
-        _toggleItem.Text = "Disable inversion";
+            ? $"{modeText} · {profileName} · Active"
+            : $"{modeText}: {Truncate(title, 28)} · {profileName}";
+        _toggleItem.Text = "Disable visual correction";
         SetTrayIcon(TrayIconState.Active);
     }
 
@@ -577,7 +612,7 @@ internal sealed class SightAdaptContext : ApplicationContext
         try
         {
             _settingsStore.Save(_settings);
-            ShowNotification("Settings were upgraded to the current profile format.");
+            ShowNotification("Settings were upgraded to the current color-profile format.");
         }
         catch (Exception exception) when (
             exception is IOException or UnauthorizedAccessException or InvalidOperationException)
