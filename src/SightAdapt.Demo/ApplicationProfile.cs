@@ -4,7 +4,7 @@ namespace SightAdapt.Demo;
 
 internal sealed class SightAdaptSettings
 {
-    public const int CurrentSchemaVersion = 2;
+    public const int CurrentSchemaVersion = 3;
 
     public int SchemaVersion { get; set; } = CurrentSchemaVersion;
 
@@ -13,7 +13,10 @@ internal sealed class SightAdaptSettings
     public List<ApplicationProfile> Applications { get; set; } = [];
 
     public List<VisualProfile> VisualProfiles { get; set; } =
-        [VisualProfile.CreateDefaultInvert()];
+    [
+        VisualProfile.CreateDefaultInvert(),
+        VisualProfile.CreateDefaultSoftInvert(),
+    ];
 }
 
 internal sealed class ApplicationProfile
@@ -26,7 +29,7 @@ internal sealed class ApplicationProfile
 
     public bool Enabled { get; set; } = true;
 
-    public string VisualProfileId { get; set; } = VisualProfile.DefaultInvertId;
+    public string VisualProfileId { get; set; } = VisualProfile.DefaultSoftInvertId;
 
     [JsonPropertyName("effect")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
@@ -66,20 +69,85 @@ internal sealed class ApplicationProfile
 internal sealed class VisualProfile
 {
     public const string DefaultInvertId = "default-invert";
+    public const string DefaultSoftInvertId = "default-soft-invert";
 
-    public string Id { get; set; } = DefaultInvertId;
+    public string Id { get; set; } = DefaultSoftInvertId;
 
-    public string Name { get; set; } = "Invert";
+    public string Name { get; set; } = "Soft invert";
 
-    public string TransformId { get; set; } = InvertVisualTransform.TransformId;
+    public string TransformId { get; set; } = SoftInvertVisualTransform.TransformId;
+
+    public float OutputBlack { get; set; } = 0.08f;
+
+    public float OutputWhite { get; set; } = 0.92f;
+
+    public float Brightness { get; set; }
+
+    public float Contrast { get; set; } = 1.0f;
+
+    public float Saturation { get; set; } = 1.0f;
+
+    public float HueShiftDegrees { get; set; }
+
+    [JsonIgnore]
+    public bool SupportsTuning => string.Equals(
+        TransformId,
+        SoftInvertVisualTransform.TransformId,
+        StringComparison.OrdinalIgnoreCase);
+
+    public VisualProfile CreateWorkingCopy()
+    {
+        return new VisualProfile
+        {
+            Id = Id,
+            Name = Name,
+            TransformId = TransformId,
+            OutputBlack = OutputBlack,
+            OutputWhite = OutputWhite,
+            Brightness = Brightness,
+            Contrast = Contrast,
+            Saturation = Saturation,
+            HueShiftDegrees = HueShiftDegrees,
+        };
+    }
+
+    public void CopyTuningFrom(VisualProfile source)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+
+        OutputBlack = source.OutputBlack;
+        OutputWhite = source.OutputWhite;
+        Brightness = source.Brightness;
+        Contrast = source.Contrast;
+        Saturation = source.Saturation;
+        HueShiftDegrees = source.HueShiftDegrees;
+    }
 
     public static VisualProfile CreateDefaultInvert()
     {
         return new VisualProfile
         {
             Id = DefaultInvertId,
-            Name = "Invert",
+            Name = "Exact invert",
             TransformId = InvertVisualTransform.TransformId,
+            OutputBlack = 0.0f,
+            OutputWhite = 1.0f,
+        };
+    }
+
+    public static VisualProfile CreateDefaultSoftInvert()
+    {
+        return new VisualProfile
+        {
+            Id = DefaultSoftInvertId,
+            Name = "Soft invert",
+            TransformId = SoftInvertVisualTransform.TransformId,
+            OutputBlack = 0.08f,
+            OutputWhite = 0.92f,
+            Brightness = 0.0f,
+            Contrast = 1.0f,
+            Saturation = 1.0f,
+            HueShiftDegrees = 0.0f,
         };
     }
 }
