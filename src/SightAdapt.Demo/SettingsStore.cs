@@ -135,6 +135,7 @@ internal sealed class SettingsStore
                 changed = true;
             }
 
+            changed |= NormalizeVisualProfile(visualProfile);
             normalizedVisualProfiles.Add(visualProfile);
         }
 
@@ -142,6 +143,13 @@ internal sealed class SettingsStore
         {
             normalizedVisualProfiles.Insert(0, VisualProfile.CreateDefaultInvert());
             visualProfileIds.Add(VisualProfile.DefaultInvertId);
+            changed = true;
+        }
+
+        if (!visualProfileIds.Contains(VisualProfile.DefaultSoftInvertId))
+        {
+            normalizedVisualProfiles.Add(VisualProfile.CreateDefaultSoftInvert());
+            visualProfileIds.Add(VisualProfile.DefaultSoftInvertId);
             changed = true;
         }
 
@@ -195,6 +203,76 @@ internal sealed class SettingsStore
 
         settings.VisualProfiles = normalizedVisualProfiles;
         settings.Applications = normalizedApplications;
+        return changed;
+    }
+
+    private static bool NormalizeVisualProfile(VisualProfile profile)
+    {
+        if (string.Equals(
+                profile.TransformId,
+                InvertVisualTransform.TransformId,
+                StringComparison.OrdinalIgnoreCase))
+        {
+            var changed = profile.OutputBlack != 0.0f ||
+                profile.OutputWhite != 1.0f ||
+                profile.Brightness != 0.0f ||
+                profile.Contrast != 1.0f ||
+                profile.Saturation != 1.0f ||
+                profile.HueShiftDegrees != 0.0f;
+
+            profile.OutputBlack = 0.0f;
+            profile.OutputWhite = 1.0f;
+            profile.Brightness = 0.0f;
+            profile.Contrast = 1.0f;
+            profile.Saturation = 1.0f;
+            profile.HueShiftDegrees = 0.0f;
+            return changed;
+        }
+
+        var outputBlack = VisualProfileLimits.ClampFinite(
+            profile.OutputBlack,
+            VisualProfileLimits.MinimumOutputBlack,
+            VisualProfileLimits.MaximumOutputBlack,
+            0.08f);
+        var outputWhite = VisualProfileLimits.ClampFinite(
+            profile.OutputWhite,
+            VisualProfileLimits.MinimumOutputWhite,
+            VisualProfileLimits.MaximumOutputWhite,
+            0.92f);
+        var brightness = VisualProfileLimits.ClampFinite(
+            profile.Brightness,
+            VisualProfileLimits.MinimumBrightness,
+            VisualProfileLimits.MaximumBrightness,
+            0.0f);
+        var contrast = VisualProfileLimits.ClampFinite(
+            profile.Contrast,
+            VisualProfileLimits.MinimumContrast,
+            VisualProfileLimits.MaximumContrast,
+            1.0f);
+        var saturation = VisualProfileLimits.ClampFinite(
+            profile.Saturation,
+            VisualProfileLimits.MinimumSaturation,
+            VisualProfileLimits.MaximumSaturation,
+            1.0f);
+        var hueShift = VisualProfileLimits.ClampFinite(
+            profile.HueShiftDegrees,
+            VisualProfileLimits.MinimumHueShift,
+            VisualProfileLimits.MaximumHueShift,
+            0.0f);
+
+        var changed = profile.OutputBlack != outputBlack ||
+            profile.OutputWhite != outputWhite ||
+            profile.Brightness != brightness ||
+            profile.Contrast != contrast ||
+            profile.Saturation != saturation ||
+            profile.HueShiftDegrees != hueShift;
+
+        profile.OutputBlack = outputBlack;
+        profile.OutputWhite = outputWhite;
+        profile.Brightness = brightness;
+        profile.Contrast = contrast;
+        profile.Saturation = saturation;
+        profile.HueShiftDegrees = hueShift;
         return changed;
     }
 }
