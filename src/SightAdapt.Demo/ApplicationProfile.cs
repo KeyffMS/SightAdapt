@@ -123,6 +123,11 @@ internal sealed class VisualProfile
         HueShiftDegrees = source.HueShiftDegrees;
     }
 
+    public override string ToString()
+    {
+        return string.IsNullOrWhiteSpace(Name) ? Id : Name;
+    }
+
     public static VisualProfile CreateDefaultInvert()
     {
         return new VisualProfile
