@@ -25,6 +25,16 @@ public sealed class VisualProfileTests
     }
 
     [TestMethod]
+    public void BuiltInProfilesExposeReadableDisplayNames()
+    {
+        var exactInvert = VisualProfile.CreateDefaultInvert();
+        var softInvert = VisualProfile.CreateDefaultSoftInvert();
+
+        Assert.AreEqual("Exact invert", exactInvert.ToString());
+        Assert.AreEqual("Soft invert", softInvert.ToString());
+    }
+
+    [TestMethod]
     public void DefaultSoftInvertLimitsBlackAndWhiteOutput()
     {
         var profile = VisualProfile.CreateDefaultSoftInvert();
