@@ -39,6 +39,8 @@ public sealed class SettingsStoreTests
         Assert.IsNull(settings.Applications[0].LegacyEffect);
         Assert.IsTrue(settings.VisualProfiles.Any(
             profile => profile.Id == VisualProfile.DefaultInvertId));
+        Assert.IsTrue(settings.VisualProfiles.Any(
+            profile => profile.Id == VisualProfile.DefaultSoftInvertId));
     }
 
     [TestMethod]
@@ -56,7 +58,7 @@ public sealed class SettingsStoreTests
                     DisplayName = "Notepad",
                     ExecutableName = "notepad.exe",
                     ExecutablePath = "C:\\Windows\\System32\\notepad.exe",
-                    VisualProfileId = VisualProfile.DefaultInvertId,
+                    VisualProfileId = VisualProfile.DefaultSoftInvertId,
                 },
             ],
         };
@@ -65,8 +67,10 @@ public sealed class SettingsStoreTests
         var json = File.ReadAllText(settingsPath);
         var reloaded = store.Load();
 
-        StringAssert.Contains(json, "\"schemaVersion\": 2");
-        StringAssert.Contains(json, "\"visualProfileId\": \"default-invert\"");
+        StringAssert.Contains(json, "\"schemaVersion\": 3");
+        StringAssert.Contains(json, "\"visualProfileId\": \"default-soft-invert\"");
+        StringAssert.Contains(json, "\"outputBlack\": 0.08");
+        StringAssert.Contains(json, "\"outputWhite\": 0.92");
         Assert.IsFalse(json.Contains("\"effect\"", StringComparison.OrdinalIgnoreCase));
         Assert.AreEqual(1, reloaded.Applications.Count);
         Assert.IsFalse(store.SettingsWereMigrated);
@@ -88,6 +92,75 @@ public sealed class SettingsStoreTests
 
         Assert.IsTrue(changed);
         Assert.AreEqual(1, settings.Applications.Count);
+    }
+
+    [TestMethod]
+    public void NormalizeClampsSoftProfileParameters()
+    {
+        var profile = VisualProfile.CreateDefaultSoftInvert();
+        profile.OutputBlack = -3.0f;
+        profile.OutputWhite = 4.0f;
+        profile.Brightness = float.NaN;
+        profile.Contrast = 9.0f;
+        profile.Saturation = -2.0f;
+        profile.HueShiftDegrees = 900.0f;
+        var settings = new SightAdaptSettings
+        {
+            VisualProfiles =
+            [
+                VisualProfile.CreateDefaultInvert(),
+                profile,
+            ],
+        };
+
+        var changed = SettingsStore.Normalize(settings);
+
+        Assert.IsTrue(changed);
+        Assert.AreEqual(0.0f, profile.OutputBlack);
+        Assert.AreEqual(1.0f, profile.OutputWhite);
+        Assert.AreEqual(0.0f, profile.Brightness);
+        Assert.AreEqual(2.0f, profile.Contrast);
+        Assert.AreEqual(0.0f, profile.Saturation);
+        Assert.AreEqual(180.0f, profile.HueShiftDegrees);
+    }
+
+    [TestMethod]
+    public void SchemaTwoSettingsGainSoftInvertWithoutChangingExistingAssignment()
+    {
+        using var temporaryDirectory = new TemporaryDirectory();
+        var settingsPath = Path.Combine(temporaryDirectory.Path, "settings.json");
+        File.WriteAllText(
+            settingsPath,
+            """
+            {
+              "schemaVersion": 2,
+              "automaticMode": true,
+              "applications": [
+                {
+                  "displayName": "Reader",
+                  "executableName": "Reader.exe",
+                  "executablePath": "C:\\Apps\\Reader.exe",
+                  "enabled": true,
+                  "visualProfileId": "default-invert"
+                }
+              ],
+              "visualProfiles": [
+                {
+                  "id": "default-invert",
+                  "name": "Invert",
+                  "transformId": "invert"
+                }
+              ]
+            }
+            """);
+
+        var store = new SettingsStore(settingsPath);
+        var settings = store.Load();
+
+        Assert.IsTrue(store.SettingsWereMigrated);
+        Assert.AreEqual(VisualProfile.DefaultInvertId, settings.Applications[0].VisualProfileId);
+        Assert.IsTrue(settings.VisualProfiles.Any(
+            profile => profile.Id == VisualProfile.DefaultSoftInvertId));
     }
 
     private static ApplicationProfile CreateApplication(string path)
