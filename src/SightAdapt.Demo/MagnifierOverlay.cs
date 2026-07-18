@@ -6,11 +6,15 @@ namespace SightAdapt.Demo;
 internal sealed class MagnifierOverlay : Form
 {
     private readonly System.Windows.Forms.Timer _updateTimer;
-    private readonly IVisualTransform _visualTransform;
+    private MagColorEffect _colorEffect;
+    private string _transformId;
     private nint _magnifierWindow;
     private bool _initialized;
 
-    public MagnifierOverlay(nint targetHandle, IVisualTransform visualTransform)
+    public MagnifierOverlay(
+        nint targetHandle,
+        MagColorEffect colorEffect,
+        string transformId)
     {
         if (targetHandle == nint.Zero)
         {
@@ -18,8 +22,10 @@ internal sealed class MagnifierOverlay : Form
         }
 
         TargetHandle = targetHandle;
-        _visualTransform = visualTransform
-            ?? throw new ArgumentNullException(nameof(visualTransform));
+        _colorEffect = colorEffect;
+        _transformId = string.IsNullOrWhiteSpace(transformId)
+            ? throw new ArgumentException("A transform identifier is required.", nameof(transformId))
+            : transformId.Trim();
 
         AutoScaleMode = AutoScaleMode.None;
         BackColor = Color.Black;
@@ -50,6 +56,20 @@ internal sealed class MagnifierOverlay : Form
                 NativeMethods.WsExToolWindow |
                 NativeMethods.WsExNoActivate;
             return parameters;
+        }
+    }
+
+    public void ApplyColorEffect(MagColorEffect colorEffect, string transformId)
+    {
+        _colorEffect = colorEffect;
+        _transformId = string.IsNullOrWhiteSpace(transformId)
+            ? throw new ArgumentException("A transform identifier is required.", nameof(transformId))
+            : transformId.Trim();
+
+        if (_initialized)
+        {
+            ApplyColorEffectToMagnifier();
+            NativeMethods.InvalidateRect(_magnifierWindow, nint.Zero, true);
         }
     }
 
@@ -90,12 +110,7 @@ internal sealed class MagnifierOverlay : Form
             throw new Win32Exception("Could not initialize the magnifier transform.");
         }
 
-        var colorEffect = _visualTransform.CreateColorEffect();
-        if (!NativeMethods.MagSetColorEffect(_magnifierWindow, ref colorEffect))
-        {
-            throw new Win32Exception(
-                $"Could not apply the '{_visualTransform.Id}' visual transform.");
-        }
+        ApplyColorEffectToMagnifier();
 
         var excludedWindows = new[] { Handle };
         NativeMethods.MagSetWindowFilterList(
@@ -135,6 +150,16 @@ internal sealed class MagnifierOverlay : Form
         }
 
         base.WndProc(ref message);
+    }
+
+    private void ApplyColorEffectToMagnifier()
+    {
+        var colorEffect = _colorEffect;
+        if (!NativeMethods.MagSetColorEffect(_magnifierWindow, ref colorEffect))
+        {
+            throw new Win32Exception(
+                $"Could not apply the '{_transformId}' visual transform.");
+        }
     }
 
     private void UpdateOverlay()
