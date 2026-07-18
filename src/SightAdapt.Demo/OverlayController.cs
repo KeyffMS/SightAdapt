@@ -30,20 +30,19 @@ internal sealed class OverlayController : IDisposable
             throw new ArgumentException("A target window is required.", nameof(targetWindow));
         }
 
-        if (IsActive &&
-            TargetWindow == targetWindow &&
-            string.Equals(
-                VisualProfileId,
-                visualProfile.Id,
-                StringComparison.OrdinalIgnoreCase))
+        var transform = _transformCatalog.GetRequired(visualProfile.TransformId);
+        var colorEffect = transform.CreateColorEffect(visualProfile);
+
+        if (IsActive && TargetWindow == targetWindow)
         {
+            _overlay!.ApplyColorEffect(colorEffect, transform.Id);
+            VisualProfileId = visualProfile.Id;
             return;
         }
 
         Disable();
 
-        var transform = _transformCatalog.GetRequired(visualProfile.TransformId);
-        var overlay = new MagnifierOverlay(targetWindow, transform);
+        var overlay = new MagnifierOverlay(targetWindow, colorEffect, transform.Id);
         overlay.FormClosed += HandleOverlayClosed;
 
         try
