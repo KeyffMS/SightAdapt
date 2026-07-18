@@ -69,6 +69,6 @@ jobs:
       - name: Upload Windows alpha
         uses: actions/upload-artifact@v4
         with:
-          name: SightAdapt-0.3.1-Alpha-win-x64
+          name: SightAdapt-0.4-Alpha-win-x64
           path: artifacts/win-x64/
           if-no-files-found: error
