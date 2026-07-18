@@ -21,29 +21,37 @@ SightAdapt does not modify another application's files or process memory. It cap
 
 ## Current alpha
 
-The repository contains **SightAdapt 0.3.1 Alpha** in [`src/SightAdapt.Demo`](src/SightAdapt.Demo). It runs in the notification area and applies color inversion to application windows through an input-transparent overlay.
+The repository contains **SightAdapt 0.4 Alpha** in [`src/SightAdapt.Demo`](src/SightAdapt.Demo). It runs in the notification area and applies configurable visual profiles to application windows through an input-transparent overlay.
 
 The current alpha provides:
 
-- persistent per-application profile assignments;
-- automatic inversion when an enabled application profile becomes active;
-- `Ctrl+Alt+I` for a local inversion toggle;
-- `Ctrl+Alt+Shift+I` for a persistent application-profile toggle;
-- a WinForms configuration panel;
-- versioned per-user JSON settings stored in `%LOCALAPPDATA%\SightAdapt\settings.json`;
-- migration of older `effect: invert` settings;
+- persistent per-application visual-profile assignments;
+- automatic correction when an enabled application assignment becomes active;
+- fixed `Exact invert` and editable `Soft invert` profiles;
+- output-black and output-white limits;
+- brightness, contrast, saturation, and hue adjustment;
+- a grayscale and hue-spectrum profile preview;
+- immediate active-overlay updates after profile changes;
+- `Ctrl+Alt+I` for a local visual-correction toggle;
+- `Ctrl+Alt+Shift+I` for a persistent application-assignment toggle;
+- a WinForms application and color-profile panel;
+- schema-versioned per-user JSON settings stored in `%LOCALAPPDATA%\SightAdapt\settings.json`;
+- migration of older Exact Invert settings without changing their assignments;
 - tray-menu emergency shutdown that disables the overlay and automatic mode;
-- automated architecture and persistence tests.
+- automated state, persistence, assignment, and color-matrix tests.
+
+Newly configured applications use Soft Invert by default. Existing 0.3.1 assignments retain Exact Invert during migration.
 
 See [DEMO.md](DEMO.md) for controls, build instructions, profile behavior, architecture notes, and known limitations.
 
-The current alpha uses the Windows Magnification API to validate the interaction model with minimal code and no third-party runtime dependencies. The production Light implementation is still planned around Windows Graphics Capture and Direct3D 11.
+The current alpha uses the Windows Magnification API to validate the interaction model and affine color matrices with minimal code and no third-party runtime dependencies. The production Light implementation is still planned around Windows Graphics Capture and Direct3D 11.
 
 ## Documentation
 
 - [docs/README.md](docs/README.md) — documentation index.
-- [docs/ARCHITECTURE_0.3.1.md](docs/ARCHITECTURE_0.3.1.md) — current architecture-hardening boundary.
-- [docs/ROADMAP_0.4.md](docs/ROADMAP_0.4.md) — configurable color-profile roadmap.
+- [docs/SOFT_COLOR_PROFILES_0.4.md](docs/SOFT_COLOR_PROFILES_0.4.md) — implemented Soft Invert model, matrix pipeline, editor, migration, and acceptance checks.
+- [docs/ROADMAP_0.4.md](docs/ROADMAP_0.4.md) — staged configurable color-profile roadmap.
+- [docs/ARCHITECTURE_0.3.1.md](docs/ARCHITECTURE_0.3.1.md) — architecture-hardening boundary used by 0.4.
 - [LIGHT.md](LIGHT.md) — scope, architecture, safety requirements, tests, and completion criteria for the Light version.
 - [HARD.md](HARD.md) — target architecture for the extended accessibility shell.
 
@@ -85,8 +93,8 @@ SightAdapt registers exactly two global shortcuts:
 
 | Shortcut | Action |
 |---|---|
-| `Ctrl+Alt+I` | Locally enable or disable inversion for the active window without changing saved settings |
-| `Ctrl+Alt+Shift+I` | Add, disable, or re-enable the active application's persistent automatic profile |
+| `Ctrl+Alt+I` | Locally enable or disable the assigned visual correction for the active window without changing saved settings |
+| `Ctrl+Alt+Shift+I` | Add, disable, or re-enable the active application's persistent automatic assignment |
 
 No alternative `Ctrl+Win` shortcuts or emergency keyboard shortcut are registered. Emergency shutdown remains available from the notification-area menu.
 
