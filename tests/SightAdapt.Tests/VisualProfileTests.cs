@@ -35,6 +35,28 @@ public sealed class VisualProfileTests
     }
 
     [TestMethod]
+    public void ProfileComboColumnKeepsStableUnboundOptionsAcrossRefreshes()
+    {
+        using var column = new DataGridViewComboBoxColumn();
+        var profiles = new[]
+        {
+            VisualProfile.CreateDefaultInvert(),
+            VisualProfile.CreateDefaultSoftInvert(),
+        };
+
+        column.DataSource = profiles;
+        column.DataSource = null;
+        column.DataSource = profiles.ToList();
+
+        Assert.IsNull(((System.Windows.Forms.DataGridViewComboBoxColumn)column).DataSource);
+        Assert.AreEqual(nameof(VisualProfileOption.Name), column.DisplayMember);
+        Assert.AreEqual(nameof(VisualProfileOption.Id), column.ValueMember);
+        Assert.AreEqual(2, column.Items.Count);
+        Assert.AreEqual("Exact invert", column.Items[0].ToString());
+        Assert.AreEqual("Soft invert", column.Items[1].ToString());
+    }
+
+    [TestMethod]
     public void DefaultSoftInvertLimitsBlackAndWhiteOutput()
     {
         var profile = VisualProfile.CreateDefaultSoftInvert();
