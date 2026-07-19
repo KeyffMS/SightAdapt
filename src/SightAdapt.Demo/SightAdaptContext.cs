@@ -223,7 +223,7 @@ internal sealed class SightAdaptContext : ApplicationContext
 
         if (result.IsEnabled)
         {
-            _settings.AutomaticMode = true;
+            AutomaticModeManagementService.Enable(_settings);
             _automaticSuppressedWindow = nint.Zero;
         }
 
@@ -304,7 +304,8 @@ internal sealed class SightAdaptContext : ApplicationContext
     {
         var currentState = _stateController.Current.Kind;
         if (!_settings.AutomaticMode ||
-            currentState is ApplicationRunState.ManualActive or ApplicationRunState.Emergency ||
+            !_stateController.AllowsAutomaticActivation ||
+            currentState == ApplicationRunState.ManualActive ||
             !IsSupportedTarget(target))
         {
             return;
@@ -404,7 +405,9 @@ internal sealed class SightAdaptContext : ApplicationContext
             return;
         }
 
-        _settings.AutomaticMode = _automaticModeItem.Checked;
+        AutomaticModeManagementService.Set(
+            _settings,
+            _automaticModeItem.Checked);
         HandleSettingsChanged();
     }
 
@@ -478,7 +481,7 @@ internal sealed class SightAdaptContext : ApplicationContext
 
     private void EmergencyDisable()
     {
-        _settings.AutomaticMode = false;
+        AutomaticModeManagementService.Disable(_settings);
         _automaticSuppressedWindow = nint.Zero;
         HandleSettingsChanged();
         _overlayController.Disable();

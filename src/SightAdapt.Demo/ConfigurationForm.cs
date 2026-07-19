@@ -634,7 +634,9 @@ internal sealed class ConfigurationForm : Form
             return;
         }
 
-        _settings.AutomaticMode = _automaticModeSwitch.Checked;
+        AutomaticModeManagementService.Set(
+            _settings,
+            _automaticModeSwitch.Checked);
         UpdateAutomaticModeState();
         _settingsChanged();
     }
@@ -824,7 +826,7 @@ internal sealed class ConfigurationForm : Form
             _settings,
             identity);
         var added = result.WasCreated;
-        _settings.AutomaticMode = true;
+        AutomaticModeManagementService.Enable(_settings);
 
         _settingsChanged();
         RefreshProfiles();
