@@ -2,16 +2,17 @@ namespace SightAdapt.Demo;
 
 internal static class VisualProfileManagementService
 {
-    private const string UserProfileIdPrefix = "user-";
-
     public static VisualProfile Create(
         SightAdaptSettings settings,
         string name)
     {
         ArgumentNullException.ThrowIfNull(settings);
+        EnsureCollections(settings);
 
-        var normalizedName = ValidateName(settings, name, exceptProfile: null);
-        var profile = CreateUserProfile(normalizedName);
+        var normalizedName = VisualProfilePolicy.ValidateUserName(
+            settings.VisualProfiles,
+            name);
+        var profile = CreateUserProfile(settings, normalizedName);
         settings.VisualProfiles.Add(profile);
         return profile;
     }
@@ -23,6 +24,8 @@ internal static class VisualProfileManagementService
     {
         ArgumentNullException.ThrowIfNull(settings);
         ArgumentNullException.ThrowIfNull(source);
+        EnsureCollections(settings);
+        EnsureMember(settings, source);
 
         if (!source.SupportsTuning)
         {
@@ -30,9 +33,11 @@ internal static class VisualProfileManagementService
                 "Only editable Soft Invert profiles can be duplicated.");
         }
 
-        var normalizedName = ValidateName(settings, name, exceptProfile: null);
+        var normalizedName = VisualProfilePolicy.ValidateUserName(
+            settings.VisualProfiles,
+            name);
         var profile = source.CreateWorkingCopy();
-        profile.Id = CreateUserProfileId();
+        profile.Id = CreateAvailableUserProfileId(settings);
         profile.Name = normalizedName;
         settings.VisualProfiles.Add(profile);
         return profile;
@@ -45,26 +50,28 @@ internal static class VisualProfileManagementService
     {
         ArgumentNullException.ThrowIfNull(settings);
         ArgumentNullException.ThrowIfNull(profile);
+        EnsureCollections(settings);
+        EnsureMember(settings, profile);
         EnsureUserDefined(profile, "renamed");
 
-        profile.Name = ValidateName(settings, name, profile);
+        profile.Name = VisualProfilePolicy.ValidateUserName(
+            settings.VisualProfiles,
+            name,
+            profile);
     }
 
     public static int Delete(
         SightAdaptSettings settings,
         VisualProfile profile,
-        string fallbackProfileId = VisualProfile.DefaultSoftInvertId)
+        string fallbackProfileId = VisualProfilePolicy.DeletionFallbackProfileId)
     {
         ArgumentNullException.ThrowIfNull(settings);
         ArgumentNullException.ThrowIfNull(profile);
+        EnsureCollections(settings);
+        EnsureMember(settings, profile);
         EnsureUserDefined(profile, "deleted");
 
-        var fallback = settings.VisualProfiles.FirstOrDefault(candidate =>
-            string.Equals(
-                candidate.Id,
-                fallbackProfileId,
-                StringComparison.OrdinalIgnoreCase));
-
+        var fallback = ProfileResolver.FindVisualProfile(settings, fallbackProfileId);
         if (fallback is null || ReferenceEquals(fallback, profile))
         {
             throw new InvalidOperationException(
@@ -72,7 +79,7 @@ internal static class VisualProfileManagementService
         }
 
         var assignments = settings.Applications
-            .Where(assignment => string.Equals(
+            .Where(assignment => assignment is not null && string.Equals(
                 assignment.VisualProfileId,
                 profile.Id,
                 StringComparison.OrdinalIgnoreCase))
@@ -83,12 +90,7 @@ internal static class VisualProfileManagementService
             assignment.VisualProfileId = fallback.Id;
         }
 
-        if (!settings.VisualProfiles.Remove(profile))
-        {
-            throw new InvalidOperationException(
-                "The visual profile is not part of the current settings.");
-        }
-
+        settings.VisualProfiles.Remove(profile);
         return assignments.Length;
     }
 
@@ -98,25 +100,19 @@ internal static class VisualProfileManagementService
     {
         ArgumentNullException.ThrowIfNull(settings);
         ArgumentNullException.ThrowIfNull(profile);
+        EnsureCollections(settings);
 
-        return settings.Applications.Count(assignment => string.Equals(
-            assignment.VisualProfileId,
-            profile.Id,
-            StringComparison.OrdinalIgnoreCase));
+        return settings.Applications.Count(assignment =>
+            assignment is not null && string.Equals(
+                assignment.VisualProfileId,
+                profile.Id,
+                StringComparison.OrdinalIgnoreCase));
     }
 
     public static bool IsBuiltIn(VisualProfile profile)
     {
         ArgumentNullException.ThrowIfNull(profile);
-
-        return string.Equals(
-                   profile.Id,
-                   VisualProfile.DefaultInvertId,
-                   StringComparison.OrdinalIgnoreCase) ||
-               string.Equals(
-                   profile.Id,
-                   VisualProfile.DefaultSoftInvertId,
-                   StringComparison.OrdinalIgnoreCase);
+        return VisualProfilePolicy.IsBuiltInId(profile.Id);
     }
 
     public static string CreateAvailableName(
@@ -124,78 +120,47 @@ internal static class VisualProfileManagementService
         string baseName)
     {
         ArgumentNullException.ThrowIfNull(settings);
+        EnsureCollections(settings);
 
-        var normalizedBase = string.IsNullOrWhiteSpace(baseName)
-            ? "Custom Soft Invert"
-            : baseName.Trim();
-
-        if (!NameExists(settings, normalizedBase, exceptProfile: null))
-        {
-            return normalizedBase;
-        }
-
-        for (var suffix = 2; suffix < int.MaxValue; suffix++)
-        {
-            var candidate = $"{normalizedBase} {suffix}";
-            if (!NameExists(settings, candidate, exceptProfile: null))
-            {
-                return candidate;
-            }
-        }
-
-        throw new InvalidOperationException("A unique profile name could not be generated.");
+        return VisualProfilePolicy.CreateUniqueName(
+            settings.VisualProfiles,
+            baseName);
     }
 
-    private static VisualProfile CreateUserProfile(string name)
+    private static VisualProfile CreateUserProfile(
+        SightAdaptSettings settings,
+        string name)
     {
         var defaults = VisualProfile.CreateDefaultSoftInvert();
-        defaults.Id = CreateUserProfileId();
+        defaults.Id = CreateAvailableUserProfileId(settings);
         defaults.Name = name;
         return defaults;
     }
 
-    private static string CreateUserProfileId()
+    private static string CreateAvailableUserProfileId(SightAdaptSettings settings)
     {
-        return UserProfileIdPrefix + Guid.NewGuid().ToString("N");
+        var reservedIds = settings.VisualProfiles
+            .Where(profile => profile is not null)
+            .Select(profile => profile.Id ?? string.Empty)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        return VisualProfilePolicy.CreateUserProfileId(reservedIds);
     }
 
-    private static string ValidateName(
-        SightAdaptSettings settings,
-        string name,
-        VisualProfile? exceptProfile)
+    private static void EnsureCollections(SightAdaptSettings settings)
     {
-        var normalizedName = name?.Trim() ?? string.Empty;
-        if (string.IsNullOrWhiteSpace(normalizedName))
-        {
-            throw new ArgumentException(
-                "The visual profile name cannot be empty.",
-                nameof(name));
-        }
+        settings.VisualProfiles ??= [];
+        settings.Applications ??= [];
+    }
 
-        if (normalizedName.Length > 80)
-        {
-            throw new ArgumentException(
-                "The visual profile name cannot exceed 80 characters.",
-                nameof(name));
-        }
-
-        if (NameExists(settings, normalizedName, exceptProfile))
+    private static void EnsureMember(
+        SightAdaptSettings settings,
+        VisualProfile profile)
+    {
+        if (!settings.VisualProfiles.Contains(profile))
         {
             throw new InvalidOperationException(
-                $"A visual profile named '{normalizedName}' already exists.");
+                "The visual profile is not part of the current settings.");
         }
-
-        return normalizedName;
-    }
-
-    private static bool NameExists(
-        SightAdaptSettings settings,
-        string name,
-        VisualProfile? exceptProfile)
-    {
-        return settings.VisualProfiles.Any(candidate =>
-            !ReferenceEquals(candidate, exceptProfile) &&
-            string.Equals(candidate.Name, name, StringComparison.OrdinalIgnoreCase));
     }
 
     private static void EnsureUserDefined(
