@@ -77,36 +77,9 @@ internal static class VisualProfileManagementService
                 "Only editable Soft Invert profiles can be tuned.");
         }
 
-        profile.OutputBlack = VisualProfileLimits.ClampFinite(
-            values.OutputBlack,
-            VisualProfileLimits.MinimumOutputBlack,
-            VisualProfileLimits.MaximumOutputBlack,
-            0.08f);
-        profile.OutputWhite = VisualProfileLimits.ClampFinite(
-            values.OutputWhite,
-            VisualProfileLimits.MinimumOutputWhite,
-            VisualProfileLimits.MaximumOutputWhite,
-            0.92f);
-        profile.Brightness = VisualProfileLimits.ClampFinite(
-            values.Brightness,
-            VisualProfileLimits.MinimumBrightness,
-            VisualProfileLimits.MaximumBrightness,
-            0.0f);
-        profile.Contrast = VisualProfileLimits.ClampFinite(
-            values.Contrast,
-            VisualProfileLimits.MinimumContrast,
-            VisualProfileLimits.MaximumContrast,
-            1.0f);
-        profile.Saturation = VisualProfileLimits.ClampFinite(
-            values.Saturation,
-            VisualProfileLimits.MinimumSaturation,
-            VisualProfileLimits.MaximumSaturation,
-            1.0f);
-        profile.HueShiftDegrees = VisualProfileLimits.ClampFinite(
-            values.HueShiftDegrees,
-            VisualProfileLimits.MinimumHueShift,
-            VisualProfileLimits.MaximumHueShift,
-            0.0f);
+        VisualProfileDefaults.ApplyTuning(
+            profile,
+            VisualProfileDefaults.NormalizeSoftInvertTuning(values));
     }
 
     public static int Delete(
