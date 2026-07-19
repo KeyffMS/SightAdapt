@@ -1,30 +1,28 @@
-# SightAdapt 0.4A.3 — lifecycle hardening and architectural completion
+# SightAdapt 0.4A.3 — lifecycle hardening
 
-## Purpose
+## Status
 
-0.4A.3 hardens the profile model and runtime state without adding a new color-processing capability. It applies KISS, DRY, Clean Code, Single Point of Authority, and Single Point of Truth to profile policy, persisted mutations, settings recovery, lifecycle operations, and emergency behavior.
+The 0.4A.3 sequence established the first profile lifecycle, recovery, and mutation-service boundaries. Its former claim of final architectural completion and `10/10` scores has been withdrawn after a later source review found transactionality, runtime-state, DRY, and documentation gaps.
 
-**Status: complete.** The functional baseline and `0.4A.3.001–0.4A.3.007` are implemented. `0.4A.4` is the active next increment.
+The historical work remains valid as a baseline. The follow-up changes are recorded in [`ARCHITECTURE_REMEDIATION_0.4A.4.md`](ARCHITECTURE_REMEDIATION_0.4A.4.md), and the superseded assessment is explained in [`ARCHITECTURE_AUDIT_0.4A.3.007.md`](ARCHITECTURE_AUDIT_0.4A.3.007.md).
 
-## Final responsibility map
+## Baseline responsibility map
 
-| Component | Responsibility |
+| Component | Responsibility established in 0.4A.3 |
 |---|---|
-| `VisualProfilePolicy` | Built-in IDs, fallback rules, supported transforms, user-ID generation, and name policy |
-| `VisualProfileDefaults` | Canonical Exact Invert and Soft Invert names and tuning values |
-| `VisualProfileManagementService` | Profile creation, duplication, rename, tuning, deletion, usage counting, and deletion orchestration |
-| `ApplicationProfileManagementService` | Application assignment creation, removal, enablement, toggling, profile assignment, counting, and reassignment |
-| `AutomaticModeManagementService` | Persisted automatic-mode mutation |
+| `VisualProfilePolicy` | Built-in IDs, fallback rules, user-ID generation, and name policy |
+| `VisualProfileDefaults` | Canonical Exact Invert and Soft Invert tuning defaults |
+| `VisualProfileManagementService` | Profile creation, duplication, rename, tuning, deletion, and usage counting |
+| `ApplicationProfileManagementService` | Assignment creation, removal, enablement, toggle, profile assignment, counting, and reassignment |
+| `AutomaticModeManagementService` | Automatic-mode value mutation |
 | `ProfileResolver` | Assignment lookup and visual-profile resolution |
 | `SettingsStore.Normalize` | Migration, canonicalization, recovery, validation, and reference repair |
-| `ApplicationStateController` | Runtime state transitions and emergency protection |
-| `OverlayController` | Overlay creation, update, closure, disposal, target, and active profile identity |
+| `ApplicationStateController` | Runtime state transitions |
+| `OverlayController` | Overlay resource lifecycle |
 
-Forms collect user intent and display results. They do not define profile policy or own persisted-domain mutation rules.
+These were useful responsibility boundaries, not by themselves proof of an atomic settings authority or complete runtime source of truth.
 
-## Completed hardening baseline
-
-### Profile policy
+## Profile policy baseline
 
 ```text
 new application assignment  -> default-soft-invert
@@ -34,7 +32,7 @@ maximum profile name length  -> 80 characters
 user profile ID prefix       -> user-
 ```
 
-### Settings recovery
+## Settings recovery baseline
 
 `SettingsStore.Normalize` handles malformed but parseable data deterministically:
 
@@ -49,148 +47,52 @@ user profile ID prefix       -> user-
 - clamps numeric values and replaces non-finite values with safe defaults;
 - becomes idempotent after one successful recovery pass.
 
-### Lifecycle and emergency invariants
+## Lifecycle invariants established
 
-- Detached profile and assignment objects cannot be mutated through an authority.
+- Detached profile and assignment objects cannot be mutated through the lifecycle services.
 - Built-in profiles cannot be renamed or deleted.
 - Assignment requires an existing visual profile.
 - Deletion validates the fallback before modifying assignments.
 - A valid custom assignment survives disable and re-enable.
-- Emergency state blocks automatic activation.
-- Explicit manual activation remains the deliberate user override.
+- Explicit manual activation can override an emergency runtime state.
 
-## Completed architectural sequence
+## Historical subincrements
 
-### 0.4A.3.001 — application-assignment mutation authority
+| Subincrement | Delivered baseline |
+|---|---|
+| `0.4A.3.001` | Added `ApplicationProfileManagementService` and removed the competing toggle service. |
+| `0.4A.3.002` | Added validated tuning mutation and a working-copy editor result. |
+| `0.4A.3.003` | Added `AutomaticModeManagementService`. |
+| `0.4A.3.004` | Added `VisualProfileDefaults` and `VisualProfileTuning`. |
+| `0.4A.3.005` | Split settings normalization into focused deterministic stages. |
+| `0.4A.3.006` | Added source-level architecture checks and lifecycle regression. |
+| `0.4A.3.007` | Published an assessment later found to overstate the evidence. |
 
-**Status: complete.**
+## Evidence limitation discovered later
 
-Delivered:
+The original architecture checks restricted selected source patterns but did not establish that:
 
-- added `ApplicationProfileManagementService`;
-- centralized add, remove, assign, enable, disable, toggle, count, and reassignment operations;
-- removed `ApplicationProfileToggleService`;
-- removed assignment mutation from forms and runtime context;
-- retained Soft Invert for new assignments and Exact Invert for recovery of corrupted existing references.
+- mutations were committed only after successful persistence;
+- emergency shutdown stopped the overlay before I/O;
+- one process exclusively owned the per-user settings file;
+- runtime state contained the active profile and suppression state;
+- transform capabilities and UI limits had one source;
+- product metadata and icon design had one authority;
+- documentation matched implemented user-defined profile operations.
 
-### 0.4A.3.002 — visual-profile tuning authority
+Those gaps are addressed in 0.4A.4 with behavioral rollback tests, a settings transaction coordinator, a complete runtime snapshot, focused presentation/tracking components, canonical transform definitions, and corrected documentation.
 
-**Status: complete.**
-
-Delivered:
-
-- added `VisualProfileManagementService.UpdateTuning`;
-- validates profile membership and editability;
-- clamps persisted tuning values;
-- changed `VisualProfileEditorForm.Edit` to return a working profile or `null`;
-- removed direct mutation of persisted profiles from the editor;
-- retained Save and Cancel semantics.
-
-### 0.4A.3.003 — persisted automatic-mode authority
-
-**Status: complete.**
-
-Delivered:
-
-- added `AutomaticModeManagementService`;
-- routed configuration UI, tray state, shortcut behavior, profile enablement, and emergency shutdown through the same persisted-mode boundary;
-- reused `ApplicationStateController.AllowsAutomaticActivation` in automatic evaluation.
-
-### 0.4A.3.004 — canonical visual-profile defaults
-
-**Status: complete.**
-
-Delivered:
-
-- added `VisualProfileDefaults` and `VisualProfileTuning`;
-- centralized built-in names and Exact/Soft tuning values;
-- used the same values in profile factories, tuning normalization, rendering, editor reset, settings canonicalization, and tests;
-- removed the obsolete `CopyTuningFrom` mutation helper.
-
-### 0.4A.3.005 — focused settings normalization stages
-
-**Status: complete.**
-
-`SettingsStore.Normalize` remains the single authority and now orchestrates:
-
-```text
-CanonicalizeBuiltInProfiles
-NormalizeCustomProfiles
-NormalizeApplications
-RepairProfileReferences
-```
-
-A small private `SettingsNormalizationContext` owns shared profile IDs, executable paths, normalized collections, and the changed flag. No generic rule engine or framework was introduced.
-
-### 0.4A.3.006 — architectural enforcement and regression
-
-**Status: complete.**
-
-Delivered:
-
-- source-level tests for prohibited direct writes;
-- authority tests for assignments, tuning, and automatic mode;
-- detached, missing, and protected-entity tests;
-- combined mutation persistence round trip;
-- repeated create, assign, rename, delete, and fallback cycles;
-- warnings-as-errors, complete test execution, and Windows x64 publishing.
-
-Validated implementation:
-
-```text
-build: 0 warnings, 0 errors
-tests: 64 passed, 0 failed, 0 skipped
-publish: self-contained Windows x64 succeeded
-artifact: SightAdapt-0.4-Alpha-win-x64
-```
-
-The PR records the digest for the latest successful publish artifact.
-
-### 0.4A.3.007 — final 10/10 architecture audit
-
-**Status: complete.**
-
-The final report records objective evidence for:
-
-| Principle | Result |
-|---|---:|
-| KISS | 10/10 |
-| DRY | 10/10 |
-| Clean Code | 10/10 |
-| Single Point of Authority | 10/10 |
-| Single Point of Truth | 10/10 |
-
-See [`ARCHITECTURE_AUDIT_0.4A.3.007.md`](ARCHITECTURE_AUDIT_0.4A.3.007.md).
-
-## Manual regression checklist
+## Manual baseline checklist
 
 1. Load settings created by earlier alpha versions.
 2. Create two custom profiles and assign them to different applications.
 3. Edit one profile and verify the second remains unchanged.
 4. Duplicate, rename, and delete profiles repeatedly.
 5. Delete an assigned profile and verify fallback to Soft Invert.
-6. Disable and re-enable an assignment with `Ctrl+Alt+Shift+I` and verify its valid custom profile remains selected.
-7. Use `Ctrl+Alt+I` with an enabled assignment, a disabled assignment, and no assignment.
+6. Disable and re-enable an assignment and verify its valid custom profile remains selected.
+7. Use the local toggle with enabled, disabled, and missing assignments.
 8. Switch automatic mode between configured and unconfigured applications.
 9. Trigger emergency shutdown and verify no automatic reactivation occurs.
-10. Use an explicit manual toggle after emergency and verify correction can resume.
-11. Restart SightAdapt and verify profiles, names, tuning, enabled states, and assignments.
-12. Repeat profile selector changes and editor operations without WinForms exceptions.
+10. Restart and verify profiles, tuning, enabled states, and assignments.
 
-## Current execution order
-
-```text
-0.4A.3 baseline   lifecycle recovery and emergency hardening       complete
-0.4A.3.001        application-assignment mutation authority        complete
-0.4A.3.002        visual-profile tuning authority                  complete
-0.4A.3.003        persisted automatic-mode authority               complete
-0.4A.3.004        canonical visual-profile defaults                complete
-0.4A.3.005        focused settings normalization stages            complete
-0.4A.3.006        architectural enforcement and regression         complete
-0.4A.3.007        final 10/10 architecture audit                    complete
-0.4A.4            interface corrections                            active
-```
-
-## Next increment
-
-`0.4A.4` covers DPI behavior, resizing, layout, control states, keyboard navigation, accessibility labels, message consistency, and visual regression. It must not change transformation semantics or persisted profile values.
+The extended safety and transaction checklist is maintained in the 0.4A.4 remediation document.
