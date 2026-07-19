@@ -9,7 +9,8 @@ internal static class ProfileResolver
         ArgumentNullException.ThrowIfNull(settings);
         ArgumentNullException.ThrowIfNull(identity);
 
-        return settings.Applications.FirstOrDefault(profile => profile.Matches(identity));
+        return settings.Applications?.FirstOrDefault(profile =>
+            profile is not null && profile.Matches(identity));
     }
 
     public static ApplicationProfile? FindEnabledAssignment(
@@ -21,24 +22,34 @@ internal static class ProfileResolver
             : null;
     }
 
+    public static VisualProfile? FindVisualProfile(
+        SightAdaptSettings settings,
+        string? profileId)
+    {
+        ArgumentNullException.ThrowIfNull(settings);
+
+        if (string.IsNullOrWhiteSpace(profileId))
+        {
+            return null;
+        }
+
+        return settings.VisualProfiles?.FirstOrDefault(candidate =>
+            candidate is not null && string.Equals(
+                candidate.Id,
+                profileId.Trim(),
+                StringComparison.OrdinalIgnoreCase));
+    }
+
     public static VisualProfile ResolveVisualProfile(
         SightAdaptSettings settings,
         ApplicationProfile? assignment)
     {
         ArgumentNullException.ThrowIfNull(settings);
 
-        var requestedId = assignment?.VisualProfileId;
-        var profile = settings.VisualProfiles.FirstOrDefault(
-            candidate => string.Equals(
-                candidate.Id,
-                requestedId,
-                StringComparison.OrdinalIgnoreCase));
-
-        return profile ?? settings.VisualProfiles.FirstOrDefault(
-            candidate => string.Equals(
-                candidate.Id,
-                VisualProfile.DefaultInvertId,
-                StringComparison.OrdinalIgnoreCase))
+        return FindVisualProfile(settings, assignment?.VisualProfileId)
+            ?? FindVisualProfile(
+                settings,
+                VisualProfilePolicy.MissingReferenceFallbackProfileId)
             ?? VisualProfile.CreateDefaultInvert();
     }
 }
