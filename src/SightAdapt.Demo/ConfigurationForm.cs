@@ -8,11 +8,10 @@ internal sealed class ConfigurationForm : Form
 {
     private const string EnabledColumnName = "Enabled";
     private const string VisualProfileColumnName = "VisualProfile";
+    private const string ApplicationColumnName = "Application";
 
-    private readonly SightAdaptSettings _settings;
-    private readonly SettingsStore _settingsStore;
+    private readonly SettingsCoordinator _settingsCoordinator;
     private readonly Func<ApplicationIdentity?> _getCurrentApplication;
-    private readonly Action _settingsChanged;
     private readonly ToggleSwitch _automaticModeSwitch;
     private readonly Label _automaticModeStateLabel;
     private readonly Label _profileCountLabel;
@@ -22,17 +21,13 @@ internal sealed class ConfigurationForm : Form
     private bool _refreshing;
 
     public ConfigurationForm(
-        SightAdaptSettings settings,
-        SettingsStore settingsStore,
-        Func<ApplicationIdentity?> getCurrentApplication,
-        Action settingsChanged)
+        SettingsCoordinator settingsCoordinator,
+        Func<ApplicationIdentity?> getCurrentApplication)
     {
-        _settings = settings ?? throw new ArgumentNullException(nameof(settings));
-        _settingsStore = settingsStore ?? throw new ArgumentNullException(nameof(settingsStore));
-        _getCurrentApplication = getCurrentApplication
-            ?? throw new ArgumentNullException(nameof(getCurrentApplication));
-        _settingsChanged = settingsChanged
-            ?? throw new ArgumentNullException(nameof(settingsChanged));
+        _settingsCoordinator = settingsCoordinator ??
+            throw new ArgumentNullException(nameof(settingsCoordinator));
+        _getCurrentApplication = getCurrentApplication ??
+            throw new ArgumentNullException(nameof(getCurrentApplication));
 
         Text = ProductInfo.WindowTitle;
         StartPosition = FormStartPosition.CenterScreen;
@@ -49,110 +44,42 @@ internal sealed class ConfigurationForm : Form
             Margin = new Padding(0, 0, 16, 0),
         };
         _automaticModeSwitch.CheckedChanged += AutomaticModeCheckedChanged;
-
-        _automaticModeStateLabel = new Label
-        {
-            Anchor = AnchorStyles.Right,
-            AutoSize = true,
-            Font = AppTheme.CreateUiFont(8.5f, FontStyle.Bold),
-            Margin = new Padding(12, 0, 0, 0),
-            Padding = new Padding(12, 6, 12, 6),
-            TextAlign = ContentAlignment.MiddleCenter,
-        };
-
-        _profileCountLabel = new Label
-        {
-            Anchor = AnchorStyles.Right,
-            AutoSize = true,
-            ForeColor = AppTheme.TextSecondary,
-            Font = AppTheme.CreateUiFont(9f, FontStyle.Bold),
-            Margin = new Padding(0, 0, 18, 0),
-            TextAlign = ContentAlignment.MiddleRight,
-        };
-
-        _editVisualProfileButton = new ModernButton
-        {
-            Text = "Edit color profile",
-            VisualStyle = ModernButtonStyle.Secondary,
-            MinimumSize = new Size(160, 40),
-            Margin = new Padding(0, 0, 8, 0),
-            Enabled = false,
-        };
-        _editVisualProfileButton.Click += (_, _) => EditSelectedVisualProfile();
-
+        _automaticModeStateLabel = CreateAutomaticModeStateLabel();
+        _profileCountLabel = CreateProfileCountLabel();
+        _editVisualProfileButton = CreateButton(
+            "Edit color profile",
+            ModernButtonStyle.Secondary,
+            160,
+            EditSelectedVisualProfile);
+        _editVisualProfileButton.Enabled = false;
         _profilesGrid = CreateProfilesGrid();
-        _emptyStateLabel = new Label
-        {
-            BackColor = AppTheme.Surface,
-            Dock = DockStyle.Fill,
-            ForeColor = AppTheme.TextSecondary,
-            Font = AppTheme.CreateUiFont(10.5f),
-            Padding = new Padding(32),
-            Text = "No application profiles yet.\n\nAdd the currently active application or select an executable file.",
-            TextAlign = ContentAlignment.MiddleCenter,
-            Visible = false,
-        };
+        _emptyStateLabel = CreateEmptyStateLabel();
 
-        var settingsPathLabel = new Label
-        {
-            AutoEllipsis = true,
-            Dock = DockStyle.Fill,
-            ForeColor = AppTheme.TextMuted,
-            Font = AppTheme.CreateUiFont(8.5f),
-            Text = $"Settings are stored locally: {_settingsStore.SettingsPath}",
-            TextAlign = ContentAlignment.MiddleLeft,
-        };
-
-        var contentLayout = new TableLayoutPanel
-        {
-            BackColor = AppTheme.WindowBackground,
-            ColumnCount = 1,
-            Dock = DockStyle.Fill,
-            Padding = new Padding(24, 20, 24, 16),
-            RowCount = 5,
-        };
-        contentLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        contentLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 88));
-        contentLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-        contentLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 68));
-        contentLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 98));
-        contentLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 24));
-        contentLayout.Controls.Add(CreateAutomaticModeCard(), 0, 0);
-        contentLayout.Controls.Add(CreateProfilesCard(), 0, 1);
-        contentLayout.Controls.Add(CreateActionBar(), 0, 2);
-        contentLayout.Controls.Add(CreateProjectInfoCard(), 0, 3);
-        contentLayout.Controls.Add(settingsPathLabel, 0, 4);
-
-        var rootLayout = new TableLayoutPanel
-        {
-            BackColor = AppTheme.WindowBackground,
-            ColumnCount = 1,
-            Dock = DockStyle.Fill,
-            RowCount = 2,
-        };
-        rootLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        rootLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 104));
-        rootLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-        rootLayout.Controls.Add(CreateHeader(), 0, 0);
-        rootLayout.Controls.Add(contentLayout, 0, 1);
-
-        Controls.Add(rootLayout);
+        Controls.Add(CreateRootLayout());
+        _settingsCoordinator.Changed += SettingsChanged;
+        FormClosed += (_, _) => _settingsCoordinator.Changed -= SettingsChanged;
         RefreshProfiles();
     }
 
+    private SightAdaptSettings Settings => _settingsCoordinator.Current;
+
     public void RefreshProfiles()
     {
-        _refreshing = true;
+        if (IsDisposed)
+        {
+            return;
+        }
 
+        _refreshing = true;
         try
         {
             var selectedPath = GetSelectedApplicationProfile()?.ExecutablePath;
-            _automaticModeSwitch.Checked = _settings.AutomaticMode;
+            _automaticModeSwitch.Checked = Settings.AutomaticMode;
             UpdateAutomaticModeState();
             RefreshVisualProfileColumn();
             _profilesGrid.Rows.Clear();
 
-            foreach (var profile in _settings.Applications)
+            foreach (var profile in Settings.Applications)
             {
                 var index = _profilesGrid.Rows.Add(
                     profile.Enabled,
@@ -160,22 +87,16 @@ internal sealed class ConfigurationForm : Form
                     profile.VisualProfileId,
                     profile.ExecutableName,
                     profile.ExecutablePath);
-
                 var row = _profilesGrid.Rows[index];
                 row.Tag = profile;
-
-                if (!string.IsNullOrWhiteSpace(selectedPath) &&
-                    string.Equals(
-                        selectedPath,
-                        profile.ExecutablePath,
-                        StringComparison.OrdinalIgnoreCase))
+                if (string.Equals(selectedPath, profile.ExecutablePath, StringComparison.OrdinalIgnoreCase))
                 {
                     row.Selected = true;
-                    _profilesGrid.CurrentCell = row.Cells["Application"];
+                    _profilesGrid.CurrentCell = row.Cells[ApplicationColumnName];
                 }
             }
 
-            var count = _settings.Applications.Count;
+            var count = Settings.Applications.Count;
             _profileCountLabel.Text = count == 1 ? "1 PROFILE" : $"{count} PROFILES";
             _emptyStateLabel.Visible = count == 0;
             _profilesGrid.Visible = count > 0;
@@ -187,29 +108,54 @@ internal sealed class ConfigurationForm : Form
         }
     }
 
-    private static Panel CreateHeader()
+    private Control CreateRootLayout()
     {
-        var titleLabel = new Label
+        var content = new TableLayoutPanel
         {
-            AutoSize = true,
+            BackColor = AppTheme.WindowBackground,
+            ColumnCount = 1,
             Dock = DockStyle.Fill,
-            ForeColor = AppTheme.TextPrimary,
-            Font = AppTheme.CreateUiFont(20f, FontStyle.Bold),
-            Text = "Application and color profiles",
-            TextAlign = ContentAlignment.BottomLeft,
+            Padding = new Padding(24, 20, 24, 16),
+            RowCount = 5,
         };
-
-        var subtitleLabel = new Label
+        content.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        content.RowStyles.Add(new RowStyle(SizeType.Absolute, 88));
+        content.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+        content.RowStyles.Add(new RowStyle(SizeType.Absolute, 68));
+        content.RowStyles.Add(new RowStyle(SizeType.Absolute, 98));
+        content.RowStyles.Add(new RowStyle(SizeType.Absolute, 24));
+        content.Controls.Add(CreateAutomaticModeCard(), 0, 0);
+        content.Controls.Add(CreateProfilesCard(), 0, 1);
+        content.Controls.Add(CreateActionBar(), 0, 2);
+        content.Controls.Add(CreateProjectInfoCard(), 0, 3);
+        content.Controls.Add(new Label
         {
             AutoEllipsis = true,
             Dock = DockStyle.Fill,
-            ForeColor = AppTheme.TextSecondary,
-            Font = AppTheme.CreateUiFont(9.5f),
-            Text = "Assign and manage independent visual correction profiles for each Windows application.",
-            TextAlign = ContentAlignment.TopLeft,
-        };
+            ForeColor = AppTheme.TextMuted,
+            Font = AppTheme.CreateUiFont(8.5f),
+            Text = $"Settings are stored locally: {_settingsCoordinator.SettingsPath}",
+            TextAlign = ContentAlignment.MiddleLeft,
+        }, 0, 4);
 
-        var textLayout = new TableLayoutPanel
+        var root = new TableLayoutPanel
+        {
+            BackColor = AppTheme.WindowBackground,
+            ColumnCount = 1,
+            Dock = DockStyle.Fill,
+            RowCount = 2,
+        };
+        root.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 104));
+        root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+        root.Controls.Add(CreateHeader(), 0, 0);
+        root.Controls.Add(content, 0, 1);
+        return root;
+    }
+
+    private static Control CreateHeader()
+    {
+        var text = new TableLayoutPanel
         {
             BackColor = AppTheme.HeaderBackground,
             ColumnCount = 1,
@@ -217,18 +163,21 @@ internal sealed class ConfigurationForm : Form
             Padding = new Padding(26, 18, 24, 14),
             RowCount = 2,
         };
-        textLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        textLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 58));
-        textLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 42));
-        textLayout.Controls.Add(titleLabel, 0, 0);
-        textLayout.Controls.Add(subtitleLabel, 0, 1);
-
-        var accentStrip = new Panel
-        {
-            BackColor = AppTheme.Accent,
-            Dock = DockStyle.Left,
-            Width = 5,
-        };
+        text.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        text.RowStyles.Add(new RowStyle(SizeType.Percent, 58));
+        text.RowStyles.Add(new RowStyle(SizeType.Percent, 42));
+        text.Controls.Add(CreateHeaderLabel(
+            "Application and color profiles",
+            20f,
+            FontStyle.Bold,
+            AppTheme.TextPrimary,
+            ContentAlignment.BottomLeft), 0, 0);
+        text.Controls.Add(CreateHeaderLabel(
+            "Assign and manage independent visual correction profiles for each Windows application.",
+            9.5f,
+            FontStyle.Regular,
+            AppTheme.TextSecondary,
+            ContentAlignment.TopLeft), 0, 1);
 
         var header = new Panel
         {
@@ -236,34 +185,19 @@ internal sealed class ConfigurationForm : Form
             Dock = DockStyle.Fill,
             Margin = Padding.Empty,
         };
-        header.Controls.Add(textLayout);
-        header.Controls.Add(accentStrip);
+        header.Controls.Add(text);
+        header.Controls.Add(new Panel
+        {
+            BackColor = AppTheme.Accent,
+            Dock = DockStyle.Left,
+            Width = 5,
+        });
         return header;
     }
 
-    private RoundedPanel CreateAutomaticModeCard()
+    private Control CreateAutomaticModeCard()
     {
-        var titleLabel = new Label
-        {
-            AutoSize = true,
-            Dock = DockStyle.Fill,
-            ForeColor = AppTheme.TextPrimary,
-            Font = AppTheme.CreateUiFont(10.5f, FontStyle.Bold),
-            Text = "Automatic mode",
-            TextAlign = ContentAlignment.BottomLeft,
-        };
-
-        var descriptionLabel = new Label
-        {
-            AutoEllipsis = true,
-            Dock = DockStyle.Fill,
-            ForeColor = AppTheme.TextSecondary,
-            Font = AppTheme.CreateUiFont(9f),
-            Text = "Apply each application's assigned visual profile whenever its window becomes active.",
-            TextAlign = ContentAlignment.TopLeft,
-        };
-
-        var descriptionLayout = new TableLayoutPanel
+        var description = new TableLayoutPanel
         {
             BackColor = AppTheme.Surface,
             ColumnCount = 1,
@@ -271,11 +205,21 @@ internal sealed class ConfigurationForm : Form
             Margin = Padding.Empty,
             RowCount = 2,
         };
-        descriptionLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        descriptionLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 55));
-        descriptionLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 45));
-        descriptionLayout.Controls.Add(titleLabel, 0, 0);
-        descriptionLayout.Controls.Add(descriptionLabel, 0, 1);
+        description.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        description.RowStyles.Add(new RowStyle(SizeType.Percent, 55));
+        description.RowStyles.Add(new RowStyle(SizeType.Percent, 45));
+        description.Controls.Add(CreateHeaderLabel(
+            "Automatic mode",
+            10.5f,
+            FontStyle.Bold,
+            AppTheme.TextPrimary,
+            ContentAlignment.BottomLeft), 0, 0);
+        description.Controls.Add(CreateHeaderLabel(
+            "Apply each application's assigned visual profile whenever its window becomes active.",
+            9f,
+            FontStyle.Regular,
+            AppTheme.TextSecondary,
+            ContentAlignment.TopLeft), 0, 1);
 
         var layout = new TableLayoutPanel
         {
@@ -289,9 +233,8 @@ internal sealed class ConfigurationForm : Form
         layout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 64));
         layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         layout.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-        layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         layout.Controls.Add(_automaticModeSwitch, 0, 0);
-        layout.Controls.Add(descriptionLayout, 1, 0);
+        layout.Controls.Add(description, 1, 0);
         layout.Controls.Add(_automaticModeStateLabel, 2, 0);
 
         var card = new RoundedPanel
@@ -319,7 +262,7 @@ internal sealed class ConfigurationForm : Form
         };
         AppTheme.StyleGrid(grid);
 
-        var enabledColumn = new DataGridViewCheckBoxColumn
+        var enabled = new DataGridViewCheckBoxColumn
         {
             Name = EnabledColumnName,
             HeaderText = "ACTIVE",
@@ -329,71 +272,34 @@ internal sealed class ConfigurationForm : Form
             FlatStyle = FlatStyle.Flat,
             SortMode = DataGridViewColumnSortMode.NotSortable,
         };
-        enabledColumn.HeaderCell.Style.Alignment = DataGridViewContentAlignment.MiddleCenter;
-        enabledColumn.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
-        enabledColumn.DefaultCellStyle.Padding = Padding.Empty;
-
-        grid.Columns.Add(enabledColumn);
-        grid.Columns.Add(new DataGridViewTextBoxColumn
-        {
-            Name = "Application",
-            HeaderText = "APPLICATION",
-            ReadOnly = true,
-            Width = 205,
-            MinimumWidth = 165,
-            SortMode = DataGridViewColumnSortMode.NotSortable,
-        });
-        grid.Columns.Add(new DataGridViewComboBoxColumn
+        enabled.HeaderCell.Style.Alignment = DataGridViewContentAlignment.MiddleCenter;
+        enabled.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
+        enabled.DefaultCellStyle.Padding = Padding.Empty;
+        grid.Columns.Add(enabled);
+        grid.Columns.Add(CreateTextColumn(ApplicationColumnName, "APPLICATION", 205));
+        grid.Columns.Add(new StableVisualProfileComboBoxColumn
         {
             Name = VisualProfileColumnName,
             HeaderText = "VISUAL PROFILE",
-            DisplayMember = nameof(VisualProfile.Name),
-            ValueMember = nameof(VisualProfile.Id),
             DisplayStyle = DataGridViewComboBoxDisplayStyle.ComboBox,
             FlatStyle = FlatStyle.Flat,
             Width = 185,
             MinimumWidth = 160,
             SortMode = DataGridViewColumnSortMode.NotSortable,
         });
-        grid.Columns.Add(new DataGridViewTextBoxColumn
-        {
-            Name = "Executable",
-            HeaderText = "EXECUTABLE",
-            ReadOnly = true,
-            Width = 155,
-            MinimumWidth = 125,
-            SortMode = DataGridViewColumnSortMode.NotSortable,
-        });
-        grid.Columns.Add(new DataGridViewTextBoxColumn
-        {
-            Name = "Path",
-            HeaderText = "FULL PATH",
-            AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill,
-            MinimumWidth = 220,
-            ReadOnly = true,
-            SortMode = DataGridViewColumnSortMode.NotSortable,
-        });
+        grid.Columns.Add(CreateTextColumn("Executable", "EXECUTABLE", 155));
+        grid.Columns.Add(CreateTextColumn("Path", "FULL PATH", 220, fill: true));
 
         grid.CellValueChanged += ProfilesGridCellValueChanged;
         grid.CurrentCellDirtyStateChanged += ProfilesGridCurrentCellDirtyStateChanged;
         grid.SelectionChanged += (_, _) => UpdateSelectedProfileActions();
-        grid.DataError += (_, eventArgs) => eventArgs.ThrowException = false;
+        grid.DataError += ProfilesGridDataError;
         return grid;
     }
 
-    private RoundedPanel CreateProfilesCard()
+    private Control CreateProfilesCard()
     {
-        var titleLabel = new Label
-        {
-            Anchor = AnchorStyles.Left,
-            AutoSize = true,
-            ForeColor = AppTheme.TextPrimary,
-            Font = AppTheme.CreateUiFont(10.5f, FontStyle.Bold),
-            Margin = new Padding(18, 0, 0, 0),
-            Text = "Configured applications",
-        };
-
-        var headerLayout = new TableLayoutPanel
+        var header = new TableLayoutPanel
         {
             BackColor = AppTheme.SurfaceRaised,
             ColumnCount = 2,
@@ -402,20 +308,27 @@ internal sealed class ConfigurationForm : Form
             Margin = Padding.Empty,
             RowCount = 1,
         };
-        headerLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        headerLayout.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-        headerLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-        headerLayout.Controls.Add(titleLabel, 0, 0);
-        headerLayout.Controls.Add(_profileCountLabel, 1, 0);
+        header.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        header.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        header.Controls.Add(new Label
+        {
+            Anchor = AnchorStyles.Left,
+            AutoSize = true,
+            ForeColor = AppTheme.TextPrimary,
+            Font = AppTheme.CreateUiFont(10.5f, FontStyle.Bold),
+            Margin = new Padding(18, 0, 0, 0),
+            Text = "Configured applications",
+        }, 0, 0);
+        header.Controls.Add(_profileCountLabel, 1, 0);
 
-        var gridHost = new Panel
+        var host = new Panel
         {
             BackColor = AppTheme.Surface,
             Dock = DockStyle.Fill,
             Margin = Padding.Empty,
         };
-        gridHost.Controls.Add(_profilesGrid);
-        gridHost.Controls.Add(_emptyStateLabel);
+        host.Controls.Add(_profilesGrid);
+        host.Controls.Add(_emptyStateLabel);
 
         var card = new RoundedPanel
         {
@@ -423,61 +336,14 @@ internal sealed class ConfigurationForm : Form
             Margin = Padding.Empty,
             Padding = new Padding(1),
         };
-        card.Controls.Add(gridHost);
-        card.Controls.Add(headerLayout);
+        card.Controls.Add(host);
+        card.Controls.Add(header);
         return card;
     }
 
     private Control CreateActionBar()
     {
-        var addCurrentButton = new ModernButton
-        {
-            Text = "Add current app",
-            VisualStyle = ModernButtonStyle.Primary,
-            MinimumSize = new Size(150, 40),
-            Margin = new Padding(0, 0, 8, 0),
-        };
-        addCurrentButton.Click += (_, _) => AddCurrentApplication();
-
-        var browseButton = new ModernButton
-        {
-            Text = "Browse for .exe",
-            VisualStyle = ModernButtonStyle.Secondary,
-            MinimumSize = new Size(140, 40),
-            Margin = new Padding(0, 0, 8, 0),
-        };
-        browseButton.Click += (_, _) => BrowseForApplication();
-
-        var manageProfilesButton = new ModernButton
-        {
-            Text = "Manage profiles",
-            VisualStyle = ModernButtonStyle.Secondary,
-            MinimumSize = new Size(145, 40),
-            Margin = new Padding(0, 0, 8, 0),
-        };
-        manageProfilesButton.Click += (_, _) => ManageVisualProfiles();
-
-        var removeButton = new ModernButton
-        {
-            Text = "Remove selected",
-            VisualStyle = ModernButtonStyle.Danger,
-            MinimumSize = new Size(145, 40),
-            Margin = Padding.Empty,
-        };
-        removeButton.Click += (_, _) => RemoveSelectedProfile();
-
-        var closeButton = new ModernButton
-        {
-            DialogResult = DialogResult.Cancel,
-            Text = "Close",
-            VisualStyle = ModernButtonStyle.Ghost,
-            MinimumSize = new Size(96, 40),
-            Margin = Padding.Empty,
-        };
-        closeButton.Click += (_, _) => Close();
-        CancelButton = closeButton;
-
-        var leftButtons = new FlowLayoutPanel
+        var left = new FlowLayoutPanel
         {
             Anchor = AnchorStyles.Left,
             AutoSize = true,
@@ -486,15 +352,26 @@ internal sealed class ConfigurationForm : Form
             Margin = Padding.Empty,
             WrapContents = false,
         };
-        leftButtons.Controls.AddRange([
-            addCurrentButton,
-            browseButton,
-            manageProfilesButton,
+        left.Controls.AddRange([
+            CreateButton("Add current app", ModernButtonStyle.Primary, 150, AddCurrentApplication),
+            CreateButton("Browse for .exe", ModernButtonStyle.Secondary, 140, BrowseForApplication),
+            CreateButton("Manage profiles", ModernButtonStyle.Secondary, 145, ManageVisualProfiles),
             _editVisualProfileButton,
-            removeButton,
+            CreateButton("Remove selected", ModernButtonStyle.Danger, 145, RemoveSelectedProfile),
         ]);
 
-        var actionLayout = new TableLayoutPanel
+        var close = new ModernButton
+        {
+            DialogResult = DialogResult.Cancel,
+            Text = "Close",
+            VisualStyle = ModernButtonStyle.Ghost,
+            MinimumSize = new Size(96, 40),
+            Margin = Padding.Empty,
+        };
+        close.Click += (_, _) => Close();
+        CancelButton = close;
+
+        var layout = new TableLayoutPanel
         {
             BackColor = AppTheme.WindowBackground,
             ColumnCount = 2,
@@ -502,52 +379,17 @@ internal sealed class ConfigurationForm : Form
             Margin = new Padding(0, 12, 0, 8),
             RowCount = 1,
         };
-        actionLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        actionLayout.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-        actionLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-        actionLayout.Controls.Add(leftButtons, 0, 0);
-        actionLayout.Controls.Add(closeButton, 1, 0);
-        closeButton.Anchor = AnchorStyles.Right;
-        return actionLayout;
+        layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        layout.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        layout.Controls.Add(left, 0, 0);
+        layout.Controls.Add(close, 1, 0);
+        close.Anchor = AnchorStyles.Right;
+        return layout;
     }
 
-    private static RoundedPanel CreateProjectInfoCard()
+    private static Control CreateProjectInfoCard()
     {
-        var productLabel = new Label
-        {
-            AutoSize = true,
-            Dock = DockStyle.Fill,
-            ForeColor = AppTheme.TextPrimary,
-            Font = AppTheme.CreateUiFont(10.5f, FontStyle.Bold),
-            Text = ProductInfo.DisplayName,
-            TextAlign = ContentAlignment.BottomLeft,
-        };
-
-        var taglineLabel = new Label
-        {
-            AutoEllipsis = true,
-            Dock = DockStyle.Fill,
-            ForeColor = AppTheme.TextSecondary,
-            Font = AppTheme.CreateUiFont(8.8f),
-            Text = ProductInfo.Tagline,
-            TextAlign = ContentAlignment.TopLeft,
-        };
-
-        var productLayout = new TableLayoutPanel
-        {
-            BackColor = AppTheme.Surface,
-            ColumnCount = 1,
-            Dock = DockStyle.Fill,
-            Margin = Padding.Empty,
-            RowCount = 2,
-        };
-        productLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        productLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 54));
-        productLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 46));
-        productLayout.Controls.Add(productLabel, 0, 0);
-        productLayout.Controls.Add(taglineLabel, 0, 1);
-
-        var repositoryLink = new LinkLabel
+        var repository = new LinkLabel
         {
             ActiveLinkColor = AppTheme.AccentHover,
             AutoEllipsis = true,
@@ -560,9 +402,31 @@ internal sealed class ConfigurationForm : Form
             Text = ProductInfo.RepositoryDisplay,
             VisitedLinkColor = AppTheme.Accent,
         };
-        repositoryLink.LinkClicked += (_, _) => OpenRepository();
+        repository.LinkClicked += (_, _) => OpenRepository();
 
-        var metadataLayout = new FlowLayoutPanel
+        var product = new TableLayoutPanel
+        {
+            BackColor = AppTheme.Surface,
+            ColumnCount = 1,
+            Dock = DockStyle.Fill,
+            Margin = Padding.Empty,
+            RowCount = 2,
+        };
+        product.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        product.Controls.Add(CreateHeaderLabel(
+            ProductInfo.DisplayName,
+            10.5f,
+            FontStyle.Bold,
+            AppTheme.TextPrimary,
+            ContentAlignment.BottomLeft), 0, 0);
+        product.Controls.Add(CreateHeaderLabel(
+            ProductInfo.Tagline,
+            8.8f,
+            FontStyle.Regular,
+            AppTheme.TextSecondary,
+            ContentAlignment.TopLeft), 0, 1);
+
+        var metadata = new FlowLayoutPanel
         {
             Anchor = AnchorStyles.Right,
             AutoSize = true,
@@ -571,9 +435,9 @@ internal sealed class ConfigurationForm : Form
             Margin = Padding.Empty,
             WrapContents = false,
         };
-        metadataLayout.Controls.Add(CreateInfoLabel(ProductInfo.License, FontStyle.Bold));
-        metadataLayout.Controls.Add(CreateInfoLabel(ProductInfo.Author, FontStyle.Regular));
-        metadataLayout.Controls.Add(repositoryLink);
+        metadata.Controls.Add(CreateInfoLabel(ProductInfo.License, FontStyle.Bold));
+        metadata.Controls.Add(CreateInfoLabel(ProductInfo.Author, FontStyle.Regular));
+        metadata.Controls.Add(repository);
 
         var layout = new TableLayoutPanel
         {
@@ -586,9 +450,8 @@ internal sealed class ConfigurationForm : Form
         };
         layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 58));
         layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 42));
-        layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-        layout.Controls.Add(productLayout, 0, 0);
-        layout.Controls.Add(metadataLayout, 1, 0);
+        layout.Controls.Add(product, 0, 0);
+        layout.Controls.Add(metadata, 1, 0);
 
         var card = new RoundedPanel
         {
@@ -597,6 +460,66 @@ internal sealed class ConfigurationForm : Form
         };
         card.Controls.Add(layout);
         return card;
+    }
+
+    private static Label CreateHeaderLabel(
+        string text,
+        float size,
+        FontStyle style,
+        Color color,
+        ContentAlignment alignment)
+    {
+        return new Label
+        {
+            AutoEllipsis = true,
+            AutoSize = true,
+            Dock = DockStyle.Fill,
+            ForeColor = color,
+            Font = AppTheme.CreateUiFont(size, style),
+            Text = text,
+            TextAlign = alignment,
+        };
+    }
+
+    private static Label CreateAutomaticModeStateLabel()
+    {
+        return new Label
+        {
+            Anchor = AnchorStyles.Right,
+            AutoSize = true,
+            Font = AppTheme.CreateUiFont(8.5f, FontStyle.Bold),
+            Margin = new Padding(12, 0, 0, 0),
+            Padding = new Padding(12, 6, 12, 6),
+            TextAlign = ContentAlignment.MiddleCenter,
+        };
+    }
+
+    private static Label CreateProfileCountLabel()
+    {
+        return new Label
+        {
+            Anchor = AnchorStyles.Right,
+            AutoSize = true,
+            ForeColor = AppTheme.TextSecondary,
+            Font = AppTheme.CreateUiFont(9f, FontStyle.Bold),
+            Margin = new Padding(0, 0, 18, 0),
+            TextAlign = ContentAlignment.MiddleRight,
+        };
+    }
+
+    private static Label CreateEmptyStateLabel()
+    {
+        return new Label
+        {
+            BackColor = AppTheme.Surface,
+            Dock = DockStyle.Fill,
+            ForeColor = AppTheme.TextSecondary,
+            Font = AppTheme.CreateUiFont(10.5f),
+            Padding = new Padding(32),
+            Text = "No application profiles yet.\n\nAdd the currently active application or select an executable file.",
+            TextAlign = ContentAlignment.MiddleCenter,
+            Visible = false,
+        };
     }
 
     private static Label CreateInfoLabel(string text, FontStyle style)
@@ -612,6 +535,43 @@ internal sealed class ConfigurationForm : Form
         };
     }
 
+    private static DataGridViewTextBoxColumn CreateTextColumn(
+        string name,
+        string header,
+        int width,
+        bool fill = false)
+    {
+        return new DataGridViewTextBoxColumn
+        {
+            Name = name,
+            HeaderText = header,
+            AutoSizeMode = fill
+                ? DataGridViewAutoSizeColumnMode.Fill
+                : DataGridViewAutoSizeColumnMode.None,
+            MinimumWidth = width,
+            ReadOnly = true,
+            Width = width,
+            SortMode = DataGridViewColumnSortMode.NotSortable,
+        };
+    }
+
+    private static ModernButton CreateButton(
+        string text,
+        ModernButtonStyle style,
+        int minimumWidth,
+        Action action)
+    {
+        var button = new ModernButton
+        {
+            Text = text,
+            VisualStyle = style,
+            MinimumSize = new Size(minimumWidth, 40),
+            Margin = new Padding(0, 0, 8, 0),
+        };
+        button.Click += (_, _) => action();
+        return button;
+    }
+
     private static void OpenRepository()
     {
         try
@@ -624,6 +584,12 @@ internal sealed class ConfigurationForm : Form
         catch (Exception exception) when (
             exception is Win32Exception or InvalidOperationException)
         {
+            Debug.WriteLine($"SightAdapt could not open the repository: {exception}");
+            MessageBox.Show(
+                $"The repository could not be opened.\n\n{exception.Message}",
+                ProductInfo.DisplayName,
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Warning);
         }
     }
 
@@ -634,33 +600,32 @@ internal sealed class ConfigurationForm : Form
             return;
         }
 
-        AutomaticModeManagementService.Set(
-            _settings,
-            _automaticModeSwitch.Checked);
-        UpdateAutomaticModeState();
-        _settingsChanged();
+        var result = _settingsCoordinator.Commit(settings =>
+            AutomaticModeManagementService.Set(settings, _automaticModeSwitch.Checked));
+        if (!result.Succeeded)
+        {
+            ShowCommitError(result.ErrorMessage);
+            RefreshProfiles();
+        }
     }
 
     private void UpdateAutomaticModeState()
     {
-        _automaticModeStateLabel.Text = _settings.AutomaticMode ? "ACTIVE" : "PAUSED";
-        _automaticModeStateLabel.BackColor = _settings.AutomaticMode
+        _automaticModeStateLabel.Text = Settings.AutomaticMode ? "ACTIVE" : "PAUSED";
+        _automaticModeStateLabel.BackColor = Settings.AutomaticMode
             ? AppTheme.SuccessSoft
             : AppTheme.SurfaceRaised;
-        _automaticModeStateLabel.ForeColor = _settings.AutomaticMode
+        _automaticModeStateLabel.ForeColor = Settings.AutomaticMode
             ? AppTheme.Success
             : AppTheme.TextSecondary;
     }
 
     private void RefreshVisualProfileColumn()
     {
-        if (_profilesGrid.Columns[VisualProfileColumnName] is not DataGridViewComboBoxColumn column)
+        if (_profilesGrid.Columns[VisualProfileColumnName] is StableVisualProfileComboBoxColumn column)
         {
-            return;
+            column.SetProfiles(Settings.VisualProfiles);
         }
-
-        column.DataSource = null;
-        column.DataSource = _settings.VisualProfiles.ToList();
     }
 
     private void ProfilesGridCurrentCellDirtyStateChanged(object? sender, EventArgs eventArgs)
@@ -684,29 +649,46 @@ internal sealed class ConfigurationForm : Form
             return;
         }
 
+        var executablePath = profile.ExecutablePath;
         var columnName = _profilesGrid.Columns[eventArgs.ColumnIndex].Name;
+        SettingsCommitResult result;
         if (columnName == EnabledColumnName)
         {
-            ApplicationProfileManagementService.SetEnabled(
-                _settings,
-                profile,
-                row.Cells[eventArgs.ColumnIndex].Value is true);
+            var enabled = row.Cells[eventArgs.ColumnIndex].Value is true;
+            result = _settingsCoordinator.Commit(settings =>
+                ApplicationProfileManagementService.SetEnabled(
+                    settings,
+                    FindAssignment(settings, executablePath),
+                    enabled));
         }
         else if (columnName == VisualProfileColumnName &&
                  row.Cells[eventArgs.ColumnIndex].Value is string visualProfileId)
         {
-            ApplicationProfileManagementService.AssignVisualProfile(
-                _settings,
-                profile,
-                visualProfileId);
+            result = _settingsCoordinator.Commit(settings =>
+                ApplicationProfileManagementService.AssignVisualProfile(
+                    settings,
+                    FindAssignment(settings, executablePath),
+                    visualProfileId));
         }
         else
         {
             return;
         }
 
-        _settingsChanged();
-        UpdateSelectedProfileActions();
+        if (!result.Succeeded)
+        {
+            ShowCommitError(result.ErrorMessage);
+            RefreshProfiles();
+        }
+    }
+
+    private void ProfilesGridDataError(object? sender, DataGridViewDataErrorEventArgs eventArgs)
+    {
+        if (eventArgs.Exception is ArgumentException or InvalidOperationException)
+        {
+            Debug.WriteLine($"SightAdapt ignored an expected grid binding race: {eventArgs.Exception}");
+            eventArgs.ThrowException = false;
+        }
     }
 
     private void UpdateSelectedProfileActions()
@@ -714,8 +696,7 @@ internal sealed class ConfigurationForm : Form
         var assignment = GetSelectedApplicationProfile();
         var visualProfile = assignment is null
             ? null
-            : ProfileResolver.ResolveVisualProfile(_settings, assignment);
-
+            : ProfileResolver.ResolveVisualProfile(Settings, assignment);
         _editVisualProfileButton.Enabled = visualProfile?.SupportsTuning == true;
         _editVisualProfileButton.Text = visualProfile?.SupportsTuning == true
             ? $"Edit {visualProfile.Name}"
@@ -730,36 +711,41 @@ internal sealed class ConfigurationForm : Form
             return;
         }
 
-        var visualProfile = ProfileResolver.ResolveVisualProfile(_settings, assignment);
-        if (!visualProfile.SupportsTuning)
+        var profile = ProfileResolver.ResolveVisualProfile(Settings, assignment);
+        if (!profile.SupportsTuning)
         {
             MessageBox.Show(
                 this,
-                "Select Soft invert in the VISUAL PROFILE column before editing color parameters.",
+                "Select an editable profile in the VISUAL PROFILE column before editing color parameters.",
                 ProductInfo.DisplayName,
                 MessageBoxButtons.OK,
                 MessageBoxIcon.Information);
             return;
         }
 
-        var values = VisualProfileEditorForm.Edit(this, visualProfile);
-        if (values is not null)
+        var values = VisualProfileEditorForm.Edit(this, profile);
+        if (values is null)
         {
+            return;
+        }
+
+        var profileId = profile.Id;
+        var result = _settingsCoordinator.Commit(settings =>
             VisualProfileManagementService.UpdateTuning(
-                _settings,
-                visualProfile,
-                values);
-            _settingsChanged();
+                settings,
+                ProfileResolver.FindVisualProfile(settings, profileId) ??
+                    throw new InvalidOperationException("The selected visual profile no longer exists."),
+                values));
+        if (!result.Succeeded)
+        {
+            ShowCommitError(result.ErrorMessage);
             RefreshProfiles();
         }
     }
 
     private void ManageVisualProfiles()
     {
-        VisualProfileManagerForm.ShowManager(
-            this,
-            _settings,
-            _settingsChanged);
+        VisualProfileManagerForm.ShowManager(this, _settingsCoordinator);
         RefreshProfiles();
     }
 
@@ -798,7 +784,6 @@ internal sealed class ConfigurationForm : Form
             RestoreDirectory = true,
             Title = "Select an application for SightAdapt",
         };
-
         if (dialog.ShowDialog(this) != DialogResult.OK)
         {
             return;
@@ -822,18 +807,21 @@ internal sealed class ConfigurationForm : Form
 
     private void AddOrUpdateProfile(ApplicationIdentity identity)
     {
-        var result = ApplicationProfileManagementService.AddOrEnable(
-            _settings,
-            identity);
-        var added = result.WasCreated;
-        AutomaticModeManagementService.Enable(_settings);
-
-        _settingsChanged();
-        RefreshProfiles();
+        var result = _settingsCoordinator.Commit(settings =>
+        {
+            var assignment = ApplicationProfileManagementService.AddOrEnable(settings, identity);
+            AutomaticModeManagementService.Enable(settings);
+            return assignment.WasCreated;
+        });
+        if (!result.Succeeded)
+        {
+            ShowCommitError(result.ErrorMessage);
+            return;
+        }
 
         MessageBox.Show(
             this,
-            added
+            result.Value
                 ? $"{identity.DisplayName} was added with the Soft invert visual profile."
                 : $"{identity.DisplayName} is already configured and was enabled.",
             ProductInfo.DisplayName,
@@ -844,26 +832,48 @@ internal sealed class ConfigurationForm : Form
     private void RemoveSelectedProfile()
     {
         var profile = GetSelectedApplicationProfile();
-        if (profile is null)
+        if (profile is null ||
+            MessageBox.Show(
+                this,
+                $"Remove {profile.DisplayName} from SightAdapt?",
+                ProductInfo.DisplayName,
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Question,
+                MessageBoxDefaultButton.Button2) != DialogResult.Yes)
         {
             return;
         }
 
-        var answer = MessageBox.Show(
-            this,
-            $"Remove {profile.DisplayName} from SightAdapt?",
-            ProductInfo.DisplayName,
-            MessageBoxButtons.YesNo,
-            MessageBoxIcon.Question,
-            MessageBoxDefaultButton.Button2);
-
-        if (answer != DialogResult.Yes)
+        var path = profile.ExecutablePath;
+        var result = _settingsCoordinator.Commit(settings =>
+            ApplicationProfileManagementService.Remove(settings, FindAssignment(settings, path)));
+        if (!result.Succeeded)
         {
-            return;
+            ShowCommitError(result.ErrorMessage);
         }
+    }
 
-        ApplicationProfileManagementService.Remove(_settings, profile);
-        _settingsChanged();
+    private void SettingsChanged(object? sender, EventArgs eventArgs)
+    {
         RefreshProfiles();
+    }
+
+    private void ShowCommitError(string? message)
+    {
+        MessageBox.Show(
+            this,
+            message ?? "Settings could not be changed.",
+            ProductInfo.DisplayName,
+            MessageBoxButtons.OK,
+            MessageBoxIcon.Warning);
+    }
+
+    private static ApplicationProfile FindAssignment(SightAdaptSettings settings, string executablePath)
+    {
+        return settings.Applications.FirstOrDefault(profile => string.Equals(
+                profile.ExecutablePath,
+                executablePath,
+                StringComparison.OrdinalIgnoreCase)) ??
+            throw new InvalidOperationException("The selected application assignment no longer exists.");
     }
 }
