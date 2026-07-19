@@ -2,19 +2,20 @@
 
 ## Product and engineering plans
 
-- [SightAdapt 0.4 Alpha roadmap](ROADMAP_0.4.md) — current status of `0.4A.1–0.4A.4`, followed by palette analysis and targeted color corrections.
+- [SightAdapt 0.4 Alpha roadmap](ROADMAP_0.4.md) — status of the 0.4 increments and planned color-analysis work.
 - [SightAdapt 0.4 Soft Color Profiles](SOFT_COLOR_PROFILES_0.4.md) — profile model, matrix order, editor parameters, settings schema, shortcut behavior, limitations, and acceptance checks.
-- [SightAdapt 0.4A.2 User-defined Profiles](USER_DEFINED_PROFILES_0.4A.2.md) — profile creation, duplication, rename, deletion, fallback reassignment, validation rules, tests, and manual acceptance checks.
-- [SightAdapt 0.4A.3 Lifecycle Hardening](HARDENING_0.4A.3.md) — completed recovery, mutation authorities, canonical defaults, normalization decomposition, architectural enforcement, and regression coverage.
-- [SightAdapt 0.4A.3.007 Architecture Audit](ARCHITECTURE_AUDIT_0.4A.3.007.md) — final KISS, DRY, Clean Code, Single Point of Authority, and Single Point of Truth evidence and score.
+- [SightAdapt 0.4A.2 User-defined Profiles](USER_DEFINED_PROFILES_0.4A.2.md) — creation, duplication, rename, deletion, fallback reassignment, validation, tests, and manual acceptance.
+- [SightAdapt 0.4A.3 Lifecycle Hardening](HARDENING_0.4A.3.md) — historical lifecycle and recovery baseline, with its evidence limitations recorded.
+- [SightAdapt 0.4A.4 Architecture Remediation](ARCHITECTURE_REMEDIATION_0.4A.4.md) — transactionality, emergency ordering, complete runtime truth, DRY cleanup, tests, and manual validation.
+- [Superseded 0.4A.3.007 Architecture Audit](ARCHITECTURE_AUDIT_0.4A.3.007.md) — explains why the former unconditional `10/10` result was withdrawn.
 
 ## Architecture
 
-- [SightAdapt 0.3.1 Alpha architecture](ARCHITECTURE_0.3.1.md) — responsibility map, state authority, overlay boundary, visual-profile model, settings migration, automated tests, and manual regression plan.
+- [SightAdapt 0.3.1 Alpha architecture](ARCHITECTURE_0.3.1.md) — original responsibility map, state authority, overlay boundary, profile model, migration, and regression plan.
 
 ## Design resources
 
-- [Tray icon specification](TRAY_ICON.md) — icon concept, active/inactive/emergency states, source files, and Windows export requirements.
+- [Tray icon specification](TRAY_ICON.md) — icon concept, runtime authority, active/inactive/emergency states, reference exports, and required sizes.
 
 ## Core project documents
 
