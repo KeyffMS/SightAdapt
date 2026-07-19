@@ -31,6 +31,9 @@ internal sealed class ApplicationStateController
     public ApplicationState Current { get; private set; } =
         new(ApplicationRunState.Inactive);
 
+    public bool AllowsAutomaticActivation =>
+        Current.Kind != ApplicationRunState.Emergency;
+
     public event EventHandler<ApplicationStateChangedEventArgs>? Changed;
 
     public void SetInactive()
@@ -47,6 +50,13 @@ internal sealed class ApplicationStateController
     public void SetAutomaticActive(nint targetWindow)
     {
         RequireTarget(targetWindow);
+
+        if (!AllowsAutomaticActivation)
+        {
+            throw new InvalidOperationException(
+                "Automatic activation is blocked while emergency state is active.");
+        }
+
         TransitionTo(new ApplicationState(ApplicationRunState.AutomaticActive, targetWindow));
     }
 
