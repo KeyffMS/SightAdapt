@@ -185,7 +185,9 @@ public sealed class VisualProfileTests
 
         var profile = ProfileResolver.ResolveVisualProfile(settings, assignment);
 
-        Assert.AreEqual(VisualProfile.DefaultInvertId, profile.Id);
+        Assert.AreEqual(
+            VisualProfilePolicy.MissingReferenceFallbackProfileId,
+            profile.Id);
         Assert.AreEqual(InvertVisualTransform.TransformId, profile.TransformId);
     }
 
@@ -222,14 +224,25 @@ public sealed class VisualProfileTests
         Assert.IsTrue(result.WasCreated);
         Assert.IsTrue(result.IsEnabled);
         Assert.AreEqual(1, settings.Applications.Count);
-        Assert.AreEqual(VisualProfile.DefaultSoftInvertId, result.Profile.VisualProfileId);
+        Assert.AreEqual(
+            VisualProfilePolicy.NewAssignmentProfileId,
+            result.Profile.VisualProfileId);
     }
 
     [TestMethod]
     public void ProfileToggleDisablesAndReenablesExistingAssignment()
     {
+        var customProfile = VisualProfile.CreateDefaultSoftInvert();
+        customProfile.Id = "custom-profile";
+        customProfile.Name = "Custom profile";
         var settings = new SightAdaptSettings
         {
+            VisualProfiles =
+            [
+                VisualProfile.CreateDefaultInvert(),
+                VisualProfile.CreateDefaultSoftInvert(),
+                customProfile,
+            ],
             Applications =
             [
                 new ApplicationProfile
@@ -238,7 +251,7 @@ public sealed class VisualProfileTests
                     ExecutableName = "Reader.exe",
                     ExecutablePath = "C:\\Apps\\Reader.exe",
                     Enabled = true,
-                    VisualProfileId = "custom-profile",
+                    VisualProfileId = customProfile.Id,
                 },
             ],
         };
@@ -253,8 +266,38 @@ public sealed class VisualProfileTests
         Assert.IsFalse(disabled.WasCreated);
         Assert.IsFalse(disabled.IsEnabled);
         Assert.IsTrue(enabled.IsEnabled);
-        Assert.AreEqual("custom-profile", enabled.Profile.VisualProfileId);
+        Assert.AreEqual(customProfile.Id, enabled.Profile.VisualProfileId);
         Assert.AreEqual("Reader updated", enabled.Profile.DisplayName);
         Assert.AreEqual(1, settings.Applications.Count);
+    }
+
+    [TestMethod]
+    public void ProfileToggleRepairsMissingProfileReference()
+    {
+        var settings = new SightAdaptSettings
+        {
+            Applications =
+            [
+                new ApplicationProfile
+                {
+                    DisplayName = "Reader",
+                    ExecutableName = "Reader.exe",
+                    ExecutablePath = "C:\\Apps\\Reader.exe",
+                    Enabled = true,
+                    VisualProfileId = "missing-profile",
+                },
+            ],
+        };
+        var identity = new ApplicationIdentity(
+            "Reader",
+            "Reader.exe",
+            "C:\\Apps\\Reader.exe");
+
+        var result = ApplicationProfileToggleService.Toggle(settings, identity);
+
+        Assert.IsFalse(result.IsEnabled);
+        Assert.AreEqual(
+            VisualProfilePolicy.MissingReferenceFallbackProfileId,
+            result.Profile.VisualProfileId);
     }
 }
