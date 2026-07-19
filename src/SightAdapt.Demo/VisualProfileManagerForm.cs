@@ -2,8 +2,7 @@ namespace SightAdapt.Demo;
 
 internal sealed class VisualProfileManagerForm : Form
 {
-    private readonly SightAdaptSettings _settings;
-    private readonly Action _settingsChanged;
+    private readonly SettingsCoordinator _settingsCoordinator;
     private readonly DataGridView _profilesGrid;
     private readonly Label _profileCountLabel;
     private readonly ModernButton _duplicateButton;
@@ -11,13 +10,10 @@ internal sealed class VisualProfileManagerForm : Form
     private readonly ModernButton _editButton;
     private readonly ModernButton _deleteButton;
 
-    private VisualProfileManagerForm(
-        SightAdaptSettings settings,
-        Action settingsChanged)
+    private VisualProfileManagerForm(SettingsCoordinator settingsCoordinator)
     {
-        _settings = settings ?? throw new ArgumentNullException(nameof(settings));
-        _settingsChanged = settingsChanged
-            ?? throw new ArgumentNullException(nameof(settingsChanged));
+        _settingsCoordinator = settingsCoordinator ??
+            throw new ArgumentNullException(nameof(settingsCoordinator));
 
         Text = $"{ProductInfo.DisplayName} · Visual profiles";
         StartPosition = FormStartPosition.CenterParent;
@@ -27,36 +23,31 @@ internal sealed class VisualProfileManagerForm : Form
         BackColor = AppTheme.WindowBackground;
         AppTheme.ApplyTo(this);
 
-        _profileCountLabel = new Label
-        {
-            Anchor = AnchorStyles.Right,
-            AutoSize = true,
-            ForeColor = AppTheme.TextSecondary,
-            Font = AppTheme.CreateUiFont(9f, FontStyle.Bold),
-            Margin = new Padding(0, 0, 18, 0),
-            TextAlign = ContentAlignment.MiddleRight,
-        };
-
+        _profileCountLabel = CreateCountLabel();
         _profilesGrid = CreateProfilesGrid();
+        _duplicateButton = CreateActionButton("Duplicate", ModernButtonStyle.Secondary, DuplicateSelectedProfile);
+        _renameButton = CreateActionButton("Rename", ModernButtonStyle.Secondary, RenameSelectedProfile);
+        _editButton = CreateActionButton("Edit parameters", ModernButtonStyle.Secondary, EditSelectedProfile, 145);
+        _deleteButton = CreateActionButton("Delete", ModernButtonStyle.Danger, DeleteSelectedProfile);
 
-        _duplicateButton = CreateActionButton(
-            "Duplicate",
-            ModernButtonStyle.Secondary,
-            DuplicateSelectedProfile);
-        _renameButton = CreateActionButton(
-            "Rename",
-            ModernButtonStyle.Secondary,
-            RenameSelectedProfile);
-        _editButton = CreateActionButton(
-            "Edit parameters",
-            ModernButtonStyle.Secondary,
-            EditSelectedProfile,
-            145);
-        _deleteButton = CreateActionButton(
-            "Delete",
-            ModernButtonStyle.Danger,
-            DeleteSelectedProfile);
+        Controls.Add(CreateRootLayout());
+        _settingsCoordinator.Changed += SettingsChanged;
+        FormClosed += (_, _) => _settingsCoordinator.Changed -= SettingsChanged;
+        RefreshProfiles();
+    }
 
+    private SightAdaptSettings Settings => _settingsCoordinator.Current;
+
+    public static void ShowManager(IWin32Window owner, SettingsCoordinator settingsCoordinator)
+    {
+        ArgumentNullException.ThrowIfNull(owner);
+        ArgumentNullException.ThrowIfNull(settingsCoordinator);
+        using var manager = new VisualProfileManagerForm(settingsCoordinator);
+        manager.ShowDialog(owner);
+    }
+
+    private Control CreateRootLayout()
+    {
         var root = new TableLayoutPanel
         {
             BackColor = AppTheme.WindowBackground,
@@ -72,44 +63,11 @@ internal sealed class VisualProfileManagerForm : Form
         root.Controls.Add(CreateHeader(), 0, 0);
         root.Controls.Add(CreateProfilesCard(), 0, 1);
         root.Controls.Add(CreateActionBar(), 0, 2);
-
-        Controls.Add(root);
-        RefreshProfiles();
+        return root;
     }
 
-    public static void ShowManager(
-        IWin32Window owner,
-        SightAdaptSettings settings,
-        Action settingsChanged)
+    private static Control CreateHeader()
     {
-        ArgumentNullException.ThrowIfNull(owner);
-
-        using var manager = new VisualProfileManagerForm(settings, settingsChanged);
-        manager.ShowDialog(owner);
-    }
-
-    private Control CreateHeader()
-    {
-        var title = new Label
-        {
-            AutoSize = true,
-            Dock = DockStyle.Fill,
-            ForeColor = AppTheme.TextPrimary,
-            Font = AppTheme.CreateUiFont(18f, FontStyle.Bold),
-            Text = "Visual profiles",
-            TextAlign = ContentAlignment.BottomLeft,
-        };
-
-        var subtitle = new Label
-        {
-            AutoEllipsis = true,
-            Dock = DockStyle.Fill,
-            ForeColor = AppTheme.TextSecondary,
-            Font = AppTheme.CreateUiFont(9.3f),
-            Text = "Create independent Soft Invert profiles and assign them to different applications.",
-            TextAlign = ContentAlignment.TopLeft,
-        };
-
         var layout = new TableLayoutPanel
         {
             BackColor = AppTheme.WindowBackground,
@@ -121,8 +79,18 @@ internal sealed class VisualProfileManagerForm : Form
         layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         layout.RowStyles.Add(new RowStyle(SizeType.Percent, 58));
         layout.RowStyles.Add(new RowStyle(SizeType.Percent, 42));
-        layout.Controls.Add(title, 0, 0);
-        layout.Controls.Add(subtitle, 0, 1);
+        layout.Controls.Add(CreateLabel(
+            "Visual profiles",
+            18f,
+            FontStyle.Bold,
+            AppTheme.TextPrimary,
+            ContentAlignment.BottomLeft), 0, 0);
+        layout.Controls.Add(CreateLabel(
+            "Create independent editable profiles and assign them to different applications.",
+            9.3f,
+            FontStyle.Regular,
+            AppTheme.TextSecondary,
+            ContentAlignment.TopLeft), 0, 1);
         return layout;
     }
 
@@ -140,40 +108,10 @@ internal sealed class VisualProfileManagerForm : Form
             SelectionMode = DataGridViewSelectionMode.FullRowSelect,
         };
         AppTheme.StyleGrid(grid);
-
-        grid.Columns.Add(new DataGridViewTextBoxColumn
-        {
-            Name = "Name",
-            HeaderText = "PROFILE",
-            AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill,
-            MinimumWidth = 240,
-            SortMode = DataGridViewColumnSortMode.NotSortable,
-        });
-        grid.Columns.Add(new DataGridViewTextBoxColumn
-        {
-            Name = "Type",
-            HeaderText = "TYPE",
-            Width = 130,
-            MinimumWidth = 120,
-            SortMode = DataGridViewColumnSortMode.NotSortable,
-        });
-        grid.Columns.Add(new DataGridViewTextBoxColumn
-        {
-            Name = "Transform",
-            HeaderText = "TRANSFORM",
-            Width = 150,
-            MinimumWidth = 130,
-            SortMode = DataGridViewColumnSortMode.NotSortable,
-        });
-        grid.Columns.Add(new DataGridViewTextBoxColumn
-        {
-            Name = "Assignments",
-            HeaderText = "APPLICATIONS",
-            Width = 135,
-            MinimumWidth = 120,
-            SortMode = DataGridViewColumnSortMode.NotSortable,
-        });
-
+        grid.Columns.Add(CreateTextColumn("Name", "PROFILE", 240, fill: true));
+        grid.Columns.Add(CreateTextColumn("Type", "TYPE", 130));
+        grid.Columns.Add(CreateTextColumn("Transform", "TRANSFORM", 150));
+        grid.Columns.Add(CreateTextColumn("Assignments", "APPLICATIONS", 135));
         grid.SelectionChanged += (_, _) => UpdateActions();
         grid.CellDoubleClick += (_, eventArgs) =>
         {
@@ -187,16 +125,6 @@ internal sealed class VisualProfileManagerForm : Form
 
     private Control CreateProfilesCard()
     {
-        var title = new Label
-        {
-            Anchor = AnchorStyles.Left,
-            AutoSize = true,
-            ForeColor = AppTheme.TextPrimary,
-            Font = AppTheme.CreateUiFont(10.5f, FontStyle.Bold),
-            Margin = new Padding(18, 0, 0, 0),
-            Text = "Available profiles",
-        };
-
         var header = new TableLayoutPanel
         {
             BackColor = AppTheme.SurfaceRaised,
@@ -208,8 +136,15 @@ internal sealed class VisualProfileManagerForm : Form
         };
         header.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         header.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-        header.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-        header.Controls.Add(title, 0, 0);
+        header.Controls.Add(new Label
+        {
+            Anchor = AnchorStyles.Left,
+            AutoSize = true,
+            ForeColor = AppTheme.TextPrimary,
+            Font = AppTheme.CreateUiFont(10.5f, FontStyle.Bold),
+            Margin = new Padding(18, 0, 0, 0),
+            Text = "Available profiles",
+        }, 0, 0);
         header.Controls.Add(_profileCountLabel, 1, 0);
 
         var host = new Panel
@@ -233,13 +168,8 @@ internal sealed class VisualProfileManagerForm : Form
 
     private Control CreateActionBar()
     {
-        var createButton = CreateActionButton(
-            "Create profile",
-            ModernButtonStyle.Primary,
-            CreateProfile,
-            135);
-
-        var closeButton = new ModernButton
+        var create = CreateActionButton("Create profile", ModernButtonStyle.Primary, CreateProfile, 135);
+        var close = new ModernButton
         {
             DialogResult = DialogResult.Cancel,
             Text = "Close",
@@ -247,10 +177,10 @@ internal sealed class VisualProfileManagerForm : Form
             MinimumSize = new Size(96, 40),
             Margin = Padding.Empty,
         };
-        closeButton.Click += (_, _) => Close();
-        CancelButton = closeButton;
+        close.Click += (_, _) => Close();
+        CancelButton = close;
 
-        var leftButtons = new FlowLayoutPanel
+        var left = new FlowLayoutPanel
         {
             Anchor = AnchorStyles.Left,
             AutoSize = true,
@@ -259,11 +189,13 @@ internal sealed class VisualProfileManagerForm : Form
             Margin = Padding.Empty,
             WrapContents = false,
         };
-        leftButtons.Controls.Add(createButton);
-        leftButtons.Controls.Add(_duplicateButton);
-        leftButtons.Controls.Add(_renameButton);
-        leftButtons.Controls.Add(_editButton);
-        leftButtons.Controls.Add(_deleteButton);
+        left.Controls.AddRange([
+            create,
+            _duplicateButton,
+            _renameButton,
+            _editButton,
+            _deleteButton,
+        ]);
 
         var layout = new TableLayoutPanel
         {
@@ -275,11 +207,61 @@ internal sealed class VisualProfileManagerForm : Form
         };
         layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         layout.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-        layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-        layout.Controls.Add(leftButtons, 0, 0);
-        layout.Controls.Add(closeButton, 1, 0);
-        closeButton.Anchor = AnchorStyles.Right;
+        layout.Controls.Add(left, 0, 0);
+        layout.Controls.Add(close, 1, 0);
+        close.Anchor = AnchorStyles.Right;
         return layout;
+    }
+
+    private static Label CreateCountLabel()
+    {
+        return new Label
+        {
+            Anchor = AnchorStyles.Right,
+            AutoSize = true,
+            ForeColor = AppTheme.TextSecondary,
+            Font = AppTheme.CreateUiFont(9f, FontStyle.Bold),
+            Margin = new Padding(0, 0, 18, 0),
+            TextAlign = ContentAlignment.MiddleRight,
+        };
+    }
+
+    private static Label CreateLabel(
+        string text,
+        float size,
+        FontStyle style,
+        Color color,
+        ContentAlignment alignment)
+    {
+        return new Label
+        {
+            AutoEllipsis = true,
+            AutoSize = true,
+            Dock = DockStyle.Fill,
+            ForeColor = color,
+            Font = AppTheme.CreateUiFont(size, style),
+            Text = text,
+            TextAlign = alignment,
+        };
+    }
+
+    private static DataGridViewTextBoxColumn CreateTextColumn(
+        string name,
+        string header,
+        int width,
+        bool fill = false)
+    {
+        return new DataGridViewTextBoxColumn
+        {
+            Name = name,
+            HeaderText = header,
+            AutoSizeMode = fill
+                ? DataGridViewAutoSizeColumnMode.Fill
+                : DataGridViewAutoSizeColumnMode.None,
+            Width = width,
+            MinimumWidth = Math.Min(width, 120),
+            SortMode = DataGridViewColumnSortMode.NotSortable,
+        };
     }
 
     private static ModernButton CreateActionButton(
@@ -301,55 +283,44 @@ internal sealed class VisualProfileManagerForm : Form
 
     private void RefreshProfiles(string? selectedProfileId = null)
     {
+        if (IsDisposed)
+        {
+            return;
+        }
+
         selectedProfileId ??= GetSelectedProfile()?.Id;
         _profilesGrid.Rows.Clear();
-
-        foreach (var profile in _settings.VisualProfiles)
+        foreach (var profile in Settings.VisualProfiles)
         {
-            var assignmentCount = VisualProfileManagementService.CountAssignments(
-                _settings,
-                profile);
             var index = _profilesGrid.Rows.Add(
                 profile.Name,
-                VisualProfileManagementService.IsBuiltIn(profile)
-                    ? "Built-in"
-                    : "User-defined",
-                profile.SupportsTuning ? "Soft invert" : "Exact invert",
-                assignmentCount);
-
+                VisualProfileManagementService.IsBuiltIn(profile) ? "Built-in" : "User-defined",
+                VisualTransformCatalog.GetDisplayName(profile.TransformId),
+                VisualProfileManagementService.CountAssignments(Settings, profile));
             var row = _profilesGrid.Rows[index];
             row.Tag = profile;
-
-            if (!string.IsNullOrWhiteSpace(selectedProfileId) &&
-                string.Equals(
-                    profile.Id,
-                    selectedProfileId,
-                    StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(profile.Id, selectedProfileId, StringComparison.OrdinalIgnoreCase))
             {
                 row.Selected = true;
                 _profilesGrid.CurrentCell = row.Cells["Name"];
             }
         }
 
-        _profileCountLabel.Text = _settings.VisualProfiles.Count == 1
+        _profileCountLabel.Text = Settings.VisualProfiles.Count == 1
             ? "1 PROFILE"
-            : $"{_settings.VisualProfiles.Count} PROFILES";
-
+            : $"{Settings.VisualProfiles.Count} PROFILES";
         if (_profilesGrid.CurrentRow is null && _profilesGrid.Rows.Count > 0)
         {
             _profilesGrid.Rows[0].Selected = true;
             _profilesGrid.CurrentCell = _profilesGrid.Rows[0].Cells["Name"];
         }
-
         UpdateActions();
     }
 
     private void UpdateActions()
     {
         var profile = GetSelectedProfile();
-        var isBuiltIn = profile is not null &&
-            VisualProfileManagementService.IsBuiltIn(profile);
-
+        var isBuiltIn = profile is not null && VisualProfileManagementService.IsBuiltIn(profile);
         _duplicateButton.Enabled = profile?.SupportsTuning == true;
         _renameButton.Enabled = profile is not null && !isBuiltIn;
         _editButton.Enabled = profile?.SupportsTuning == true;
@@ -365,25 +336,20 @@ internal sealed class VisualProfileManagerForm : Form
 
     private void CreateProfile()
     {
-        var suggestedName = VisualProfileManagementService.CreateAvailableName(
-            _settings,
-            "Custom Soft Invert");
-
+        var suggested = VisualProfileManagementService.CreateAvailableName(
+            Settings,
+            VisualProfilePolicy.CustomProfileBaseName);
         if (!VisualProfileNameDialog.TryGetName(
                 this,
                 "Create profile",
-                "Enter a unique name for the new Soft Invert profile.",
-                suggestedName,
+                "Enter a unique name for the new editable profile.",
+                suggested,
                 out var name))
         {
             return;
         }
 
-        RunProfileOperation(() =>
-        {
-            var profile = VisualProfileManagementService.Create(_settings, name);
-            SaveAndRefresh(profile.Id);
-        });
+        Commit(settings => VisualProfileManagementService.Create(settings, name).Id);
     }
 
     private void DuplicateSelectedProfile()
@@ -394,39 +360,30 @@ internal sealed class VisualProfileManagerForm : Form
             return;
         }
 
-        var suggestedName = VisualProfileManagementService.CreateAvailableName(
-            _settings,
-            source.Name + " copy");
-
+        var suggested = VisualProfileManagementService.CreateAvailableName(Settings, source.Name + " copy");
         if (!VisualProfileNameDialog.TryGetName(
                 this,
                 "Duplicate profile",
                 $"Create an independent copy of '{source.Name}'.",
-                suggestedName,
+                suggested,
                 out var name))
         {
             return;
         }
 
-        RunProfileOperation(() =>
+        var sourceId = source.Id;
+        Commit(settings =>
         {
-            var profile = VisualProfileManagementService.Duplicate(
-                _settings,
-                source,
-                name);
-            SaveAndRefresh(profile.Id);
+            var current = FindProfile(settings, sourceId);
+            return VisualProfileManagementService.Duplicate(settings, current, name).Id;
         });
     }
 
     private void RenameSelectedProfile()
     {
         var profile = GetSelectedProfile();
-        if (profile is null)
-        {
-            return;
-        }
-
-        if (!VisualProfileNameDialog.TryGetName(
+        if (profile is null ||
+            !VisualProfileNameDialog.TryGetName(
                 this,
                 "Rename profile",
                 "Enter a new unique profile name.",
@@ -436,10 +393,11 @@ internal sealed class VisualProfileManagerForm : Form
             return;
         }
 
-        RunProfileOperation(() =>
+        var profileId = profile.Id;
+        Commit(settings =>
         {
-            VisualProfileManagementService.Rename(_settings, profile, name);
-            SaveAndRefresh(profile.Id);
+            VisualProfileManagementService.Rename(settings, FindProfile(settings, profileId), name);
+            return profileId;
         });
     }
 
@@ -452,17 +410,17 @@ internal sealed class VisualProfileManagerForm : Form
         }
 
         var values = VisualProfileEditorForm.Edit(this, profile);
-        if (values is not null)
+        if (values is null)
         {
-            RunProfileOperation(() =>
-            {
-                VisualProfileManagementService.UpdateTuning(
-                    _settings,
-                    profile,
-                    values);
-                SaveAndRefresh(profile.Id);
-            });
+            return;
         }
+
+        var profileId = profile.Id;
+        Commit(settings =>
+        {
+            VisualProfileManagementService.UpdateTuning(settings, FindProfile(settings, profileId), values);
+            return profileId;
+        });
     }
 
     private void DeleteSelectedProfile()
@@ -473,62 +431,60 @@ internal sealed class VisualProfileManagerForm : Form
             return;
         }
 
-        var assignments = VisualProfileManagementService.CountAssignments(
-            _settings,
-            profile);
-        var fallback = _settings.VisualProfiles.First(candidate => string.Equals(
-            candidate.Id,
-            VisualProfile.DefaultSoftInvertId,
-            StringComparison.OrdinalIgnoreCase));
-
-        var assignmentText = assignments == 1
+        var fallback = ProfileResolver.FindVisualProfile(
+            Settings,
+            VisualProfilePolicy.DeletionFallbackProfileId) ??
+            throw new InvalidOperationException("The fallback profile is missing.");
+        var assignments = VisualProfileManagementService.CountAssignments(Settings, profile);
+        var usage = assignments == 1
             ? "1 application uses this profile"
             : $"{assignments} applications use this profile";
-        var answer = MessageBox.Show(
-            this,
-            $"Delete '{profile.Name}'?\n\n{assignmentText}. " +
-            $"Affected applications will be reassigned to '{fallback.Name}'.",
-            ProductInfo.DisplayName,
-            MessageBoxButtons.YesNo,
-            MessageBoxIcon.Warning,
-            MessageBoxDefaultButton.Button2);
-
-        if (answer != DialogResult.Yes)
+        if (MessageBox.Show(
+                this,
+                $"Delete '{profile.Name}'?\n\n{usage}. Affected applications will be reassigned to '{fallback.Name}'.",
+                ProductInfo.DisplayName,
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Warning,
+                MessageBoxDefaultButton.Button2) != DialogResult.Yes)
         {
             return;
         }
 
-        RunProfileOperation(() =>
+        var profileId = profile.Id;
+        var fallbackId = fallback.Id;
+        Commit(settings =>
         {
-            VisualProfileManagementService.Delete(
-                _settings,
-                profile,
-                fallback.Id);
-            SaveAndRefresh(fallback.Id);
+            VisualProfileManagementService.Delete(settings, FindProfile(settings, profileId), fallbackId);
+            return fallbackId;
         });
     }
 
-    private void SaveAndRefresh(string selectedProfileId)
+    private void Commit(Func<SightAdaptSettings, string> mutation)
     {
-        _settingsChanged();
-        RefreshProfiles(selectedProfileId);
+        var result = _settingsCoordinator.Commit(mutation);
+        if (result.Succeeded)
+        {
+            RefreshProfiles(result.Value);
+            return;
+        }
+
+        MessageBox.Show(
+            this,
+            result.ErrorMessage ?? "The visual profile operation failed.",
+            ProductInfo.DisplayName,
+            MessageBoxButtons.OK,
+            MessageBoxIcon.Warning);
+        RefreshProfiles();
     }
 
-    private void RunProfileOperation(Action action)
+    private void SettingsChanged(object? sender, EventArgs eventArgs)
     {
-        try
-        {
-            action();
-        }
-        catch (Exception exception) when (
-            exception is ArgumentException or InvalidOperationException)
-        {
-            MessageBox.Show(
-                this,
-                exception.Message,
-                ProductInfo.DisplayName,
-                MessageBoxButtons.OK,
-                MessageBoxIcon.Warning);
-        }
+        RefreshProfiles();
+    }
+
+    private static VisualProfile FindProfile(SightAdaptSettings settings, string profileId)
+    {
+        return ProfileResolver.FindVisualProfile(settings, profileId) ??
+            throw new InvalidOperationException("The selected visual profile no longer exists.");
     }
 }
