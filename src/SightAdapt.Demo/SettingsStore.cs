@@ -5,24 +5,32 @@ namespace SightAdapt.Demo;
 
 internal sealed class SettingsStore
 {
-    private readonly JsonSerializerOptions _serializerOptions = new()
-    {
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-        PropertyNameCaseInsensitive = true,
-        WriteIndented = true,
-    };
+    private readonly JsonSerializerOptions _serializerOptions =
+        new()
+        {
+            PropertyNamingPolicy =
+                JsonNamingPolicy.CamelCase,
+            PropertyNameCaseInsensitive = true,
+            WriteIndented = true,
+        };
 
     public SettingsStore(string? settingsPath = null)
     {
         if (!string.IsNullOrWhiteSpace(settingsPath))
         {
-            SettingsPath = Path.GetFullPath(settingsPath);
+            SettingsPath =
+                Path.GetFullPath(settingsPath);
             return;
         }
 
-        var applicationData = Environment.GetFolderPath(
-            Environment.SpecialFolder.LocalApplicationData);
-        SettingsPath = Path.Combine(applicationData, "SightAdapt", "settings.json");
+        var applicationData =
+            Environment.GetFolderPath(
+                Environment.SpecialFolder
+                    .LocalApplicationData);
+        SettingsPath = Path.Combine(
+            applicationData,
+            "SightAdapt",
+            "settings.json");
     }
 
     public string SettingsPath { get; }
@@ -43,27 +51,38 @@ internal sealed class SettingsStore
 
         try
         {
-            using var stream = File.OpenRead(SettingsPath);
-            var settings = JsonSerializer.Deserialize<SightAdaptSettings>(
-                stream,
-                _serializerOptions) ?? new SightAdaptSettings();
+            using var stream =
+                File.OpenRead(SettingsPath);
+            var settings =
+                JsonSerializer
+                    .Deserialize<SightAdaptSettings>(
+                        stream,
+                        _serializerOptions) ??
+                new SightAdaptSettings();
 
-            SettingsWereMigrated = Normalize(settings);
+            SettingsWereMigrated =
+                Normalize(settings);
             return settings;
         }
         catch (JsonException exception)
         {
-            LastLoadWarning = $"The settings file is invalid and was ignored: {exception.Message}";
+            LastLoadWarning =
+                "The settings file is invalid and " +
+                $"was ignored: {exception.Message}";
             return new SightAdaptSettings();
         }
         catch (IOException exception)
         {
-            LastLoadWarning = $"The settings file could not be read: {exception.Message}";
+            LastLoadWarning =
+                "The settings file could not be read: " +
+                exception.Message;
             return new SightAdaptSettings();
         }
         catch (UnauthorizedAccessException exception)
         {
-            LastLoadWarning = $"The settings file could not be accessed: {exception.Message}";
+            LastLoadWarning =
+                "The settings file could not be accessed: " +
+                exception.Message;
             return new SightAdaptSettings();
         }
     }
@@ -74,17 +93,29 @@ internal sealed class SettingsStore
 
         Normalize(settings);
 
-        var directory = Path.GetDirectoryName(SettingsPath)
-            ?? throw new InvalidOperationException("The settings directory could not be resolved.");
+        var directory =
+            Path.GetDirectoryName(SettingsPath) ??
+            throw new InvalidOperationException(
+                "The settings directory could not be resolved.");
         Directory.CreateDirectory(directory);
 
-        var temporaryPath = SettingsPath + ".tmp";
+        var temporaryPath =
+            SettingsPath + ".tmp";
 
         try
         {
-            var json = JsonSerializer.Serialize(settings, _serializerOptions);
-            File.WriteAllText(temporaryPath, json, new UTF8Encoding(false));
-            File.Move(temporaryPath, SettingsPath, true);
+            var json =
+                JsonSerializer.Serialize(
+                    settings,
+                    _serializerOptions);
+            File.WriteAllText(
+                temporaryPath,
+                json,
+                new UTF8Encoding(false));
+            File.Move(
+                temporaryPath,
+                SettingsPath,
+                true);
         }
         finally
         {
@@ -95,17 +126,20 @@ internal sealed class SettingsStore
         }
     }
 
-    internal static bool Normalize(SightAdaptSettings settings)
+    internal static bool Normalize(
+        SightAdaptSettings settings)
     {
         ArgumentNullException.ThrowIfNull(settings);
 
         var schemaChanged =
-            settings.SchemaVersion != SightAdaptSettings.CurrentSchemaVersion;
-        settings.SchemaVersion = SightAdaptSettings.CurrentSchemaVersion;
-        settings.VisualProfiles ??= [];
-        settings.Applications ??= [];
+            settings.SchemaVersion !=
+            SightAdaptSettings.CurrentSchemaVersion;
+        settings.SchemaVersion =
+            SightAdaptSettings.CurrentSchemaVersion;
+        settings.EnsureCollections();
 
-        var context = new SettingsNormalizationContext(settings);
+        var context =
+            new SettingsNormalizationContext(settings);
         CanonicalizeBuiltInProfiles(context);
         NormalizeCustomProfiles(context);
         NormalizeApplications(context);
@@ -121,13 +155,16 @@ internal sealed class SettingsStore
         var exactInvert = TakeProfile(
             context.RemainingProfiles,
             VisualProfile.DefaultInvertId);
+
         if (exactInvert is null)
         {
-            exactInvert = VisualProfile.CreateDefaultInvert();
+            exactInvert =
+                VisualProfile.CreateDefaultInvert();
             context.MarkChanged();
         }
 
-        if (VisualProfileDefaults.CanonicalizeExactInvert(exactInvert))
+        if (VisualProfileDefaults
+            .CanonicalizeExactInvert(exactInvert))
         {
             context.MarkChanged();
         }
@@ -137,13 +174,16 @@ internal sealed class SettingsStore
         var softInvert = TakeProfile(
             context.RemainingProfiles,
             VisualProfile.DefaultSoftInvertId);
+
         if (softInvert is null)
         {
-            softInvert = VisualProfile.CreateDefaultSoftInvert();
+            softInvert =
+                VisualProfile.CreateDefaultSoftInvert();
             context.MarkChanged();
         }
 
-        if (VisualProfileDefaults.CanonicalizeSoftInvert(softInvert))
+        if (VisualProfileDefaults
+            .CanonicalizeSoftInvert(softInvert))
         {
             context.MarkChanged();
         }
@@ -154,12 +194,18 @@ internal sealed class SettingsStore
     private static void NormalizeCustomProfiles(
         SettingsNormalizationContext context)
     {
-        foreach (var profile in context.RemainingProfiles)
+        foreach (var profile in
+                 context.RemainingProfiles)
         {
-            NormalizeCustomProfileIdentity(context, profile);
-            NormalizeCustomProfileName(context, profile);
+            NormalizeCustomProfileIdentity(
+                context,
+                profile);
+            NormalizeCustomProfileName(
+                context,
+                profile);
 
-            if (VisualProfileDefaults.NormalizeTuningForTransform(profile))
+            if (VisualProfileDefaults
+                .NormalizeTuningForTransform(profile))
             {
                 context.MarkChanged();
             }
@@ -172,28 +218,43 @@ internal sealed class SettingsStore
         SettingsNormalizationContext context,
         VisualProfile profile)
     {
-        var normalizedId = (profile.Id ?? string.Empty).Trim();
-        if (string.IsNullOrWhiteSpace(normalizedId) ||
-            VisualProfilePolicy.IsBuiltInId(normalizedId) ||
-            context.ProfileIds.Contains(normalizedId))
+        var normalizedId =
+            (profile.Id ?? string.Empty).Trim();
+
+        if (string.IsNullOrWhiteSpace(
+                normalizedId) ||
+            VisualProfilePolicy.IsBuiltInId(
+                normalizedId) ||
+            context.ProfileIds.Contains(
+                normalizedId))
         {
-            normalizedId = VisualProfilePolicy.CreateUserProfileId(
-                context.ProfileIds);
+            normalizedId =
+                VisualProfilePolicy
+                    .CreateUserProfileId(
+                        context.ProfileIds);
             context.MarkChanged();
         }
 
-        if (!string.Equals(profile.Id, normalizedId, StringComparison.Ordinal))
+        if (!string.Equals(
+                profile.Id,
+                normalizedId,
+                StringComparison.Ordinal))
         {
             profile.Id = normalizedId;
             context.MarkChanged();
         }
 
-        var normalizedTransformId = (profile.TransformId ?? string.Empty)
-            .Trim()
-            .ToLowerInvariant();
-        if (!VisualProfilePolicy.IsSupportedTransformId(normalizedTransformId))
+        var normalizedTransformId =
+            (profile.TransformId ?? string.Empty)
+                .Trim()
+                .ToLowerInvariant();
+
+        if (!VisualProfilePolicy
+            .IsSupportedTransformId(
+                normalizedTransformId))
         {
-            normalizedTransformId = SoftInvertVisualTransform.TransformId;
+            normalizedTransformId =
+                SoftInvertVisualTransform.TransformId;
             context.MarkChanged();
         }
 
@@ -202,7 +263,8 @@ internal sealed class SettingsStore
                 normalizedTransformId,
                 StringComparison.Ordinal))
         {
-            profile.TransformId = normalizedTransformId;
+            profile.TransformId =
+                normalizedTransformId;
             context.MarkChanged();
         }
     }
@@ -211,22 +273,31 @@ internal sealed class SettingsStore
         SettingsNormalizationContext context,
         VisualProfile profile)
     {
-        var normalizedName = VisualProfilePolicy.NormalizeNameOrFallback(
-            profile.Name,
-            "Custom Soft Invert");
+        var normalizedName =
+            VisualProfilePolicy
+                .NormalizeNameOrFallback(
+                    profile.Name,
+                    VisualProfilePolicy
+                        .CustomProfileBaseName);
 
-        if (context.Profiles.Any(candidate => string.Equals(
-                candidate.Name,
-                normalizedName,
-                StringComparison.OrdinalIgnoreCase)))
+        if (context.Profiles.Any(
+                candidate => string.Equals(
+                    candidate.Name,
+                    normalizedName,
+                    StringComparison.OrdinalIgnoreCase)))
         {
-            normalizedName = VisualProfilePolicy.CreateUniqueName(
-                context.Profiles,
-                normalizedName);
+            normalizedName =
+                VisualProfilePolicy
+                    .CreateUniqueName(
+                        context.Profiles,
+                        normalizedName);
             context.MarkChanged();
         }
 
-        if (!string.Equals(profile.Name, normalizedName, StringComparison.Ordinal))
+        if (!string.Equals(
+                profile.Name,
+                normalizedName,
+                StringComparison.Ordinal))
         {
             profile.Name = normalizedName;
             context.MarkChanged();
@@ -236,39 +307,52 @@ internal sealed class SettingsStore
     private static void NormalizeApplications(
         SettingsNormalizationContext context)
     {
-        foreach (var application in context.SourceApplications)
+        foreach (var application in
+                 context.SourceApplications)
         {
-            if (NormalizeApplicationStrings(application))
+            if (NormalizeApplicationStrings(
+                application))
             {
                 context.MarkChanged();
             }
 
-            MigrateLegacyEffect(context, application);
+            MigrateLegacyEffect(
+                context,
+                application);
 
-            if (string.IsNullOrWhiteSpace(application.ExecutablePath))
+            if (string.IsNullOrWhiteSpace(
+                    application.ExecutablePath))
             {
                 context.MarkChanged();
                 continue;
             }
 
-            if (string.IsNullOrWhiteSpace(application.ExecutableName))
+            if (string.IsNullOrWhiteSpace(
+                    application.ExecutableName))
             {
                 application.ExecutableName =
-                    Path.GetFileName(application.ExecutablePath) ?? string.Empty;
+                    Path.GetFileName(
+                        application.ExecutablePath) ??
+                    string.Empty;
                 context.MarkChanged();
             }
 
-            if (string.IsNullOrWhiteSpace(application.ExecutableName) ||
-                !context.ExecutablePaths.Add(application.ExecutablePath))
+            if (string.IsNullOrWhiteSpace(
+                    application.ExecutableName) ||
+                !context.ExecutablePaths.Add(
+                    application.ExecutablePath))
             {
                 context.MarkChanged();
                 continue;
             }
 
-            if (string.IsNullOrWhiteSpace(application.DisplayName))
+            if (string.IsNullOrWhiteSpace(
+                    application.DisplayName))
             {
-                application.DisplayName = Path.GetFileNameWithoutExtension(
-                    application.ExecutableName) ?? string.Empty;
+                application.DisplayName =
+                    Path.GetFileNameWithoutExtension(
+                        application.ExecutableName) ??
+                    string.Empty;
                 context.MarkChanged();
             }
 
@@ -279,16 +363,20 @@ internal sealed class SettingsStore
     private static void RepairProfileReferences(
         SettingsNormalizationContext context)
     {
-        foreach (var application in context.Applications)
+        foreach (var application in
+                 context.Applications)
         {
-            if (!string.IsNullOrWhiteSpace(application.VisualProfileId) &&
-                context.ProfileIds.Contains(application.VisualProfileId))
+            if (!string.IsNullOrWhiteSpace(
+                    application.VisualProfileId) &&
+                context.ProfileIds.Contains(
+                    application.VisualProfileId))
             {
                 continue;
             }
 
             application.VisualProfileId =
-                VisualProfilePolicy.MissingReferenceFallbackProfileId;
+                VisualProfilePolicy
+                    .MissingReferenceFallbackProfileId;
             context.MarkChanged();
         }
     }
@@ -297,9 +385,11 @@ internal sealed class SettingsStore
         SettingsNormalizationContext context,
         ApplicationProfile application)
     {
-        if (!string.IsNullOrWhiteSpace(application.LegacyEffect))
+        if (!string.IsNullOrWhiteSpace(
+                application.LegacyEffect))
         {
-            application.VisualProfileId = VisualProfile.DefaultInvertId;
+            application.VisualProfileId =
+                VisualProfile.DefaultInvertId;
             application.LegacyEffect = null;
             context.MarkChanged();
         }
@@ -314,10 +404,11 @@ internal sealed class SettingsStore
         List<VisualProfile> profiles,
         string profileId)
     {
-        var profile = profiles.FirstOrDefault(candidate => string.Equals(
-            candidate.Id,
-            profileId,
-            StringComparison.OrdinalIgnoreCase));
+        var profile = profiles.FirstOrDefault(
+            candidate => string.Equals(
+                candidate.Id,
+                profileId,
+                StringComparison.OrdinalIgnoreCase));
 
         if (profile is not null)
         {
@@ -330,10 +421,18 @@ internal sealed class SettingsStore
     private static bool NormalizeApplicationStrings(
         ApplicationProfile application)
     {
-        var displayName = (application.DisplayName ?? string.Empty).Trim();
-        var executableName = (application.ExecutableName ?? string.Empty).Trim();
-        var executablePath = (application.ExecutablePath ?? string.Empty).Trim();
-        var visualProfileId = (application.VisualProfileId ?? string.Empty).Trim();
+        var displayName =
+            (application.DisplayName ??
+             string.Empty).Trim();
+        var executableName =
+            (application.ExecutableName ??
+             string.Empty).Trim();
+        var executablePath =
+            (application.ExecutablePath ??
+             string.Empty).Trim();
+        var visualProfileId =
+            (application.VisualProfileId ??
+             string.Empty).Trim();
 
         var changed = !string.Equals(
                 application.DisplayName,
@@ -355,39 +454,53 @@ internal sealed class SettingsStore
         application.DisplayName = displayName;
         application.ExecutableName = executableName;
         application.ExecutablePath = executablePath;
-        application.VisualProfileId = visualProfileId;
+        application.VisualProfileId =
+            visualProfileId;
         return changed;
     }
 
     private sealed class SettingsNormalizationContext
     {
-        private readonly List<VisualProfile> _originalProfiles;
-        private readonly List<ApplicationProfile> _originalApplications;
+        private readonly List<VisualProfile>
+            _originalProfiles;
+        private readonly List<ApplicationProfile>
+            _originalApplications;
 
-        public SettingsNormalizationContext(SightAdaptSettings settings)
+        public SettingsNormalizationContext(
+            SightAdaptSettings settings)
         {
-            _originalProfiles = settings.VisualProfiles;
-            _originalApplications = settings.Applications;
-            RemainingProfiles = settings.VisualProfiles
-                .OfType<VisualProfile>()
-                .ToList();
-            SourceApplications = settings.Applications
-                .OfType<ApplicationProfile>()
-                .ToList();
+            _originalProfiles =
+                settings.VisualProfiles;
+            _originalApplications =
+                settings.Applications;
+            RemainingProfiles =
+                settings.VisualProfiles
+                    .OfType<VisualProfile>()
+                    .ToList();
+            SourceApplications =
+                settings.Applications
+                    .OfType<ApplicationProfile>()
+                    .ToList();
 
-            Changed = RemainingProfiles.Count != settings.VisualProfiles.Count ||
-                SourceApplications.Count != settings.Applications.Count;
+            Changed =
+                RemainingProfiles.Count !=
+                    settings.VisualProfiles.Count ||
+                SourceApplications.Count !=
+                    settings.Applications.Count;
         }
 
         public bool Changed { get; private set; }
 
-        public List<VisualProfile> RemainingProfiles { get; }
+        public List<VisualProfile>
+            RemainingProfiles { get; }
 
-        public List<ApplicationProfile> SourceApplications { get; }
+        public List<ApplicationProfile>
+            SourceApplications { get; }
 
         public List<VisualProfile> Profiles { get; } = [];
 
-        public List<ApplicationProfile> Applications { get; } = [];
+        public List<ApplicationProfile>
+            Applications { get; } = [];
 
         public HashSet<string> ProfileIds { get; } =
             new(StringComparer.OrdinalIgnoreCase);
@@ -395,7 +508,8 @@ internal sealed class SettingsStore
         public HashSet<string> ExecutablePaths { get; } =
             new(StringComparer.OrdinalIgnoreCase);
 
-        public void AddProfile(VisualProfile profile)
+        public void AddProfile(
+            VisualProfile profile)
         {
             Profiles.Add(profile);
             ProfileIds.Add(profile.Id);
@@ -406,10 +520,13 @@ internal sealed class SettingsStore
             Changed = true;
         }
 
-        public void Commit(SightAdaptSettings settings)
+        public void Commit(
+            SightAdaptSettings settings)
         {
-            if (!_originalProfiles.SequenceEqual(Profiles) ||
-                !_originalApplications.SequenceEqual(Applications))
+            if (!_originalProfiles
+                    .SequenceEqual(Profiles) ||
+                !_originalApplications
+                    .SequenceEqual(Applications))
             {
                 Changed = true;
             }
