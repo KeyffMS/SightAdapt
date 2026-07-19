@@ -74,21 +74,21 @@ internal sealed class VisualProfile
 
     public string Id { get; set; } = DefaultSoftInvertId;
 
-    public string Name { get; set; } = "Soft invert";
+    public string Name { get; set; } = VisualProfileDefaults.SoftInvertName;
 
     public string TransformId { get; set; } = SoftInvertVisualTransform.TransformId;
 
-    public float OutputBlack { get; set; } = 0.08f;
+    public float OutputBlack { get; set; } = VisualProfileDefaults.SoftOutputBlack;
 
-    public float OutputWhite { get; set; } = 0.92f;
+    public float OutputWhite { get; set; } = VisualProfileDefaults.SoftOutputWhite;
 
-    public float Brightness { get; set; }
+    public float Brightness { get; set; } = VisualProfileDefaults.SoftBrightness;
 
-    public float Contrast { get; set; } = 1.0f;
+    public float Contrast { get; set; } = VisualProfileDefaults.SoftContrast;
 
-    public float Saturation { get; set; } = 1.0f;
+    public float Saturation { get; set; } = VisualProfileDefaults.SoftSaturation;
 
-    public float HueShiftDegrees { get; set; }
+    public float HueShiftDegrees { get; set; } = VisualProfileDefaults.SoftHueShiftDegrees;
 
     [JsonIgnore]
     public bool SupportsTuning => string.Equals(
@@ -112,18 +112,6 @@ internal sealed class VisualProfile
         };
     }
 
-    public void CopyTuningFrom(VisualProfile source)
-    {
-        ArgumentNullException.ThrowIfNull(source);
-
-        OutputBlack = source.OutputBlack;
-        OutputWhite = source.OutputWhite;
-        Brightness = source.Brightness;
-        Contrast = source.Contrast;
-        Saturation = source.Saturation;
-        HueShiftDegrees = source.HueShiftDegrees;
-    }
-
     public override string ToString()
     {
         return string.IsNullOrWhiteSpace(Name) ? Id : Name;
@@ -131,30 +119,12 @@ internal sealed class VisualProfile
 
     public static VisualProfile CreateDefaultInvert()
     {
-        return new VisualProfile
-        {
-            Id = DefaultInvertId,
-            Name = "Exact invert",
-            TransformId = InvertVisualTransform.TransformId,
-            OutputBlack = 0.0f,
-            OutputWhite = 1.0f,
-        };
+        return VisualProfileDefaults.CreateExactInvert();
     }
 
     public static VisualProfile CreateDefaultSoftInvert()
     {
-        return new VisualProfile
-        {
-            Id = DefaultSoftInvertId,
-            Name = "Soft invert",
-            TransformId = SoftInvertVisualTransform.TransformId,
-            OutputBlack = 0.08f,
-            OutputWhite = 0.92f,
-            Brightness = 0.0f,
-            Contrast = 1.0f,
-            Saturation = 1.0f,
-            HueShiftDegrees = 0.0f,
-        };
+        return VisualProfileDefaults.CreateSoftInvert();
     }
 }
 
