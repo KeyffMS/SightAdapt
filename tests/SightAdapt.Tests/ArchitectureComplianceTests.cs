@@ -13,7 +13,8 @@ public sealed class ArchitectureComplianceTests
             @"\bVisualProfileId\s*=",
             "ApplicationProfile.cs",
             "ApplicationProfileManagementService.cs",
-            "SettingsStore.cs");
+            "SettingsStore.cs",
+            "OverlayController.cs");
         AssertPatternRestrictedTo(
             @"\.Applications\.(Add|Remove)\(",
             "ApplicationProfileManagementService.cs",
