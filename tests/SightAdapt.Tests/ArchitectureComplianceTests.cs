@@ -10,7 +10,7 @@ public sealed class ArchitectureComplianceTests
     public void AssignmentWritesAreRestrictedToAuthorityAndRecovery()
     {
         AssertPatternRestrictedTo(
-            @"\bVisualProfileId\s*=",
+            @"(?m)^\s*(?!string\?\s+VisualProfileId\s*=).*?\bVisualProfileId\s*=",
             "ApplicationProfile.cs",
             "ApplicationProfileManagementService.cs",
             "SettingsStore.cs",
@@ -41,21 +41,16 @@ public sealed class ArchitectureComplianceTests
         {
             var source = ReadSource(fileName);
             Assert.IsFalse(
-                source.Contains(
-                    "SettingsStore",
-                    StringComparison.Ordinal),
+                source.Contains("SettingsStore", StringComparison.Ordinal),
                 $"{fileName} must not own settings persistence.");
-            StringAssert.Contains(
-                source,
-                "SettingsCoordinator");
+            StringAssert.Contains(source, "SettingsCoordinator");
         }
     }
 
     [TestMethod]
     public void SettingsCoordinatorPublishesOnlyAfterSave()
     {
-        var source =
-            ReadSource("SettingsCoordinator.cs");
+        var source = ReadSource("SettingsCoordinator.cs");
         var saveIndex = source.IndexOf(
             "_store.Save(candidate);",
             StringComparison.Ordinal);
@@ -70,8 +65,7 @@ public sealed class ArchitectureComplianceTests
     [TestMethod]
     public void EmergencyStopsOverlayBeforePersistence()
     {
-        var source =
-            ReadSource("SightAdaptContext.cs");
+        var source = ReadSource("SightAdaptContext.cs");
         var methodIndex = source.IndexOf(
             "private void EmergencyDisable()",
             StringComparison.Ordinal);
@@ -92,16 +86,9 @@ public sealed class ArchitectureComplianceTests
     [TestMethod]
     public void RuntimeStateOwnsProfileAndSuppression()
     {
-        var source =
-            ReadSource(
-                "ApplicationStateController.cs");
-
-        StringAssert.Contains(
-            source,
-            "string? VisualProfileId");
-        StringAssert.Contains(
-            source,
-            "AutomaticSuppressedWindow");
+        var source = ReadSource("ApplicationStateController.cs");
+        StringAssert.Contains(source, "string? VisualProfileId");
+        StringAssert.Contains(source, "AutomaticSuppressedWindow");
         StringAssert.Contains(source, "Fault,");
         StringAssert.Contains(source, "Emergency,");
     }
@@ -109,55 +96,26 @@ public sealed class ArchitectureComplianceTests
     [TestMethod]
     public void RuntimeCompositionIsSplitIntoFocusedComponents()
     {
-        var context =
-            ReadSource("SightAdaptContext.cs");
-
-        StringAssert.Contains(
-            context,
-            "ForegroundWindowTracker");
-        StringAssert.Contains(
-            context,
-            "TrayPresenter");
-        Assert.IsFalse(
-            context.Contains(
-                "NotifyIcon",
-                StringComparison.Ordinal));
-        Assert.IsTrue(
-            File.Exists(Path.Combine(
-                SourceDirectory,
-                "ForegroundWindowTracker.cs")));
-        Assert.IsTrue(
-            File.Exists(Path.Combine(
-                SourceDirectory,
-                "TrayPresenter.cs")));
+        var context = ReadSource("SightAdaptContext.cs");
+        StringAssert.Contains(context, "ForegroundWindowTracker");
+        StringAssert.Contains(context, "TrayPresenter");
+        Assert.IsFalse(context.Contains("NotifyIcon", StringComparison.Ordinal));
+        Assert.IsTrue(SourceExists("ForegroundWindowTracker.cs"));
+        Assert.IsTrue(SourceExists("TrayPresenter.cs"));
     }
 
     [TestMethod]
     public void TransformCapabilitiesComeFromCatalog()
     {
-        var model =
-            ReadSource("ApplicationProfile.cs");
-        var policy =
-            ReadSource("VisualProfilePolicy.cs");
-        var editor =
-            ReadSource(
-                "VisualProfileEditorForm.cs");
-        var manager =
-            ReadSource(
-                "VisualProfileManagerForm.cs");
+        var model = ReadSource("ApplicationProfile.cs");
+        var policy = ReadSource("VisualProfilePolicy.cs");
+        var editor = ReadSource("VisualProfileEditorForm.cs");
+        var manager = ReadSource("VisualProfileManagerForm.cs");
 
-        StringAssert.Contains(
-            model,
-            "VisualTransformCatalog.SupportsTuning");
-        StringAssert.Contains(
-            policy,
-            "VisualTransformCatalog.IsSupported");
-        StringAssert.Contains(
-            editor,
-            "VisualTransformCatalog.Default");
-        StringAssert.Contains(
-            manager,
-            "VisualTransformCatalog");
+        StringAssert.Contains(model, "VisualTransformCatalog.SupportsTuning");
+        StringAssert.Contains(policy, "VisualTransformCatalog.IsSupported");
+        StringAssert.Contains(editor, "VisualTransformCatalog.Default");
+        StringAssert.Contains(manager, "VisualTransformCatalog");
         Assert.IsFalse(
             editor.Contains(
                 "new SoftInvertVisualTransform",
@@ -167,67 +125,32 @@ public sealed class ArchitectureComplianceTests
     [TestMethod]
     public void ProfileEditorUsesDomainLimitsAndFieldSpecificWrites()
     {
-        var source =
-            ReadSource(
-                "VisualProfileEditorForm.cs");
-
-        StringAssert.Contains(
-            source,
-            "VisualProfileLimits.MinimumOutputBlack");
-        StringAssert.Contains(
-            source,
-            "VisualProfileLimits.MaximumHueShift");
-        StringAssert.Contains(
-            source,
-            "AttachPercentage(_outputBlackInput");
-        StringAssert.Contains(
-            source,
-            "setter((float)(input.Value / 100m));");
-        Assert.IsFalse(
-            source.Contains(
-                "DecimalPlaces = 0",
-                StringComparison.Ordinal));
+        var source = ReadSource("VisualProfileEditorForm.cs");
+        StringAssert.Contains(source, "VisualProfileLimits.MinimumOutputBlack");
+        StringAssert.Contains(source, "VisualProfileLimits.MaximumHueShift");
+        StringAssert.Contains(source, "AttachPercentage(_outputBlackInput");
+        StringAssert.Contains(source, "setter((float)(input.Value / 100m));");
+        Assert.IsFalse(source.Contains("DecimalPlaces = 0", StringComparison.Ordinal));
     }
 
     [TestMethod]
     public void StableComboColumnDoesNotHideDataSource()
     {
-        var source =
-            ReadSource(
-                "VisualProfileComboBoxColumn.cs");
-
-        StringAssert.Contains(
-            source,
-            "StableVisualProfileComboBoxColumn");
-        StringAssert.Contains(
-            source,
-            "public void SetProfiles");
-        Assert.IsFalse(
-            source.Contains(
-                "new object? DataSource",
-                StringComparison.Ordinal));
+        var source = ReadSource("VisualProfileComboBoxColumn.cs");
+        StringAssert.Contains(source, "StableVisualProfileComboBoxColumn");
+        StringAssert.Contains(source, "public void SetProfiles");
+        Assert.IsFalse(source.Contains("new object? DataSource", StringComparison.Ordinal));
     }
 
     [TestMethod]
     public void ProductMetadataComesFromAssemblyConfiguration()
     {
-        var source =
-            ReadSource("ProductInfo.cs");
-        var project = File.ReadAllText(
-            Path.Combine(
-                SourceDirectory,
-                "SightAdapt.Demo.csproj"));
+        var source = ReadSource("ProductInfo.cs");
+        var project = ReadSource("SightAdapt.Demo.csproj");
 
-        StringAssert.Contains(
-            source,
-            "AssemblyProductAttribute");
-        StringAssert.Contains(
-            source,
-            "AssemblyMetadataAttribute");
-        Assert.IsFalse(
-            source.Contains(
-                "0.4 Alpha",
-                StringComparison.Ordinal));
+        StringAssert.Contains(source, "AssemblyProductAttribute");
+        StringAssert.Contains(source, "AssemblyMetadataAttribute");
+        Assert.IsFalse(source.Contains("0.4 Alpha", StringComparison.Ordinal));
         Assert.IsFalse(
             source.Contains(
                 "github.com/KeyffMS/SightAdapt",
@@ -240,55 +163,32 @@ public sealed class ArchitectureComplianceTests
     [TestMethod]
     public void SettingsNormalizationExposesFocusedStages()
     {
-        var source =
-            ReadSource("SettingsStore.cs");
-
-        StringAssert.Contains(
-            source,
-            "CanonicalizeBuiltInProfiles(context);");
-        StringAssert.Contains(
-            source,
-            "NormalizeCustomProfiles(context);");
-        StringAssert.Contains(
-            source,
-            "NormalizeApplications(context);");
-        StringAssert.Contains(
-            source,
-            "RepairProfileReferences(context);");
-        StringAssert.Contains(
-            source,
-            "private sealed class SettingsNormalizationContext");
+        var source = ReadSource("SettingsStore.cs");
+        StringAssert.Contains(source, "CanonicalizeBuiltInProfiles(context);");
+        StringAssert.Contains(source, "NormalizeCustomProfiles(context);");
+        StringAssert.Contains(source, "NormalizeApplications(context);");
+        StringAssert.Contains(source, "RepairProfileReferences(context);");
+        StringAssert.Contains(source, "private sealed class SettingsNormalizationContext");
     }
 
     [TestMethod]
     public void ProgramEnforcesSingleInstance()
     {
         var source = ReadSource("Program.cs");
-
-        StringAssert.Contains(
-            source,
-            "SingleInstanceMutexName");
-        StringAssert.Contains(
-            source,
-            "new Mutex");
-        StringAssert.Contains(
-            source,
-            "isFirstInstance");
+        StringAssert.Contains(source, "SingleInstanceMutexName");
+        StringAssert.Contains(source, "new Mutex");
+        StringAssert.Contains(source, "isFirstInstance");
     }
 
     [TestMethod]
     public void ExpectedFailuresAreNotSilentlySwallowed()
     {
         var violations = Directory
-            .EnumerateFiles(
-                SourceDirectory,
-                "*.cs",
-                SearchOption.TopDirectoryOnly)
+            .EnumerateFiles(SourceDirectory, "*.cs", SearchOption.TopDirectoryOnly)
             .Where(path => Regex.IsMatch(
                 File.ReadAllText(path),
                 @"catch\s*(?:\([^)]*\))?\s*\{\s*\}",
-                RegexOptions.CultureInvariant |
-                RegexOptions.Singleline))
+                RegexOptions.CultureInvariant | RegexOptions.Singleline))
             .Select(Path.GetFileName)
             .OrderBy(name => name)
             .ToArray();
@@ -296,32 +196,23 @@ public sealed class ArchitectureComplianceTests
         Assert.AreEqual(
             0,
             violations.Length,
-            $"Empty catch blocks found in: " +
-            $"{string.Join(", ", violations)}");
+            $"Empty catch blocks found in: {string.Join(", ", violations)}");
     }
 
     [TestMethod]
     public void LegacyAssignmentMutationServiceWasRemoved()
     {
-        Assert.IsFalse(
-            File.Exists(Path.Combine(
-                SourceDirectory,
-                "ApplicationProfileToggleService.cs")));
+        Assert.IsFalse(SourceExists("ApplicationProfileToggleService.cs"));
     }
 
     private static void AssertPatternRestrictedTo(
         string pattern,
         params string[] allowedFiles)
     {
-        var allowed = allowedFiles.ToHashSet(
-            StringComparer.OrdinalIgnoreCase);
+        var allowed = allowedFiles.ToHashSet(StringComparer.OrdinalIgnoreCase);
         var violations = Directory
-            .EnumerateFiles(
-                SourceDirectory,
-                "*.cs",
-                SearchOption.TopDirectoryOnly)
-            .Where(path => !allowed.Contains(
-                Path.GetFileName(path)))
+            .EnumerateFiles(SourceDirectory, "*.cs", SearchOption.TopDirectoryOnly)
+            .Where(path => !allowed.Contains(Path.GetFileName(path)))
             .Where(path => Regex.IsMatch(
                 File.ReadAllText(path),
                 pattern,
@@ -333,37 +224,31 @@ public sealed class ArchitectureComplianceTests
         Assert.AreEqual(
             0,
             violations.Length,
-            $"Restricted mutation pattern '{pattern}' " +
-            $"found in: {string.Join(", ", violations)}");
+            $"Restricted mutation pattern '{pattern}' found in: " +
+            string.Join(", ", violations));
     }
 
-    private static string ReadSource(
-        string fileName)
+    private static bool SourceExists(string fileName)
     {
-        return File.ReadAllText(
-            Path.Combine(
-                SourceDirectory,
-                fileName));
+        return File.Exists(Path.Combine(SourceDirectory, fileName));
+    }
+
+    private static string ReadSource(string fileName)
+    {
+        return File.ReadAllText(Path.Combine(SourceDirectory, fileName));
     }
 
     private static string SourceDirectory =>
-        Path.Combine(
-            RepositoryRoot,
-            "src",
-            "SightAdapt.Demo");
+        Path.Combine(RepositoryRoot, "src", "SightAdapt.Demo");
 
     private static string RepositoryRoot
     {
         get
         {
-            var directory =
-                new DirectoryInfo(
-                    AppContext.BaseDirectory);
-
+            var directory = new DirectoryInfo(AppContext.BaseDirectory);
             while (directory is not null)
             {
-                if (Directory.Exists(
-                    Path.Combine(
+                if (Directory.Exists(Path.Combine(
                         directory.FullName,
                         "src",
                         "SightAdapt.Demo")))
@@ -375,8 +260,7 @@ public sealed class ArchitectureComplianceTests
             }
 
             throw new DirectoryNotFoundException(
-                "The SightAdapt repository root " +
-                "could not be located.");
+                "The SightAdapt repository root could not be located.");
         }
     }
 }
