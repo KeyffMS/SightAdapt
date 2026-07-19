@@ -7,7 +7,7 @@ on:
     branches: [main, "agent/**"]
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   build:
@@ -16,83 +16,6 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
-
-      - name: Integrate 0.4A.2 profile manager
-        if: github.event_name == 'push' && github.ref == 'refs/heads/agent/alpha-v0.4'
-        shell: pwsh
-        run: |
-          $path = "src/SightAdapt.Demo/ConfigurationForm.cs"
-          $text = Get-Content -Path $path -Raw
-
-          if ($text -notmatch "ManageVisualProfiles") {
-            $text = $text.Replace(
-              '            Text = "Assign visual correction profiles and tune Soft Invert output for each Windows application.",',
-              '            Text = "Assign and manage independent visual correction profiles for each Windows application.",')
-
-            $browseBlock = @'
-                  browseButton.Click += (_, _) => BrowseForApplication();
-
-                  var removeButton = new ModernButton
-          '@
-            $manageBlock = @'
-                  browseButton.Click += (_, _) => BrowseForApplication();
-
-                  var manageProfilesButton = new ModernButton
-                  {
-                      Text = "Manage profiles",
-                      VisualStyle = ModernButtonStyle.Secondary,
-                      MinimumSize = new Size(145, 40),
-                      Margin = new Padding(0, 0, 8, 0),
-                  };
-                  manageProfilesButton.Click += (_, _) => ManageVisualProfiles();
-
-                  var removeButton = new ModernButton
-          '@
-            $text = $text.Replace($browseBlock.Trim(), $manageBlock.Trim())
-
-            $controlsBlock = @'
-                      addCurrentButton,
-                      browseButton,
-                      _editVisualProfileButton,
-          '@
-            $controlsReplacement = @'
-                      addCurrentButton,
-                      browseButton,
-                      manageProfilesButton,
-                      _editVisualProfileButton,
-          '@
-            $text = $text.Replace($controlsBlock.Trim(), $controlsReplacement.Trim())
-
-            $methodAnchor = @'
-              private ApplicationProfile? GetSelectedApplicationProfile()
-              {
-          '@
-            $method = @'
-              private void ManageVisualProfiles()
-              {
-                  VisualProfileManagerForm.ShowManager(
-                      this,
-                      _settings,
-                      _settingsChanged);
-                  RefreshProfiles();
-              }
-
-              private ApplicationProfile? GetSelectedApplicationProfile()
-              {
-          '@
-            $text = $text.Replace($methodAnchor.Trim(), $method.Trim())
-
-            if ($text -notmatch "manageProfilesButton" -or $text -notmatch "private void ManageVisualProfiles") {
-              throw "ConfigurationForm integration failed."
-            }
-
-            Set-Content -Path $path -Value $text -Encoding utf8 -NoNewline
-            git config user.name "SightAdapt automation"
-            git config user.email "actions@users.noreply.github.com"
-            git add $path
-            git commit -m "Integrate user visual profile manager [0.4A.2 UI]"
-            git push origin HEAD:agent/alpha-v0.4
-          }
 
       - name: Set up .NET
         uses: actions/setup-dotnet@v4
