@@ -2,17 +2,17 @@
 
 ## Purpose
 
-SightAdapt 0.4 Alpha introduces configurable visual color profiles for individual Windows applications. The 0.4A sequence completes profile behavior, lifecycle reliability, and interface quality before palette analysis begins.
+SightAdapt 0.4 Alpha introduces configurable visual color profiles for individual Windows applications. The 0.4A sequence completes profile behavior, lifecycle reliability, architectural consistency, and interface quality before palette analysis begins.
 
 ## Engineering principles
 
 Development follows:
 
 - **KISS** — use the smallest design that satisfies the current increment;
-- **DRY** — keep each rule and mutation in one implementation;
+- **DRY** — keep each product rule, default, and mutation in one implementation;
 - **Clean Code** — use explicit names, focused responsibilities, deterministic behavior, and testable boundaries;
 - **Single Point of Authority** — one component owns each state-changing operation;
-- **Single Point of Truth** — one authoritative source defines profile policy, settings, application state, and product metadata;
+- **Single Point of Truth** — one authoritative source defines profile policy, defaults, settings, runtime state, and product metadata;
 - no dependency-injection framework or speculative abstraction without a concrete requirement;
 - emergency shutdown and input transparency remain higher priorities than feature count.
 
@@ -22,8 +22,11 @@ Development follows:
 |---|---|
 | Runtime application state | `ApplicationStateController` |
 | Overlay lifetime | `OverlayController` |
-| Profile lifecycle mutations | `VisualProfileManagementService` |
-| Default IDs, fallback rules, names, and transform policy | `VisualProfilePolicy` |
+| Visual-profile lifecycle and tuning | `VisualProfileManagementService` |
+| Application assignment mutations | `ApplicationProfileManagementService` after `0.4A.3.001` |
+| Persisted automatic-mode mutation | Dedicated authority after `0.4A.3.003` |
+| Default IDs, fallback rules, names, transforms, and user IDs | `VisualProfilePolicy` |
+| Canonical profile values | Central defaults introduced in `0.4A.3.004` |
 | Persisted profile definitions and assignments | `SightAdaptSettings` |
 | Settings recovery and migration | `SettingsStore.Normalize` |
 | Product metadata | `ProductInfo` |
@@ -32,104 +35,162 @@ Development follows:
 
 ### 0.4A.1 — built-in profiles and Soft Invert editor
 
-**Status: implemented and manually validated.**
+**Status: complete and manually validated.**
 
 Delivered:
 
 - built-in `Exact invert` and `Soft invert` profiles;
-- configurable output black and output white;
-- brightness, contrast, saturation, and hue shift;
+- configurable output black, output white, brightness, contrast, saturation, and hue shift;
 - application-to-profile assignment;
 - grayscale and hue-spectrum preview;
 - schema migration and atomic persistence;
-- immediate refresh of an active overlay;
+- active-overlay refresh without recreation;
 - stable, unbound WinForms profile selector.
 
 ### 0.4A.2 — user-defined profiles per application
 
-**Status: implemented and manually validated.**
+**Status: complete and manually validated.**
 
 Delivered:
 
-- create profiles from Soft Invert defaults;
-- duplicate editable profiles with independent tuning;
-- rename and delete user-defined profiles;
-- protect built-in profiles from rename and deletion;
-- display application assignment counts;
-- reassign affected applications to built-in `Soft invert` before deletion;
-- validate required, unique, case-insensitive names;
-- generate stable `user-<guid>` identifiers;
-- persist multiple independent profiles and assignments;
-- provide a dedicated visual-profile manager.
+- create, duplicate, rename, edit, and delete user-defined profiles;
+- independent tuning for different applications;
+- protected built-in profiles;
+- assignment counts and confirmed deletion;
+- fallback reassignment to built-in `Soft invert`;
+- required, unique, case-insensitive names;
+- stable `user-<guid>` identifiers;
+- dedicated visual-profile manager;
+- persistence of multiple profiles and assignments.
 
-### 0.4A.3 — profile lifecycle hardening and regression
+### 0.4A.3 — lifecycle hardening and architectural completion
 
-**Status: implemented and ready for manual regression acceptance.**
+**Functional baseline: complete and manually validated.**
 
-Delivered:
+Delivered baseline:
 
-- central `VisualProfilePolicy` for new assignments, deletion fallback, missing-reference fallback, supported transforms, built-in IDs, user IDs, and name limits;
-- one lifecycle mutation authority for create, duplicate, rename, delete, assignment counting, and reassignment;
-- canonical recovery of built-in `Exact invert` and `Soft invert` definitions;
-- safe handling of `null` values and `null` collection entries from manually edited JSON;
-- preservation of recoverable custom profiles by generating replacement IDs instead of deleting them;
-- deterministic repair of duplicate IDs and duplicate names;
-- recovery of unknown transforms to `Soft invert`;
-- recovery of missing executable metadata from the executable path;
-- explicit fallback for deleted or missing profile references;
-- idempotent normalization after recovery;
-- multiple-profile persistence round trips;
-- repeated create, duplicate, rename, delete, and reassignment regression tests;
-- emergency-state protection against automatic reactivation;
-- explicit manual activation as the only direct emergency override;
-- 43 automated tests passing with zero warnings and zero errors.
+- central profile policy;
+- malformed and nullable settings recovery;
+- duplicate ID and name repair;
+- unknown-transform recovery;
+- canonical built-in restoration;
+- missing-reference fallback;
+- idempotent normalization;
+- repeated lifecycle and persistence regression;
+- emergency protection against automatic reactivation;
+- 43 automated tests with zero warnings and zero errors.
 
-Manual acceptance focus:
+The remaining architectural closure is divided into seven numbered subincrements.
 
-1. restart with existing 0.3, 0.4A.1, and 0.4A.2 settings;
-2. create, duplicate, rename, edit, assign, and delete profiles repeatedly;
-3. verify separate tuning for multiple applications;
-4. verify local toggle with enabled and disabled assignments;
-5. verify persistent assignment toggle preserves a valid custom profile;
-6. verify automatic mode changes between configured and unconfigured applications;
-7. verify emergency shutdown removes the overlay and blocks automatic reactivation;
-8. verify a later explicit manual toggle can resume correction;
-9. verify restart persistence after all lifecycle operations;
-10. verify no WinForms exceptions during repeated profile selection and refresh.
+#### 0.4A.3.001 — application-assignment mutation authority
+
+**Status: next.**
+
+- create `ApplicationProfileManagementService`;
+- centralize add, remove, assign, enable, disable, and toggle operations;
+- absorb or replace `ApplicationProfileToggleService`;
+- remove direct assignment mutations from forms and context code;
+- validate referenced profiles before assignment.
+
+#### 0.4A.3.002 — visual-profile tuning authority
+
+**Status: planned.**
+
+- add `VisualProfileManagementService.UpdateTuning`;
+- validate ownership, editability, and tuning values;
+- stop the editor from directly mutating persisted profiles;
+- preserve save and cancel behavior.
+
+#### 0.4A.3.003 — persisted-mode authority and UI mutation cleanup
+
+**Status: planned.**
+
+- centralize persisted `AutomaticMode` changes;
+- route tray, shortcuts, configuration UI, and emergency shutdown through one authority;
+- audit direct writes to persisted domain state;
+- leave forms as intent collection and presentation only.
+
+#### 0.4A.3.004 — canonical visual-profile defaults
+
+**Status: planned.**
+
+- create one source for canonical Exact Invert and Soft Invert values;
+- use it in factories, normalization, renderer fallbacks, editor reset, and tests;
+- remove duplicated product-default literals;
+- prevent factories and recovery logic from drifting apart.
+
+#### 0.4A.3.005 — focused settings normalization stages
+
+**Status: planned.**
+
+Keep `SettingsStore.Normalize` as the public authority and divide its implementation into:
+
+```text
+CanonicalizeBuiltInProfiles
+NormalizeCustomProfiles
+NormalizeApplications
+RepairProfileReferences
+```
+
+No generic rule engine, framework, or speculative pipeline is planned.
+
+#### 0.4A.3.006 — architectural enforcement and regression
+
+**Status: planned.**
+
+- test every assignment, tuning, and automatic-mode mutation authority;
+- test detached, missing, and protected entities;
+- test persistence after every mutation category;
+- add a lightweight source-level audit for prohibited direct writes;
+- preserve warnings-as-errors and full Windows x64 publishing.
+
+#### 0.4A.3.007 — final 10/10 architecture audit
+
+**Status: planned.**
+
+The closing report must provide objective evidence that:
+
+- KISS has no speculative framework or unnecessary abstraction;
+- DRY has one implementation for every rule, default, and mutation;
+- Clean Code has focused methods, explicit names, and deterministic errors;
+- SPoA has one owner for every mutation category;
+- SPoT has one source for persisted data, defaults, policy, runtime state, and product metadata;
+- CI and manual regression pass;
+- no known 0.4A architectural violation remains.
 
 ### 0.4A.4 — interface corrections
 
-**Status: next planned increment.**
+**Status: planned after `0.4A.3.007`.**
 
 This stage improves interface quality without changing color-processing semantics.
 
 Scope:
 
 - correct clipping, alignment, spacing, and inconsistent control sizing;
-- stabilize table columns, profile selectors, selected rows, and edit states;
-- ensure readable labels and values at 100%, 125%, 150%, 175%, and 200% DPI;
-- verify resizing, minimum window sizes, and multi-monitor movement;
-- correct button hierarchy, enabled/disabled states, and destructive-action placement;
-- improve keyboard navigation, tab order, focus indicators, and default/cancel actions;
-- add or correct accessible names, descriptions, and text alternatives;
-- make validation, confirmation, empty-state, and error messages consistent;
-- preserve the dark theme across normal, hover, selected, disabled, and error states;
-- verify that no interface refresh occurs inside an active combo-box commit;
-- complete a manual visual-regression checklist before starting 0.4B.
+- stabilize tables, selectors, selected rows, and edit states;
+- verify 100%, 125%, 150%, 175%, and 200% DPI;
+- verify resizing, minimum sizes, and multi-monitor movement;
+- correct button hierarchy and destructive-action placement;
+- improve keyboard navigation, focus, default, and cancel actions;
+- complete accessible names, descriptions, and text alternatives;
+- standardize validation, confirmation, empty-state, and error messages;
+- preserve the dark theme across all interaction states;
+- confirm that UI refresh never occurs inside an active combo-box commit;
+- complete manual visual regression before 0.4B.
 
 Acceptance criteria:
 
-1. profile names remain readable before and after repeated changes;
+1. profile names remain readable after repeated changes;
 2. changing a profile never raises an unhandled WinForms exception;
 3. controls remain usable and unclipped at supported DPI scales;
-4. all primary workflows are usable with keyboard only;
+4. primary workflows are usable with keyboard only;
 5. destructive actions require clear confirmation;
-6. selected application and profile state remain predictable after refresh;
-7. interface corrections do not change transformation semantics or stored values.
+6. selected application and profile remain predictable after refresh;
+7. interface corrections do not change stored values or transformation semantics.
 
 ## 0.4B — palette analysis
 
-0.4B starts only after 0.4A.4 passes interface acceptance.
+**Starts only after 0.4A.4 acceptance.**
 
 Planned scope:
 
@@ -152,48 +213,55 @@ After palette analysis is stable, SightAdapt may add ordered rules containing:
 - enabled state;
 - deterministic ordering when rules overlap.
 
-This stage will probably require a LUT or GPU shader and must not be forced into the current 5×5 color matrix when the matrix cannot represent the requested correction.
+This stage will probably require a LUT or GPU shader and must not be forced into the current 5×5 color matrix when that model cannot represent the requested correction.
 
-## Planned order
+## Current execution order
 
 ```text
-0.4A.1  Built-in profiles and Soft Invert editor       complete
-0.4A.2  User-defined profiles per application          complete
-0.4A.3  Lifecycle hardening and regression              complete / manual acceptance
-0.4A.4  Interface corrections                           next
-0.4B    Palette analysis
-0.4C    Targeted color corrections
+0.4A.1          built-in profiles and editor                    complete
+0.4A.2          user-defined profiles                           complete
+0.4A.3 baseline lifecycle recovery and emergency hardening      complete
+0.4A.3.001      application-assignment mutation authority       next
+0.4A.3.002      visual-profile tuning authority                 planned
+0.4A.3.003      persisted-mode authority and UI cleanup         planned
+0.4A.3.004      canonical visual-profile defaults               planned
+0.4A.3.005      focused settings normalization                  planned
+0.4A.3.006      architectural enforcement and regression        planned
+0.4A.3.007      final 10/10 architecture audit                   planned
+0.4A.4          interface corrections                           after .007
+0.4B            palette analysis
+0.4C            targeted color corrections
 ```
 
 ## Settings and migration requirements
 
 0.4 must:
 
-- load existing 0.2 and 0.3 settings without losing valid application assignments;
-- migrate legacy `effect: "invert"` to built-in exact inversion;
+- load existing 0.2 and 0.3 settings without losing valid assignments;
+- migrate legacy `effect: "invert"` to built-in Exact Invert;
 - write settings atomically;
 - recover safely from invalid or partially written configuration;
 - keep settings in `%LOCALAPPDATA%\SightAdapt\settings.json` unless a documented migration changes that path.
 
 ## Testing requirements
 
-Automated tests cover:
+Automated coverage includes or will include:
 
-- soft-invert matrix calculations;
-- clamping and validation of profile values;
-- profile creation, duplication, rename, deletion, and assignment;
-- stable profile-selector refreshes;
-- malformed and nullable settings values;
+- color-matrix calculations and value clamping;
+- profile creation, duplication, tuning, rename, deletion, and assignment;
+- stable selector refreshes;
+- malformed and nullable settings;
 - duplicate and reserved identifiers;
 - duplicate names and unknown transforms;
 - missing profile references;
 - multiple-profile persistence round trips;
 - application-state transitions;
 - emergency automatic-reactivation protection;
-- manual and automatic assignment resolution;
-- persistent assignment toggling.
+- local and automatic assignment resolution;
+- persistent assignment toggling;
+- architectural mutation-boundary enforcement.
 
-Manual Windows testing covers:
+Manual Windows testing includes:
 
 - white and black source themes;
 - text antialiasing, gradients, icons, and photographs;
@@ -202,7 +270,7 @@ Manual Windows testing covers:
 - repeated profile lifecycle operations;
 - long-running switching stability;
 - keyboard-only operation and screen-reader labels;
-- the full 0.4A.4 interface checklist.
+- the complete 0.4A.4 interface checklist.
 
 ## Definition of done
 
@@ -211,13 +279,13 @@ SightAdapt 0.4 Alpha is complete when:
 1. users can create and save multiple independent visual profiles;
 2. Soft Invert parameters produce deterministic output;
 3. applications can be assigned to selected profiles;
-4. old and malformed settings recover without losing valid data where deterministically possible;
+4. old and malformed settings recover without losing deterministically valid data;
 5. manual and automatic activation continue to work;
 6. emergency shutdown removes overlays and prevents automatic reactivation;
-7. transformation logic remains independent from tray and configuration UI code;
-8. automated calculation, lifecycle, recovery, state, selector, and migration tests pass;
-9. manual Windows regression confirms readable output and stable overlay behavior;
-10. 0.4A.4 interface acceptance passes at supported DPI scales.
+7. KISS, DRY, Clean Code, SPoA, and SPoT pass the `0.4A.3.007` audit;
+8. 0.4A.4 interface acceptance passes at supported DPI scales;
+9. automated calculation, lifecycle, recovery, state, selector, migration, and architecture tests pass;
+10. manual Windows regression confirms readable output and stable overlay behavior.
 
 ## Future renderer direction
 
