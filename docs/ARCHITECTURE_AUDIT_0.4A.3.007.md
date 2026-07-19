@@ -69,8 +69,9 @@ build: 0 warnings, 0 errors
 tests: 64 passed, 0 failed, 0 skipped
 publish: self-contained Windows x64 succeeded
 artifact: SightAdapt-0.4-Alpha-win-x64
-artifact SHA-256: 98572fcc2522cdfd148569cf056f8d8a972a7187db1484d5b8de477bf5466c47
 ```
+
+The PR records the artifact digest for the latest successful workflow run.
 
 ## Completion decision
 
