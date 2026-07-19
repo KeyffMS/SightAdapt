@@ -1,53 +1,41 @@
 # SightAdapt tray icon
 
-This document defines the proposed system tray icon for SightAdapt and its visual states.
+This document defines the notification-area icon and its visual states.
+
+## Canonical source
+
+`src/SightAdapt.Demo/TrayIconSet.cs` is the single authoritative implementation. It renders each state at all required Windows icon sizes and packages the generated PNG frames into one multi-resolution icon stream at runtime.
+
+The SVG files in `docs/assets/icons` are documentation reference exports only. They are not build inputs and must not be edited as an independent product definition. Any intentional design change starts in `TrayIconSet.cs`; reference exports may then be regenerated to illustrate the current result.
 
 ## Concept
 
 The icon combines an **eye** with an **adaptive color lens**:
 
 - the eye represents visual accessibility and window-image processing;
-- the split, colored iris represents inversion, LUTs, brightness, contrast, saturation, and other visual profiles;
-- the small adjustment notch indicates that the displayed image is being transformed;
-- the dark rounded background keeps the silhouette readable on both light and dark Windows taskbars.
+- the split iris represents inversion, color transforms, and visual profiles;
+- the adjustment notch indicates that the displayed image is transformed;
+- the dark rounded background keeps the silhouette readable on light and dark taskbars.
 
-The design intentionally avoids letters and fine outlines so that it remains recognizable at Windows tray sizes.
+The design avoids letters and fine outlines so it remains recognizable at Windows tray sizes.
 
 ## States
 
-<table>
-  <thead>
-    <tr>
-      <th>Active</th>
-      <th>Inactive</th>
-      <th>Emergency / attention</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td align="center"><img src="assets/icons/sightadapt-tray-active.svg" width="160" alt="SightAdapt active tray icon"></td>
-      <td align="center"><img src="assets/icons/sightadapt-tray-inactive.svg" width="160" alt="SightAdapt inactive tray icon"></td>
-      <td align="center"><img src="assets/icons/sightadapt-tray-emergency.svg" width="160" alt="SightAdapt emergency tray icon"></td>
-    </tr>
-    <tr>
-      <td>At least one visual profile or overlay is active.</td>
-      <td>The application is running, but no visual effect is active.</td>
-      <td>An emergency shutdown, renderer failure, or state requiring immediate attention.</td>
-    </tr>
-  </tbody>
-</table>
+| State | Meaning |
+|---|---|
+| **Active** | A manual or automatic visual correction is active. |
+| **Inactive** | SightAdapt is running without an active overlay. |
+| **Emergency / attention** | Explicit emergency shutdown, renderer fault, or another state requiring attention. |
 
-## Source files
+Reference exports:
 
 - [`sightadapt-tray-active.svg`](assets/icons/sightadapt-tray-active.svg)
 - [`sightadapt-tray-inactive.svg`](assets/icons/sightadapt-tray-inactive.svg)
 - [`sightadapt-tray-emergency.svg`](assets/icons/sightadapt-tray-emergency.svg)
 
-The SVG files are the canonical editable sources.
+## Runtime sizes
 
-## Windows export requirements
-
-The final application resource should be exported as a multi-resolution `.ico` file containing at least:
+The canonical renderer produces frames for:
 
 - 16×16 px;
 - 20×20 px;
@@ -59,18 +47,16 @@ The final application resource should be exported as a multi-resolution `.ico` f
 - 128×128 px;
 - 256×256 px.
 
-The 16×16, 20×20, 24×24, and 32×32 exports must be inspected manually at 100% scale. Automatic downscaling may soften the pupil, highlight, or adjustment notch.
+The 16×16, 20×20, 24×24, and 32×32 results must be inspected manually at 100% scale after a visual change.
 
 ## Usage guidelines
 
-- Use the **active** variant for normal enabled operation.
-- Use the **inactive** variant when SightAdapt is running without active overlays.
-- Use the **emergency** variant only for a temporary warning or failure state; do not use it as the normal enabled icon.
-- Keep the eye shape, pupil position, and outer silhouette identical across states so state changes do not look like different applications.
+- Use **Active** only while an overlay is active.
+- Use **Inactive** while the process is running without an overlay.
+- Use **Emergency / attention** for explicit emergency shutdown and renderer faults; accompanying text must distinguish those states.
+- Keep the eye shape, pupil position, and outer silhouette identical across states.
 - Do not add text, badges, or extra symbols to tray-size variants.
 
 ## Accessibility considerations
 
-Color must not be the only state indicator in menus, settings, or notifications. Pair icon state with explicit text such as **Active**, **Inactive**, or **All overlays stopped**.
-
-The emergency state should not remain visible indefinitely without an accompanying explanation available from the tray menu or notification.
+Color is never the only state indicator. Menus, tooltips, status text, and notifications explicitly state **Active**, **Inactive**, **All overlays stopped**, or the fault message. Emergency shutdown remains visible until an explicit user action resumes correction; a transient renderer fault may return to inactive presentation after its notification interval.
