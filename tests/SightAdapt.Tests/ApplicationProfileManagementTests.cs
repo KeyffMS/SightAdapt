@@ -101,6 +101,6 @@ public sealed class ApplicationProfileManagementTests
         return new ApplicationIdentity(
             name,
             $"{name}.exe",
-            $"C:\Apps\{name}.exe");
+            Path.Combine("C:\\Apps", $"{name}.exe"));
     }
 }
