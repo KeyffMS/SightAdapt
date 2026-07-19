@@ -1,0 +1,92 @@
+name: Apply 0.4A.2 UI integration
+
+on:
+  push:
+    branches: ["agent/alpha-v0.4"]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: ${{ !contains(github.event.head_commit.message, '[0.4A.2 UI]') }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/alpha-v0.4
+          fetch-depth: 0
+
+      - name: Integrate profile manager
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path("src/SightAdapt.Demo/ConfigurationForm.cs")
+          text = path.read_text(encoding="utf-8")
+
+          text = text.replace(
+              '            Text = "Assign visual correction profiles and tune Soft Invert output for each Windows application.",',
+              '            Text = "Assign and manage independent visual correction profiles for each Windows application.",')
+
+          browse_block = '''        browseButton.Click += (_, _) => BrowseForApplication();
+
+        var removeButton = new ModernButton'''
+          manage_block = '''        browseButton.Click += (_, _) => BrowseForApplication();
+
+        var manageProfilesButton = new ModernButton
+        {
+            Text = "Manage profiles",
+            VisualStyle = ModernButtonStyle.Secondary,
+            MinimumSize = new Size(145, 40),
+            Margin = new Padding(0, 0, 8, 0),
+        };
+        manageProfilesButton.Click += (_, _) => ManageVisualProfiles();
+
+        var removeButton = new ModernButton'''
+          if browse_block not in text:
+              raise SystemExit("CreateActionBar insertion point was not found")
+          text = text.replace(browse_block, manage_block, 1)
+
+          controls_block = '''            addCurrentButton,
+            browseButton,
+            _editVisualProfileButton,'''
+          controls_replacement = '''            addCurrentButton,
+            browseButton,
+            manageProfilesButton,
+            _editVisualProfileButton,'''
+          if controls_block not in text:
+              raise SystemExit("Action button list insertion point was not found")
+          text = text.replace(controls_block, controls_replacement, 1)
+
+          method_anchor = '''    private ApplicationProfile? GetSelectedApplicationProfile()
+    {'''
+          method = '''    private void ManageVisualProfiles()
+    {
+        VisualProfileManagerForm.ShowManager(
+            this,
+            _settings,
+            _settingsChanged);
+        RefreshProfiles();
+    }
+
+    private ApplicationProfile? GetSelectedApplicationProfile()
+    {'''
+          if method_anchor not in text:
+              raise SystemExit("ManageVisualProfiles insertion point was not found")
+          text = text.replace(method_anchor, method, 1)
+
+          path.write_text(text, encoding="utf-8", newline="\n")
+          PY
+
+      - name: Commit integration
+        shell: bash
+        run: |
+          git config user.name "SightAdapt automation"
+          git config user.email "actions@users.noreply.github.com"
+          git add src/SightAdapt.Demo/ConfigurationForm.cs
+          git commit -m "Integrate user visual profile manager [0.4A.2 UI]"
+          git push origin HEAD:agent/alpha-v0.4
