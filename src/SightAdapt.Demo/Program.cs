@@ -4,10 +4,27 @@ namespace SightAdapt.Demo;
 
 internal static class Program
 {
+    private const string SingleInstanceMutexName = @"Local\SightAdapt.SingleInstance";
+
     [STAThread]
     [SupportedOSPlatform("windows10.0.19041")]
     private static void Main()
     {
+        using var singleInstanceMutex = new Mutex(
+            initiallyOwned: true,
+            name: SingleInstanceMutexName,
+            createdNew: out var isFirstInstance);
+
+        if (!isFirstInstance)
+        {
+            MessageBox.Show(
+                "SightAdapt is already running in the notification area.",
+                ProductInfo.DisplayName,
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Information);
+            return;
+        }
+
         Application.SetHighDpiMode(HighDpiMode.PerMonitorV2);
         Application.EnableVisualStyles();
         Application.SetCompatibleTextRenderingDefault(false);
