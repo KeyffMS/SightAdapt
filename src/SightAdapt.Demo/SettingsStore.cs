@@ -99,150 +99,155 @@ internal sealed class SettingsStore
     {
         ArgumentNullException.ThrowIfNull(settings);
 
-        var changed = settings.SchemaVersion != SightAdaptSettings.CurrentSchemaVersion;
+        var schemaChanged =
+            settings.SchemaVersion != SightAdaptSettings.CurrentSchemaVersion;
         settings.SchemaVersion = SightAdaptSettings.CurrentSchemaVersion;
-
         settings.VisualProfiles ??= [];
         settings.Applications ??= [];
 
-        var sourceProfiles = settings.VisualProfiles
-            .OfType<VisualProfile>()
-            .ToList();
-        if (sourceProfiles.Count != settings.VisualProfiles.Count)
-        {
-            changed = true;
-        }
+        var context = new SettingsNormalizationContext(settings);
+        CanonicalizeBuiltInProfiles(context);
+        NormalizeCustomProfiles(context);
+        NormalizeApplications(context);
+        RepairProfileReferences(context);
+        context.Commit(settings);
 
-        var normalizedProfiles = new List<VisualProfile>();
-        var profileIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        return schemaChanged || context.Changed;
+    }
 
-        var exactInvert = sourceProfiles.FirstOrDefault(profile => string.Equals(
-            profile.Id,
-            VisualProfile.DefaultInvertId,
-            StringComparison.OrdinalIgnoreCase));
+    private static void CanonicalizeBuiltInProfiles(
+        SettingsNormalizationContext context)
+    {
+        var exactInvert = TakeProfile(
+            context.RemainingProfiles,
+            VisualProfile.DefaultInvertId);
         if (exactInvert is null)
         {
             exactInvert = VisualProfile.CreateDefaultInvert();
-            changed = true;
+            context.MarkChanged();
         }
-        else
+
+        if (VisualProfileDefaults.CanonicalizeExactInvert(exactInvert))
         {
-            sourceProfiles.Remove(exactInvert);
+            context.MarkChanged();
         }
 
-        changed |= NormalizeBuiltInExactInvert(exactInvert);
-        normalizedProfiles.Add(exactInvert);
-        profileIds.Add(exactInvert.Id);
+        context.AddProfile(exactInvert);
 
-        var softInvert = sourceProfiles.FirstOrDefault(profile => string.Equals(
-            profile.Id,
-            VisualProfile.DefaultSoftInvertId,
-            StringComparison.OrdinalIgnoreCase));
+        var softInvert = TakeProfile(
+            context.RemainingProfiles,
+            VisualProfile.DefaultSoftInvertId);
         if (softInvert is null)
         {
             softInvert = VisualProfile.CreateDefaultSoftInvert();
-            changed = true;
-        }
-        else
-        {
-            sourceProfiles.Remove(softInvert);
+            context.MarkChanged();
         }
 
-        changed |= NormalizeBuiltInSoftInvert(softInvert);
-        normalizedProfiles.Add(softInvert);
-        profileIds.Add(softInvert.Id);
-
-        foreach (var profile in sourceProfiles)
+        if (VisualProfileDefaults.CanonicalizeSoftInvert(softInvert))
         {
-            var normalizedId = (profile.Id ?? string.Empty).Trim();
-            if (string.IsNullOrWhiteSpace(normalizedId) ||
-                VisualProfilePolicy.IsBuiltInId(normalizedId) ||
-                profileIds.Contains(normalizedId))
-            {
-                normalizedId = VisualProfilePolicy.CreateUserProfileId(profileIds);
-                changed = true;
-            }
-
-            if (!string.Equals(profile.Id, normalizedId, StringComparison.Ordinal))
-            {
-                profile.Id = normalizedId;
-                changed = true;
-            }
-
-            profileIds.Add(normalizedId);
-
-            var normalizedTransformId = (profile.TransformId ?? string.Empty)
-                .Trim()
-                .ToLowerInvariant();
-            if (!VisualProfilePolicy.IsSupportedTransformId(normalizedTransformId))
-            {
-                normalizedTransformId = SoftInvertVisualTransform.TransformId;
-                changed = true;
-            }
-
-            if (!string.Equals(
-                    profile.TransformId,
-                    normalizedTransformId,
-                    StringComparison.Ordinal))
-            {
-                profile.TransformId = normalizedTransformId;
-                changed = true;
-            }
-
-            var normalizedName = VisualProfilePolicy.NormalizeNameOrFallback(
-                profile.Name,
-                "Custom Soft Invert");
-            if (normalizedProfiles.Any(candidate => string.Equals(
-                    candidate.Name,
-                    normalizedName,
-                    StringComparison.OrdinalIgnoreCase)))
-            {
-                normalizedName = VisualProfilePolicy.CreateUniqueName(
-                    normalizedProfiles,
-                    normalizedName);
-                changed = true;
-            }
-
-            if (!string.Equals(profile.Name, normalizedName, StringComparison.Ordinal))
-            {
-                profile.Name = normalizedName;
-                changed = true;
-            }
-
-            changed |= NormalizeVisualProfile(profile);
-            normalizedProfiles.Add(profile);
+            context.MarkChanged();
         }
 
-        var sourceApplications = settings.Applications
-            .OfType<ApplicationProfile>()
-            .ToList();
-        if (sourceApplications.Count != settings.Applications.Count)
+        context.AddProfile(softInvert);
+    }
+
+    private static void NormalizeCustomProfiles(
+        SettingsNormalizationContext context)
+    {
+        foreach (var profile in context.RemainingProfiles)
         {
-            changed = true;
+            NormalizeCustomProfileIdentity(context, profile);
+            NormalizeCustomProfileName(context, profile);
+
+            if (VisualProfileDefaults.NormalizeTuningForTransform(profile))
+            {
+                context.MarkChanged();
+            }
+
+            context.AddProfile(profile);
+        }
+    }
+
+    private static void NormalizeCustomProfileIdentity(
+        SettingsNormalizationContext context,
+        VisualProfile profile)
+    {
+        var normalizedId = (profile.Id ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(normalizedId) ||
+            VisualProfilePolicy.IsBuiltInId(normalizedId) ||
+            context.ProfileIds.Contains(normalizedId))
+        {
+            normalizedId = VisualProfilePolicy.CreateUserProfileId(
+                context.ProfileIds);
+            context.MarkChanged();
         }
 
-        var normalizedApplications = new List<ApplicationProfile>();
-        var executablePaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-
-        foreach (var application in sourceApplications)
+        if (!string.Equals(profile.Id, normalizedId, StringComparison.Ordinal))
         {
-            changed |= NormalizeApplicationStrings(application);
+            profile.Id = normalizedId;
+            context.MarkChanged();
+        }
 
-            if (!string.IsNullOrWhiteSpace(application.LegacyEffect))
+        var normalizedTransformId = (profile.TransformId ?? string.Empty)
+            .Trim()
+            .ToLowerInvariant();
+        if (!VisualProfilePolicy.IsSupportedTransformId(normalizedTransformId))
+        {
+            normalizedTransformId = SoftInvertVisualTransform.TransformId;
+            context.MarkChanged();
+        }
+
+        if (!string.Equals(
+                profile.TransformId,
+                normalizedTransformId,
+                StringComparison.Ordinal))
+        {
+            profile.TransformId = normalizedTransformId;
+            context.MarkChanged();
+        }
+    }
+
+    private static void NormalizeCustomProfileName(
+        SettingsNormalizationContext context,
+        VisualProfile profile)
+    {
+        var normalizedName = VisualProfilePolicy.NormalizeNameOrFallback(
+            profile.Name,
+            "Custom Soft Invert");
+
+        if (context.Profiles.Any(candidate => string.Equals(
+                candidate.Name,
+                normalizedName,
+                StringComparison.OrdinalIgnoreCase)))
+        {
+            normalizedName = VisualProfilePolicy.CreateUniqueName(
+                context.Profiles,
+                normalizedName);
+            context.MarkChanged();
+        }
+
+        if (!string.Equals(profile.Name, normalizedName, StringComparison.Ordinal))
+        {
+            profile.Name = normalizedName;
+            context.MarkChanged();
+        }
+    }
+
+    private static void NormalizeApplications(
+        SettingsNormalizationContext context)
+    {
+        foreach (var application in context.SourceApplications)
+        {
+            if (NormalizeApplicationStrings(application))
             {
-                application.VisualProfileId = VisualProfile.DefaultInvertId;
-                application.LegacyEffect = null;
-                changed = true;
+                context.MarkChanged();
             }
-            else if (application.LegacyEffect is not null)
-            {
-                application.LegacyEffect = null;
-                changed = true;
-            }
+
+            MigrateLegacyEffect(context, application);
 
             if (string.IsNullOrWhiteSpace(application.ExecutablePath))
             {
-                changed = true;
+                context.MarkChanged();
                 continue;
             }
 
@@ -250,13 +255,13 @@ internal sealed class SettingsStore
             {
                 application.ExecutableName =
                     Path.GetFileName(application.ExecutablePath) ?? string.Empty;
-                changed = true;
+                context.MarkChanged();
             }
 
             if (string.IsNullOrWhiteSpace(application.ExecutableName) ||
-                !executablePaths.Add(application.ExecutablePath))
+                !context.ExecutablePaths.Add(application.ExecutablePath))
             {
-                changed = true;
+                context.MarkChanged();
                 continue;
             }
 
@@ -264,150 +269,66 @@ internal sealed class SettingsStore
             {
                 application.DisplayName = Path.GetFileNameWithoutExtension(
                     application.ExecutableName) ?? string.Empty;
-                changed = true;
+                context.MarkChanged();
             }
 
-            if (string.IsNullOrWhiteSpace(application.VisualProfileId) ||
-                !profileIds.Contains(application.VisualProfileId))
+            context.Applications.Add(application);
+        }
+    }
+
+    private static void RepairProfileReferences(
+        SettingsNormalizationContext context)
+    {
+        foreach (var application in context.Applications)
+        {
+            if (!string.IsNullOrWhiteSpace(application.VisualProfileId) &&
+                context.ProfileIds.Contains(application.VisualProfileId))
             {
-                application.VisualProfileId =
-                    VisualProfilePolicy.MissingReferenceFallbackProfileId;
-                changed = true;
+                continue;
             }
 
-            normalizedApplications.Add(application);
+            application.VisualProfileId =
+                VisualProfilePolicy.MissingReferenceFallbackProfileId;
+            context.MarkChanged();
         }
+    }
 
-        if (!settings.VisualProfiles.SequenceEqual(normalizedProfiles) ||
-            !settings.Applications.SequenceEqual(normalizedApplications))
+    private static void MigrateLegacyEffect(
+        SettingsNormalizationContext context,
+        ApplicationProfile application)
+    {
+        if (!string.IsNullOrWhiteSpace(application.LegacyEffect))
         {
-            changed = true;
+            application.VisualProfileId = VisualProfile.DefaultInvertId;
+            application.LegacyEffect = null;
+            context.MarkChanged();
         }
-
-        settings.VisualProfiles = normalizedProfiles;
-        settings.Applications = normalizedApplications;
-        return changed;
-    }
-
-    private static bool NormalizeBuiltInExactInvert(VisualProfile profile)
-    {
-        var changed = !string.Equals(
-                profile.Id,
-                VisualProfile.DefaultInvertId,
-                StringComparison.Ordinal) ||
-            !string.Equals(profile.Name, "Exact invert", StringComparison.Ordinal) ||
-            !string.Equals(
-                profile.TransformId,
-                InvertVisualTransform.TransformId,
-                StringComparison.Ordinal) ||
-            profile.OutputBlack != 0.0f ||
-            profile.OutputWhite != 1.0f ||
-            profile.Brightness != 0.0f ||
-            profile.Contrast != 1.0f ||
-            profile.Saturation != 1.0f ||
-            profile.HueShiftDegrees != 0.0f;
-
-        profile.Id = VisualProfile.DefaultInvertId;
-        profile.Name = "Exact invert";
-        profile.TransformId = InvertVisualTransform.TransformId;
-        profile.OutputBlack = 0.0f;
-        profile.OutputWhite = 1.0f;
-        profile.Brightness = 0.0f;
-        profile.Contrast = 1.0f;
-        profile.Saturation = 1.0f;
-        profile.HueShiftDegrees = 0.0f;
-        return changed;
-    }
-
-    private static bool NormalizeBuiltInSoftInvert(VisualProfile profile)
-    {
-        var changed = !string.Equals(
-                profile.Id,
-                VisualProfile.DefaultSoftInvertId,
-                StringComparison.Ordinal) ||
-            !string.Equals(profile.Name, "Soft invert", StringComparison.Ordinal) ||
-            !string.Equals(
-                profile.TransformId,
-                SoftInvertVisualTransform.TransformId,
-                StringComparison.Ordinal);
-
-        profile.Id = VisualProfile.DefaultSoftInvertId;
-        profile.Name = "Soft invert";
-        profile.TransformId = SoftInvertVisualTransform.TransformId;
-        return NormalizeVisualProfile(profile) || changed;
-    }
-
-    private static bool NormalizeVisualProfile(VisualProfile profile)
-    {
-        if (string.Equals(
-                profile.TransformId,
-                InvertVisualTransform.TransformId,
-                StringComparison.OrdinalIgnoreCase))
+        else if (application.LegacyEffect is not null)
         {
-            var exactProfileChanged = profile.OutputBlack != 0.0f ||
-                profile.OutputWhite != 1.0f ||
-                profile.Brightness != 0.0f ||
-                profile.Contrast != 1.0f ||
-                profile.Saturation != 1.0f ||
-                profile.HueShiftDegrees != 0.0f;
-
-            profile.OutputBlack = 0.0f;
-            profile.OutputWhite = 1.0f;
-            profile.Brightness = 0.0f;
-            profile.Contrast = 1.0f;
-            profile.Saturation = 1.0f;
-            profile.HueShiftDegrees = 0.0f;
-            return exactProfileChanged;
+            application.LegacyEffect = null;
+            context.MarkChanged();
         }
-
-        var outputBlack = VisualProfileLimits.ClampFinite(
-            profile.OutputBlack,
-            VisualProfileLimits.MinimumOutputBlack,
-            VisualProfileLimits.MaximumOutputBlack,
-            0.08f);
-        var outputWhite = VisualProfileLimits.ClampFinite(
-            profile.OutputWhite,
-            VisualProfileLimits.MinimumOutputWhite,
-            VisualProfileLimits.MaximumOutputWhite,
-            0.92f);
-        var brightness = VisualProfileLimits.ClampFinite(
-            profile.Brightness,
-            VisualProfileLimits.MinimumBrightness,
-            VisualProfileLimits.MaximumBrightness,
-            0.0f);
-        var contrast = VisualProfileLimits.ClampFinite(
-            profile.Contrast,
-            VisualProfileLimits.MinimumContrast,
-            VisualProfileLimits.MaximumContrast,
-            1.0f);
-        var saturation = VisualProfileLimits.ClampFinite(
-            profile.Saturation,
-            VisualProfileLimits.MinimumSaturation,
-            VisualProfileLimits.MaximumSaturation,
-            1.0f);
-        var hueShift = VisualProfileLimits.ClampFinite(
-            profile.HueShiftDegrees,
-            VisualProfileLimits.MinimumHueShift,
-            VisualProfileLimits.MaximumHueShift,
-            0.0f);
-
-        var changed = profile.OutputBlack != outputBlack ||
-            profile.OutputWhite != outputWhite ||
-            profile.Brightness != brightness ||
-            profile.Contrast != contrast ||
-            profile.Saturation != saturation ||
-            profile.HueShiftDegrees != hueShift;
-
-        profile.OutputBlack = outputBlack;
-        profile.OutputWhite = outputWhite;
-        profile.Brightness = brightness;
-        profile.Contrast = contrast;
-        profile.Saturation = saturation;
-        profile.HueShiftDegrees = hueShift;
-        return changed;
     }
 
-    private static bool NormalizeApplicationStrings(ApplicationProfile application)
+    private static VisualProfile? TakeProfile(
+        List<VisualProfile> profiles,
+        string profileId)
+    {
+        var profile = profiles.FirstOrDefault(candidate => string.Equals(
+            candidate.Id,
+            profileId,
+            StringComparison.OrdinalIgnoreCase));
+
+        if (profile is not null)
+        {
+            profiles.Remove(profile);
+        }
+
+        return profile;
+    }
+
+    private static bool NormalizeApplicationStrings(
+        ApplicationProfile application)
     {
         var displayName = (application.DisplayName ?? string.Empty).Trim();
         var executableName = (application.ExecutableName ?? string.Empty).Trim();
@@ -436,5 +357,65 @@ internal sealed class SettingsStore
         application.ExecutablePath = executablePath;
         application.VisualProfileId = visualProfileId;
         return changed;
+    }
+
+    private sealed class SettingsNormalizationContext
+    {
+        private readonly List<VisualProfile> _originalProfiles;
+        private readonly List<ApplicationProfile> _originalApplications;
+
+        public SettingsNormalizationContext(SightAdaptSettings settings)
+        {
+            _originalProfiles = settings.VisualProfiles;
+            _originalApplications = settings.Applications;
+            RemainingProfiles = settings.VisualProfiles
+                .OfType<VisualProfile>()
+                .ToList();
+            SourceApplications = settings.Applications
+                .OfType<ApplicationProfile>()
+                .ToList();
+
+            Changed = RemainingProfiles.Count != settings.VisualProfiles.Count ||
+                SourceApplications.Count != settings.Applications.Count;
+        }
+
+        public bool Changed { get; private set; }
+
+        public List<VisualProfile> RemainingProfiles { get; }
+
+        public List<ApplicationProfile> SourceApplications { get; }
+
+        public List<VisualProfile> Profiles { get; } = [];
+
+        public List<ApplicationProfile> Applications { get; } = [];
+
+        public HashSet<string> ProfileIds { get; } =
+            new(StringComparer.OrdinalIgnoreCase);
+
+        public HashSet<string> ExecutablePaths { get; } =
+            new(StringComparer.OrdinalIgnoreCase);
+
+        public void AddProfile(VisualProfile profile)
+        {
+            Profiles.Add(profile);
+            ProfileIds.Add(profile.Id);
+        }
+
+        public void MarkChanged()
+        {
+            Changed = true;
+        }
+
+        public void Commit(SightAdaptSettings settings)
+        {
+            if (!_originalProfiles.SequenceEqual(Profiles) ||
+                !_originalApplications.SequenceEqual(Applications))
+            {
+                Changed = true;
+            }
+
+            settings.VisualProfiles = Profiles;
+            settings.Applications = Applications;
+        }
     }
 }
