@@ -388,8 +388,9 @@ internal sealed class VisualProfileEditorForm : Form
 
     private void ResetValues()
     {
-        var defaults = VisualProfile.CreateDefaultSoftInvert();
-        _workingProfile.CopyTuningFrom(defaults);
+        VisualProfileDefaults.ApplyTuning(
+            _workingProfile,
+            VisualProfileDefaults.SoftInvertTuning);
         LoadValuesFromWorkingProfile();
         _preview.Invalidate();
     }
