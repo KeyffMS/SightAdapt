@@ -78,20 +78,13 @@ internal static class VisualProfileManagementService
                 "A valid fallback visual profile is required before deletion.");
         }
 
-        var assignments = settings.Applications
-            .Where(assignment => assignment is not null && string.Equals(
-                assignment.VisualProfileId,
-                profile.Id,
-                StringComparison.OrdinalIgnoreCase))
-            .ToArray();
-
-        foreach (var assignment in assignments)
-        {
-            assignment.VisualProfileId = fallback.Id;
-        }
+        var reassigned = ApplicationProfileManagementService.ReassignVisualProfile(
+            settings,
+            profile.Id,
+            fallback.Id);
 
         settings.VisualProfiles.Remove(profile);
-        return assignments.Length;
+        return reassigned;
     }
 
     public static int CountAssignments(
@@ -102,11 +95,9 @@ internal static class VisualProfileManagementService
         ArgumentNullException.ThrowIfNull(profile);
         EnsureCollections(settings);
 
-        return settings.Applications.Count(assignment =>
-            assignment is not null && string.Equals(
-                assignment.VisualProfileId,
-                profile.Id,
-                StringComparison.OrdinalIgnoreCase));
+        return ApplicationProfileManagementService.CountAssignments(
+            settings,
+            profile.Id);
     }
 
     public static bool IsBuiltIn(VisualProfile profile)

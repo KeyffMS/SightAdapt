@@ -219,7 +219,7 @@ internal sealed class SightAdaptContext : ApplicationContext
             return;
         }
 
-        var result = ApplicationProfileToggleService.Toggle(_settings, identity);
+        var result = ApplicationProfileManagementService.Toggle(_settings, identity);
 
         if (result.IsEnabled)
         {

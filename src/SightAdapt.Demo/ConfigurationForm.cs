@@ -685,16 +685,18 @@ internal sealed class ConfigurationForm : Form
         var columnName = _profilesGrid.Columns[eventArgs.ColumnIndex].Name;
         if (columnName == EnabledColumnName)
         {
-            profile.Enabled = row.Cells[eventArgs.ColumnIndex].Value is true;
+            ApplicationProfileManagementService.SetEnabled(
+                _settings,
+                profile,
+                row.Cells[eventArgs.ColumnIndex].Value is true);
         }
         else if (columnName == VisualProfileColumnName &&
-                 row.Cells[eventArgs.ColumnIndex].Value is string visualProfileId &&
-                 _settings.VisualProfiles.Any(candidate => string.Equals(
-                     candidate.Id,
-                     visualProfileId,
-                     StringComparison.OrdinalIgnoreCase)))
+                 row.Cells[eventArgs.ColumnIndex].Value is string visualProfileId)
         {
-            profile.VisualProfileId = visualProfileId;
+            ApplicationProfileManagementService.AssignVisualProfile(
+                _settings,
+                profile,
+                visualProfileId);
         }
         else
         {
@@ -813,23 +815,10 @@ internal sealed class ConfigurationForm : Form
 
     private void AddOrUpdateProfile(ApplicationIdentity identity)
     {
-        var profile = _settings.Applications.FirstOrDefault(candidate => candidate.Matches(identity));
-        var added = profile is null;
-
-        if (profile is null)
-        {
-            profile = new ApplicationProfile
-            {
-                VisualProfileId = VisualProfile.DefaultSoftInvertId,
-            };
-            _settings.Applications.Add(profile);
-        }
-
-        profile.DisplayName = identity.DisplayName;
-        profile.ExecutableName = identity.ExecutableName;
-        profile.ExecutablePath = identity.ExecutablePath;
-        profile.Enabled = true;
-        profile.LegacyEffect = null;
+        var result = ApplicationProfileManagementService.AddOrEnable(
+            _settings,
+            identity);
+        var added = result.WasCreated;
         _settings.AutomaticMode = true;
 
         _settingsChanged();
@@ -866,7 +855,7 @@ internal sealed class ConfigurationForm : Form
             return;
         }
 
-        _settings.Applications.Remove(profile);
+        ApplicationProfileManagementService.Remove(_settings, profile);
         _settingsChanged();
         RefreshProfiles();
     }
