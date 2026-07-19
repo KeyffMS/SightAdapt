@@ -14,7 +14,10 @@ internal static class ApplicationProfileToggleService
         ArgumentNullException.ThrowIfNull(settings);
         ArgumentNullException.ThrowIfNull(identity);
 
-        var profile = settings.Applications.FirstOrDefault(candidate => candidate.Matches(identity));
+        settings.Applications ??= [];
+        settings.VisualProfiles ??= [];
+
+        var profile = ProfileResolver.FindAssignment(settings, identity);
         var wasCreated = profile is null;
 
         if (profile is null)
@@ -22,7 +25,7 @@ internal static class ApplicationProfileToggleService
             profile = new ApplicationProfile
             {
                 Enabled = true,
-                VisualProfileId = VisualProfile.DefaultSoftInvertId,
+                VisualProfileId = VisualProfilePolicy.NewAssignmentProfileId,
             };
             settings.Applications.Add(profile);
         }
@@ -36,9 +39,9 @@ internal static class ApplicationProfileToggleService
         profile.ExecutablePath = identity.ExecutablePath;
         profile.LegacyEffect = null;
 
-        if (string.IsNullOrWhiteSpace(profile.VisualProfileId))
+        if (ProfileResolver.FindVisualProfile(settings, profile.VisualProfileId) is null)
         {
-            profile.VisualProfileId = VisualProfile.DefaultSoftInvertId;
+            profile.VisualProfileId = VisualProfilePolicy.MissingReferenceFallbackProfileId;
         }
 
         return new ApplicationProfileToggleResult(profile, wasCreated, profile.Enabled);
