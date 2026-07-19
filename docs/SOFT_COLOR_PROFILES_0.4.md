@@ -6,6 +6,19 @@ SightAdapt 0.4 Alpha introduces configurable color correction profiles for indiv
 
 The feature remains implemented through the Windows Magnification API color matrix. It does not capture all unique pixels, perform palette analysis, or use a per-pixel CPU loop.
 
+## 0.4A delivery plan
+
+The profile work is completed in four increments before palette analysis begins:
+
+| Increment | Scope | Status |
+|---|---|---|
+| `0.4A.1` | Built-in Exact Invert and Soft Invert profiles, parameter editor, assignment, persistence, and active-overlay refresh | Implemented and under manual validation |
+| `0.4A.2` | User-defined profiles: create, duplicate, rename, delete, reassign, and separate parameters per application | Next functional increment |
+| `0.4A.3` | Profile lifecycle, persistence, migration, shortcut, overlay, and emergency-action regression | Planned |
+| `0.4A.4` | Interface corrections, DPI and resizing checks, keyboard access, accessibility labels, selector stability, messages, and visual consistency | Planned final 0.4A increment |
+
+`0.4B` palette analysis starts only after `0.4A.4` passes its interface and regression acceptance checks.
+
 ## Built-in visual profiles
 
 ### Exact invert
@@ -76,7 +89,7 @@ Windows Magnification API output
 
 All operations are composed into one `MAGCOLOREFFECT` matrix before being applied to the overlay.
 
-## User flow
+## Current user flow
 
 1. Open **Configure applications and colors...** from the tray menu.
 2. Add an application or select an existing row.
@@ -87,6 +100,19 @@ All operations are composed into one `MAGCOLOREFFECT` matrix before being applie
 7. Save the profile.
 
 A saved change is applied immediately when an overlay using that profile is active.
+
+## Planned user-defined profile flow — 0.4A.2
+
+The next increment adds:
+
+1. create a profile from Soft Invert defaults;
+2. duplicate the selected editable profile;
+3. give the copy a unique name and identifier;
+4. edit and save parameters independently;
+5. assign different profiles to different applications;
+6. rename or delete user-defined profiles;
+7. protect built-in profiles from rename and deletion;
+8. reassign affected applications to a safe fallback before deletion.
 
 ## Shortcut behavior
 
@@ -103,7 +129,7 @@ Emergency shutdown remains available from the tray menu.
 
 ## Settings schema
 
-Version 0.4 uses settings schema `3`.
+Version 0.4 currently uses settings schema `3`.
 
 Visual profiles contain:
 
@@ -125,31 +151,49 @@ Schema 2 files are upgraded by adding the built-in Soft Invert definition. Exist
 
 Legacy files using `effect: "invert"` continue to migrate to `default-invert`.
 
-## Shared-profile behavior
+## Current shared-profile behavior
 
-The first 0.4 Alpha slice contains shared built-in profiles:
+The implemented 0.4A.1 slice contains shared built-in profiles:
 
 - all applications assigned to `default-soft-invert` use the same Soft Invert parameters;
 - editing the built-in Soft Invert profile affects every application assigned to it;
 - Exact Invert remains fixed.
 
-Creating, duplicating, renaming, deleting, importing, and exporting user-defined visual profiles is planned for a later 0.4 increment.
+This limitation is removed by `0.4A.2`, which introduces user-defined copies with independent settings.
+
+## 0.4A.4 interface-corrections scope
+
+The interface-corrections increment will not add a new transformation. It will focus on:
+
+- clipping, alignment, spacing, and control sizing;
+- table columns, selected rows, profile selector states, and safe refresh behavior;
+- supported DPI scales from 100% through 200%;
+- resizing, minimum window dimensions, and multi-monitor movement;
+- button hierarchy and enabled/disabled states;
+- keyboard navigation, tab order, focus indicators, Enter, and Escape behavior;
+- accessible names, descriptions, and text alternatives;
+- consistent confirmation, validation, empty-state, and error messages;
+- dark-theme consistency across normal, hover, selected, disabled, and error states;
+- manual visual-regression checks before work starts on palette analysis.
 
 ## Current limitations
 
 This implementation does not yet provide:
 
+- user-defined independent Soft Invert profiles;
+- create, duplicate, rename, or delete profile actions;
 - analysis of colors present in a target window;
 - dominant-color extraction or histogram display;
 - source-color-to-output-color rules;
 - tolerance ranges for selected colors;
 - LUT import;
-- a Direct3D shader renderer;
-- separate Soft Invert copies for individual applications.
+- a Direct3D shader renderer.
 
-Those features remain part of the later 0.4 and 0.5 roadmap stages.
+Those features remain assigned to later 0.4 increments and the subsequent renderer roadmap.
 
 ## Manual acceptance checks
+
+### Current 0.4A.1 checks
 
 1. Existing schema 2 settings load without losing application assignments.
 2. A new application receives Soft Invert by default.
@@ -161,3 +205,11 @@ Those features remain part of the later 0.4 and 0.5 roadmap stages.
 8. The local shortcut uses the assigned profile without enabling automatic mode.
 9. The persistent shortcut still performs add, disable, and re-enable toggling.
 10. The tray emergency action removes the overlay and disables automatic mode.
+11. Repeated profile selection does not corrupt names or raise a WinForms exception.
+
+### Required before 0.4B
+
+1. user-defined profiles complete their full lifecycle safely;
+2. missing or deleted references recover to a documented fallback;
+3. all regression tests from 0.4A.3 pass;
+4. all interface acceptance checks from 0.4A.4 pass at supported DPI scales.
