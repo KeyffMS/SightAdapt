@@ -2,9 +2,10 @@
 
 ## Product and engineering plans
 
-- [SightAdapt 0.4 Alpha roadmap](ROADMAP_0.4.md) — staged plan covering `0.4A.1` built-in profiles, `0.4A.2` user-defined profiles, `0.4A.3` lifecycle hardening, `0.4A.4` interface corrections, then palette analysis and targeted color corrections.
-- [SightAdapt 0.4 Soft Color Profiles](SOFT_COLOR_PROFILES_0.4.md) — implemented profile model, matrix order, editor parameters, settings schema, shortcut behavior, remaining 0.4A increments, limitations, and acceptance checks.
+- [SightAdapt 0.4 Alpha roadmap](ROADMAP_0.4.md) — current status of `0.4A.1–0.4A.4`, followed by palette analysis and targeted color corrections.
+- [SightAdapt 0.4 Soft Color Profiles](SOFT_COLOR_PROFILES_0.4.md) — profile model, matrix order, editor parameters, settings schema, shortcut behavior, limitations, and acceptance checks.
 - [SightAdapt 0.4A.2 User-defined Profiles](USER_DEFINED_PROFILES_0.4A.2.md) — profile creation, duplication, rename, deletion, fallback reassignment, validation rules, tests, and manual acceptance checks.
+- [SightAdapt 0.4A.3 Lifecycle Hardening](HARDENING_0.4A.3.md) — authority map, centralized policy, malformed-settings recovery, lifecycle invariants, emergency protection, regression coverage, and manual acceptance checks.
 
 ## Architecture
 
