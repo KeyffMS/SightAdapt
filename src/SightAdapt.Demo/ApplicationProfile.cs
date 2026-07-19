@@ -17,6 +17,42 @@ internal sealed class SightAdaptSettings
         VisualProfile.CreateDefaultInvert(),
         VisualProfile.CreateDefaultSoftInvert(),
     ];
+
+    public SightAdaptSettings CreateWorkingCopy()
+    {
+        EnsureCollections();
+
+        return new SightAdaptSettings
+        {
+            SchemaVersion = SchemaVersion,
+            AutomaticMode = AutomaticMode,
+            Applications = Applications
+                .Where(profile => profile is not null)
+                .Select(profile => profile.CreateWorkingCopy())
+                .ToList(),
+            VisualProfiles = VisualProfiles
+                .Where(profile => profile is not null)
+                .Select(profile => profile.CreateWorkingCopy())
+                .ToList(),
+        };
+    }
+
+    public void ReplaceWith(SightAdaptSettings source)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        source.EnsureCollections();
+
+        SchemaVersion = source.SchemaVersion;
+        AutomaticMode = source.AutomaticMode;
+        Applications = source.Applications;
+        VisualProfiles = source.VisualProfiles;
+    }
+
+    public void EnsureCollections()
+    {
+        Applications ??= [];
+        VisualProfiles ??= [];
+    }
 }
 
 internal sealed class ApplicationProfile
@@ -45,6 +81,19 @@ internal sealed class ApplicationProfile
             VisualProfileId = VisualProfile.DefaultInvertId;
             LegacyEffect = null;
         }
+    }
+
+    public ApplicationProfile CreateWorkingCopy()
+    {
+        return new ApplicationProfile
+        {
+            DisplayName = DisplayName,
+            ExecutableName = ExecutableName,
+            ExecutablePath = ExecutablePath,
+            Enabled = Enabled,
+            VisualProfileId = VisualProfileId,
+            LegacyEffect = LegacyEffect,
+        };
     }
 
     public bool Matches(ApplicationIdentity identity)
@@ -88,13 +137,12 @@ internal sealed class VisualProfile
 
     public float Saturation { get; set; } = VisualProfileDefaults.SoftSaturation;
 
-    public float HueShiftDegrees { get; set; } = VisualProfileDefaults.SoftHueShiftDegrees;
+    public float HueShiftDegrees { get; set; } =
+        VisualProfileDefaults.SoftHueShiftDegrees;
 
     [JsonIgnore]
-    public bool SupportsTuning => string.Equals(
-        TransformId,
-        SoftInvertVisualTransform.TransformId,
-        StringComparison.OrdinalIgnoreCase);
+    public bool SupportsTuning =>
+        VisualTransformCatalog.SupportsTuning(TransformId);
 
     public VisualProfile CreateWorkingCopy()
     {
