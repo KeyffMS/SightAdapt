@@ -30,43 +30,15 @@ internal sealed class SoftInvertVisualTransform : IVisualTransform
     {
         ArgumentNullException.ThrowIfNull(profile);
 
-        var outputBlack = VisualProfileLimits.ClampFinite(
-            profile.OutputBlack,
-            VisualProfileLimits.MinimumOutputBlack,
-            VisualProfileLimits.MaximumOutputBlack,
-            0.08f);
-        var outputWhite = VisualProfileLimits.ClampFinite(
-            profile.OutputWhite,
-            VisualProfileLimits.MinimumOutputWhite,
-            VisualProfileLimits.MaximumOutputWhite,
-            0.92f);
-        var brightness = VisualProfileLimits.ClampFinite(
-            profile.Brightness,
-            VisualProfileLimits.MinimumBrightness,
-            VisualProfileLimits.MaximumBrightness,
-            0.0f);
-        var contrast = VisualProfileLimits.ClampFinite(
-            profile.Contrast,
-            VisualProfileLimits.MinimumContrast,
-            VisualProfileLimits.MaximumContrast,
-            1.0f);
-        var saturation = VisualProfileLimits.ClampFinite(
-            profile.Saturation,
-            VisualProfileLimits.MinimumSaturation,
-            VisualProfileLimits.MaximumSaturation,
-            1.0f);
-        var hueShift = VisualProfileLimits.ClampFinite(
-            profile.HueShiftDegrees,
-            VisualProfileLimits.MinimumHueShift,
-            VisualProfileLimits.MaximumHueShift,
-            0.0f);
-
-        var outputRange = outputWhite - outputBlack;
-        var matrix = ColorAffineMatrix.CreateScaleOffset(-outputRange, outputWhite)
-            .Then(ColorAffineMatrix.CreateSaturation(saturation))
-            .Then(ColorAffineMatrix.CreateHueRotation(hueShift))
-            .Then(ColorAffineMatrix.CreateContrast(contrast))
-            .Then(ColorAffineMatrix.CreateBrightness(brightness));
+        var tuning = VisualProfileDefaults.NormalizeSoftInvertTuning(profile);
+        var outputRange = tuning.OutputWhite - tuning.OutputBlack;
+        var matrix = ColorAffineMatrix.CreateScaleOffset(
+                -outputRange,
+                tuning.OutputWhite)
+            .Then(ColorAffineMatrix.CreateSaturation(tuning.Saturation))
+            .Then(ColorAffineMatrix.CreateHueRotation(tuning.HueShiftDegrees))
+            .Then(ColorAffineMatrix.CreateContrast(tuning.Contrast))
+            .Then(ColorAffineMatrix.CreateBrightness(tuning.Brightness));
 
         return matrix.ToMagColorEffect();
     }
