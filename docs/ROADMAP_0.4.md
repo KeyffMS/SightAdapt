@@ -96,7 +96,7 @@ Transformation calculation must remain isolated from the current overlay backend
 
 ### 0.4A.1 — built-in profiles and Soft Invert editor
 
-Status: implemented and under manual validation.
+Status: implemented and manually validated.
 
 Scope:
 
@@ -111,7 +111,7 @@ Scope:
 
 ### 0.4A.2 — user-defined profiles per application
 
-Status: next functional increment.
+Status: implemented and ready for manual acceptance testing.
 
 Scope:
 
@@ -126,9 +126,20 @@ Scope:
 - validate unique, non-empty profile names;
 - test creation, duplication, rename, deletion, reassignment, and persistence.
 
+Validated implementation:
+
+- dedicated visual-profile lifecycle service;
+- visual-profile manager available from the application configuration panel;
+- stable `user-` identifiers independent from display names;
+- case-insensitive unique-name validation;
+- protected built-in profile actions;
+- deletion confirmation with assignment count;
+- fallback reassignment to built-in `Soft invert`;
+- 30 automated tests passing in CI.
+
 ### 0.4A.3 — profile lifecycle hardening and regression
 
-Status: planned after 0.4A.2.
+Status: next planned increment.
 
 Scope:
 
