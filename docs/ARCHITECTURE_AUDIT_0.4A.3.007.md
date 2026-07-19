@@ -1,80 +1,82 @@
-# SightAdapt 0.4A.3.007 — final architecture audit
+# SightAdapt 0.4A.3.007 — superseded architecture audit
 
-## Scope
+## Status
 
-This report closes the 0.4A architectural-hardening sequence. The assessment is limited to the current SightAdapt 0.4A scope and is based on the implemented authority boundaries, sources of truth, source-level architecture checks, functional regression, and Windows CI validation.
+This document previously presented an unconditional `10/10` result for KISS, DRY, Clean Code, Single Point of Authority, and Single Point of Truth. A subsequent source review found material gaps that were not covered by the original evidence. The former score and completion statement are withdrawn.
 
-## Final assessment
+The remediation is documented in [`ARCHITECTURE_REMEDIATION_0.4A.4.md`](ARCHITECTURE_REMEDIATION_0.4A.4.md).
 
-| Principle | Score | Objective evidence |
+## What the original hardening established
+
+The 0.4A.3 work created useful boundaries that remain part of the design:
+
+| Responsibility | Domain component |
+|---|---|
+| Application assignment operations | `ApplicationProfileManagementService` |
+| Visual-profile lifecycle and tuning | `VisualProfileManagementService` |
+| Persisted automatic-mode value | `AutomaticModeManagementService` |
+| Settings recovery and canonicalization | `SettingsStore.Normalize` |
+| Overlay ownership | `OverlayController` |
+| Runtime transitions | `ApplicationStateController` |
+| Built-in tuning defaults | `VisualProfileDefaults` |
+
+Those components improved the baseline, but named services alone did not prove transactionality, complete runtime truth, or exclusive mutation authority.
+
+## Findings missed by the original audit
+
+### Safety and persistence
+
+- Emergency shutdown performed settings synchronization and I/O before the unconditional overlay stop.
+- UI and runtime mutated the shared settings object before attempting persistence.
+- A failed write could leave a new state active only in memory.
+- Multiple process instances could independently write the same settings file.
+
+### Runtime source of truth
+
+- Active mode and target were stored in `ApplicationStateController`.
+- Active profile identity was stored separately in `OverlayController`.
+- automatic suppression and last-window state were held in `SightAdaptContext` fields.
+- changing the profile for the same target could therefore fail to produce a runtime-state event and leave stale tray text.
+- renderer faults and explicit emergency shutdown shared one state even though their persistence semantics differed.
+
+### DRY and policy
+
+- supported transforms and tuning capability were repeated in policy, model, catalog, and preview code;
+- profile limits and name length were repeated in the UI;
+- application assignment creation and toggling duplicated most of their flow;
+- product metadata appeared in both `ProductInfo` and the project file;
+- tray icon documentation and runtime rendering both claimed or implied authority;
+- user-defined profile limitations in `DEMO.md` contradicted the implemented manager.
+
+### Clean Code and enforcement
+
+- `SightAdaptContext` combined tray presentation, foreground tracking, persistence, runtime orchestration, and notifications;
+- a custom combo-box column hid the framework `DataSource` property with incompatible semantics;
+- the editor rounded all percentage values and rewrote unchanged fields when any field changed;
+- expected failures were sometimes swallowed without diagnostics;
+- source regex tests were useful guardrails but were treated as stronger proof than they provided.
+
+## Corrected assessment of the pre-remediation implementation
+
+| Principle | Corrected score | Main reason |
 |---|---:|---|
-| KISS | 10/10 | No dependency-injection framework, command bus, repository abstraction, generic normalization engine, or speculative renderer layer was introduced. Every added service owns a current product responsibility. |
-| DRY | 10/10 | Application assignment mutations, profile tuning mutations, automatic-mode mutations, profile policy, canonical defaults, and settings recovery each have one implementation. |
-| Clean Code | 10/10 | Public responsibilities are explicit; errors are deterministic; settings normalization reads as orchestration over focused stages; UI collects intent rather than owning domain rules. |
-| Single Point of Authority | 10/10 | Each mutation category has one named owner: runtime state, overlay lifetime, visual profiles, application assignments, persisted automatic mode, and settings recovery. |
-| Single Point of Truth | 10/10 | Persisted data, defaults, policy, runtime state, overlay identity, and product metadata each have one authoritative source. |
+| KISS | 6/10 | Several responsibilities and state fragments were concentrated in the application context. |
+| DRY | 5/10 | Transform capabilities, UI limits, metadata, icon definitions, and mutation flows were duplicated. |
+| Clean Code | 6/10 | Naming was generally good, but contracts and error handling were inconsistent. |
+| Single Point of Authority | 4/10 | Services existed, but mutation and persistence were not one enforced transaction boundary. |
+| Single Point of Truth | 4/10 | Runtime state, transform capabilities, metadata, documentation, and icon authority were split. |
 
-## Authority map
+These scores describe the source before the remediation branch. They are not a claim about the final remediated result.
 
-| Mutation category | Sole authority |
-|---|---|
-| Runtime application state | `ApplicationStateController` |
-| Overlay creation, update, closure, and disposal | `OverlayController` |
-| Visual-profile creation, duplication, rename, tuning, and deletion | `VisualProfileManagementService` |
-| Application add, remove, assignment, enable, disable, toggle, and reassignment | `ApplicationProfileManagementService` |
-| Persisted automatic mode | `AutomaticModeManagementService` |
-| Settings migration, canonicalization, recovery, and reference repair | `SettingsStore.Normalize` |
+## Evidence standard after remediation
 
-## Truth map
+A future closing assessment must distinguish:
 
-| Data or rule | Source of truth |
-|---|---|
-| Persisted applications, profiles, assignments, and automatic-mode value | `SightAdaptSettings` |
-| Exact Invert and Soft Invert names and tuning defaults | `VisualProfileDefaults` |
-| Built-in IDs, fallback IDs, supported transforms, user-ID format, and name rules | `VisualProfilePolicy` |
-| Current runtime state | `ApplicationStateController.Current` |
-| Active target and visual-profile identity | `OverlayController` |
-| Product name, version, author, repository, and license | `ProductInfo` |
+1. **named responsibility** — a class is documented as owner;
+2. **enforced authority** — callers cannot bypass the owner in normal product flows;
+3. **transactional authority** — failed persistence cannot publish a partial state;
+4. **single truth** — runtime presentation and behavior are derived from the same complete snapshot;
+5. **automated evidence** — behavior tests validate failure paths, not only source text patterns;
+6. **Windows validation** — build, tests, publish, and manual emergency behavior are verified on Windows.
 
-## Completed subincrements
-
-| Subincrement | Result |
-|---|---|
-| `0.4A.3.001` | Added a single application-assignment authority and removed the competing toggle service. |
-| `0.4A.3.002` | Added validated tuning authority; the editor returns a working result and does not mutate persisted state. |
-| `0.4A.3.003` | Added a single persisted automatic-mode authority used by configuration, tray, shortcuts, and emergency shutdown. |
-| `0.4A.3.004` | Added canonical built-in profile defaults used by factories, tuning validation, rendering, editor reset, and tests. |
-| `0.4A.3.005` | Kept `SettingsStore.Normalize` as authority while splitting implementation into four focused deterministic stages. |
-| `0.4A.3.006` | Added source-level architecture enforcement and persistence/lifecycle regression. |
-| `0.4A.3.007` | Completed this closing audit and activated 0.4A.4. |
-
-## Automated enforcement
-
-Architecture tests verify that:
-
-- persisted assignment writes are restricted to the assignment authority, model compatibility surface, and settings recovery;
-- application collection add/remove operations are restricted to the assignment authority and normalization;
-- persisted `AutomaticMode` writes are restricted to `AutomaticModeManagementService`;
-- the profile editor has no persisted-source reference and no direct tuning-copy operation;
-- Soft Invert product-default literals are restricted to `VisualProfileDefaults`;
-- `SettingsStore.Normalize` calls `CanonicalizeBuiltInProfiles`, `NormalizeCustomProfiles`, `NormalizeApplications`, and `RepairProfileReferences`;
-- the obsolete `ApplicationProfileToggleService` no longer exists.
-
-Functional regression additionally covers malformed settings, migration, profile lifecycle, assignment toggling, tuning, multiple-profile round trips, selector stability, emergency protection, and repeated mutation cycles.
-
-## Last validated implementation build
-
-```text
-build: 0 warnings, 0 errors
-tests: 64 passed, 0 failed, 0 skipped
-publish: self-contained Windows x64 succeeded
-artifact: SightAdapt-0.4-Alpha-win-x64
-```
-
-The PR records the artifact digest for the latest successful workflow run.
-
-## Completion decision
-
-No known KISS, DRY, Clean Code, Single Point of Authority, or Single Point of Truth violation remains within the 0.4A scope. Future features must declare their mutation authority and source of truth before implementation.
-
-`0.4A.4 — interface corrections` is now the active increment.
+No future audit should assign an unconditional perfect score while known limitations remain or while evidence consists only of source-pattern restrictions.
