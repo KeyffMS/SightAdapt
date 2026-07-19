@@ -1,24 +1,29 @@
 # SightAdapt 0.4 Alpha
 
-SightAdapt 0.4 Alpha is the current executable Windows build. It adds configurable color profiles to per-window visual correction while preserving persistent application assignments, automatic activation, settings migration, two global toggle shortcuts, and the dark configuration interface.
+SightAdapt 0.4 Alpha is the current executable Windows build. It applies configurable visual profiles to selected Windows application windows while preserving per-application assignments, automatic activation, settings migration, two global shortcuts, and an input-transparent overlay.
 
 ## Implemented features
 
 - runs in the Windows notification area;
-- tracks the currently active top-level application window;
-- applies an assigned visual profile in local or automatic mode;
+- enforces a single running process per user session;
+- tracks the active top-level application window;
+- applies assigned profiles in local or automatic mode;
 - provides fixed `Exact invert` and editable `Soft invert` profiles;
+- supports independent user-defined Soft Invert profiles;
+- creates, duplicates, renames, edits, assigns, and deletes user-defined profiles;
 - limits output black and output white levels;
 - adjusts brightness, contrast, saturation, and hue;
-- previews grayscale and hue-spectrum conversion in the profile editor;
-- updates the color matrix of an active overlay without recreating the overlay;
-- stores persistent per-application profile assignments;
-- keeps the overlay aligned while the target window moves or resizes;
+- previews grayscale and hue-spectrum conversion;
+- updates an active overlay without recreating it when only the profile changes;
+- stores persistent per-application assignments;
+- keeps the overlay aligned while the target moves or resizes;
 - passes mouse and keyboard input through to the original application;
-- hides the overlay when the target is minimized or no longer active;
+- hides the overlay when the target is minimized or inactive;
 - stores schema-versioned JSON settings in `%LOCALAPPDATA%\SightAdapt\settings.json`;
 - migrates older settings without changing existing Exact Invert assignments;
-- provides emergency shutdown from the notification-area menu;
+- commits settings through a write-before-publish transaction boundary;
+- provides immediate emergency shutdown from the notification-area menu;
+- distinguishes an explicit emergency shutdown from a renderer fault;
 - supports per-monitor DPI awareness;
 - targets Windows 10 version 2004 or newer and Windows 11.
 
@@ -31,7 +36,7 @@ SightAdapt registers exactly two global shortcuts:
 | `Ctrl+Alt+I` | Locally enable or disable visual correction for the active window without changing persistent settings |
 | `Ctrl+Alt+Shift+I` | Add, disable, or re-enable the active application's persistent automatic assignment |
 
-The local toggle uses the application's assigned visual profile when one exists. A disabled assignment can still provide its selected profile for local use, but it will not activate automatically.
+The local toggle uses the application's assigned profile when one exists. A disabled assignment remains available for local use but does not activate automatically.
 
 The persistent toggle behaves as follows:
 
@@ -67,8 +72,9 @@ The configuration panel provides:
 - adding the currently active application;
 - selecting an executable manually;
 - enabling or disabling individual automatic assignments;
-- choosing `Exact invert` or `Soft invert` per application;
-- opening the Soft Invert editor;
+- assigning any available visual profile;
+- opening the editor for tunable profiles;
+- creating, duplicating, renaming, editing, and deleting user-defined profiles;
 - removing application assignments.
 
 Newly configured applications use Soft Invert by default. Existing assignments migrated from 0.3.1 retain Exact Invert.
@@ -84,11 +90,11 @@ Saturation: 100%
 Hue shift: 0°
 ```
 
-The built-in Soft Invert profile is currently shared. Editing it affects every application assigned to `default-soft-invert`.
+The built-in Soft Invert profile is shared. Editing it affects every application assigned to `default-soft-invert`. Create or duplicate a user-defined profile when applications need independent parameter sets.
 
-Detailed behavior is documented in [`docs/SOFT_COLOR_PROFILES_0.4.md`](docs/SOFT_COLOR_PROFILES_0.4.md).
+Detailed behavior is documented in [`docs/SOFT_COLOR_PROFILES_0.4.md`](docs/SOFT_COLOR_PROFILES_0.4.md) and [`docs/USER_DEFINED_PROFILES_0.4A.2.md`](docs/USER_DEFINED_PROFILES_0.4A.2.md).
 
-## Settings
+## Settings consistency
 
 Settings are stored at:
 
@@ -96,7 +102,7 @@ Settings are stored at:
 %LOCALAPPDATA%\SightAdapt\settings.json
 ```
 
-Version 0.4 uses schema `3`. The configuration uses `System.Text.Json` and contains no captured screen content.
+Version 0.4 uses schema `3`. Mutations are applied to a working snapshot, normalized, written atomically, and published to the running application only after the write succeeds. A failed domain operation or failed write leaves the last committed in-memory settings unchanged.
 
 ## Build and tests
 
@@ -133,31 +139,23 @@ dotnet publish src/SightAdapt.Demo/SightAdapt.Demo.csproj `
 
 ## Technical scope
 
-The current alpha uses the Windows Magnification API because it provides a dependency-free route to validating overlay interaction and affine color matrices. Soft Invert composes output limits, saturation, hue rotation, contrast, and brightness into one `MAGCOLOREFFECT` matrix.
+The current alpha uses the Windows Magnification API to validate overlay interaction and affine color matrices without third-party runtime dependencies. Soft Invert composes output limits, saturation, hue rotation, contrast, and brightness into one `MAGCOLOREFFECT` matrix.
 
-Version 0.3.1 established the state, overlay, transform, profile, and migration boundaries described in [`docs/ARCHITECTURE_0.3.1.md`](docs/ARCHITECTURE_0.3.1.md). Version 0.4 builds on those boundaries without adding a dependency-injection framework or a speculative renderer abstraction.
-
-This is not the final Light capture backend. The planned production architecture remains:
-
-- Windows Graphics Capture;
-- Direct3D 11;
-- GPU shader and LUT processing;
-- native overlay composition.
+The production Light architecture remains planned around Windows Graphics Capture, Direct3D 11, GPU shader and LUT processing, and native overlay composition.
 
 ## Known limitations
 
 - only one target window can be corrected at a time;
 - the effect is visible only while the selected target is the foreground window;
-- the current editor modifies one shared built-in Soft Invert profile;
-- user-defined profile creation, duplication, renaming, deletion, import, and export are not implemented yet;
-- palette capture, dominant-color analysis, targeted source-to-output color rules, and LUTs are not implemented yet;
+- profile import and export are not implemented yet;
+- palette capture, dominant-color analysis, targeted source-to-output rules, and LUTs are not implemented yet;
 - owned dialogs and pop-up windows are not automatically included;
 - application identity is based on the executable path;
 - protected or DRM-controlled content may not be capturable;
 - elevated applications may not work from a non-elevated SightAdapt process;
 - some GPU drivers or remote-desktop sessions may not support the magnifier control correctly;
-- this alpha has not yet completed the endurance and compatibility testing required by `LIGHT.md`.
+- this alpha has not completed the endurance and compatibility testing required by `LIGHT.md`.
 
 ## Safety behavior
 
-The overlay never intentionally receives input. If the target window becomes invalid, minimized, hidden, or inactive, the overlay is hidden or closed. The tray-menu emergency command removes the current overlay and disables automatic mode.
+The overlay never intentionally receives input. If the target becomes invalid, minimized, hidden, or inactive, the overlay is hidden or closed. Emergency shutdown disables the overlay before any settings I/O, enters a persistent runtime emergency state, and then attempts to save automatic mode as disabled. A renderer failure uses a separate fault state and does not falsely report that automatic mode was persisted as off.
