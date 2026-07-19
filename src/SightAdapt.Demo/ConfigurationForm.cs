@@ -740,8 +740,13 @@ internal sealed class ConfigurationForm : Form
             return;
         }
 
-        if (VisualProfileEditorForm.Edit(this, visualProfile))
+        var values = VisualProfileEditorForm.Edit(this, visualProfile);
+        if (values is not null)
         {
+            VisualProfileManagementService.UpdateTuning(
+                _settings,
+                visualProfile,
+                values);
             _settingsChanged();
             RefreshProfiles();
         }

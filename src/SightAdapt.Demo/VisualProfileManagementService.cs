@@ -60,6 +60,55 @@ internal static class VisualProfileManagementService
             profile);
     }
 
+    public static void UpdateTuning(
+        SightAdaptSettings settings,
+        VisualProfile profile,
+        VisualProfile values)
+    {
+        ArgumentNullException.ThrowIfNull(settings);
+        ArgumentNullException.ThrowIfNull(profile);
+        ArgumentNullException.ThrowIfNull(values);
+        EnsureCollections(settings);
+        EnsureMember(settings, profile);
+
+        if (!profile.SupportsTuning)
+        {
+            throw new InvalidOperationException(
+                "Only editable Soft Invert profiles can be tuned.");
+        }
+
+        profile.OutputBlack = VisualProfileLimits.ClampFinite(
+            values.OutputBlack,
+            VisualProfileLimits.MinimumOutputBlack,
+            VisualProfileLimits.MaximumOutputBlack,
+            0.08f);
+        profile.OutputWhite = VisualProfileLimits.ClampFinite(
+            values.OutputWhite,
+            VisualProfileLimits.MinimumOutputWhite,
+            VisualProfileLimits.MaximumOutputWhite,
+            0.92f);
+        profile.Brightness = VisualProfileLimits.ClampFinite(
+            values.Brightness,
+            VisualProfileLimits.MinimumBrightness,
+            VisualProfileLimits.MaximumBrightness,
+            0.0f);
+        profile.Contrast = VisualProfileLimits.ClampFinite(
+            values.Contrast,
+            VisualProfileLimits.MinimumContrast,
+            VisualProfileLimits.MaximumContrast,
+            1.0f);
+        profile.Saturation = VisualProfileLimits.ClampFinite(
+            values.Saturation,
+            VisualProfileLimits.MinimumSaturation,
+            VisualProfileLimits.MaximumSaturation,
+            1.0f);
+        profile.HueShiftDegrees = VisualProfileLimits.ClampFinite(
+            values.HueShiftDegrees,
+            VisualProfileLimits.MinimumHueShift,
+            VisualProfileLimits.MaximumHueShift,
+            0.0f);
+    }
+
     public static int Delete(
         SightAdaptSettings settings,
         VisualProfile profile,

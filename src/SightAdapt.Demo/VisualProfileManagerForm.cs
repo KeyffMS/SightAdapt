@@ -451,9 +451,17 @@ internal sealed class VisualProfileManagerForm : Form
             return;
         }
 
-        if (VisualProfileEditorForm.Edit(this, profile))
+        var values = VisualProfileEditorForm.Edit(this, profile);
+        if (values is not null)
         {
-            SaveAndRefresh(profile.Id);
+            RunProfileOperation(() =>
+            {
+                VisualProfileManagementService.UpdateTuning(
+                    _settings,
+                    profile,
+                    values);
+                SaveAndRefresh(profile.Id);
+            });
         }
     }
 

@@ -4,7 +4,6 @@ namespace SightAdapt.Demo;
 
 internal sealed class VisualProfileEditorForm : Form
 {
-    private readonly VisualProfile _sourceProfile;
     private readonly VisualProfile _workingProfile;
     private readonly ColorProfilePreview _preview;
     private readonly NumericUpDown _outputBlackInput;
@@ -16,7 +15,7 @@ internal sealed class VisualProfileEditorForm : Form
 
     private VisualProfileEditorForm(VisualProfile profile)
     {
-        _sourceProfile = profile ?? throw new ArgumentNullException(nameof(profile));
+        ArgumentNullException.ThrowIfNull(profile);
         if (!profile.SupportsTuning)
         {
             throw new ArgumentException(
@@ -72,13 +71,15 @@ internal sealed class VisualProfileEditorForm : Form
         Controls.Add(root);
     }
 
-    public static bool Edit(IWin32Window owner, VisualProfile profile)
+    public static VisualProfile? Edit(IWin32Window owner, VisualProfile profile)
     {
         ArgumentNullException.ThrowIfNull(owner);
         ArgumentNullException.ThrowIfNull(profile);
 
         using var editor = new VisualProfileEditorForm(profile);
-        return editor.ShowDialog(owner) == DialogResult.OK;
+        return editor.ShowDialog(owner) == DialogResult.OK
+            ? editor._workingProfile.CreateWorkingCopy()
+            : null;
     }
 
     private Control CreateHeader()
@@ -237,7 +238,6 @@ internal sealed class VisualProfileEditorForm : Form
             MinimumSize = new Size(130, 40),
             Margin = Padding.Empty,
         };
-        saveButton.Click += (_, _) => _sourceProfile.CopyTuningFrom(_workingProfile);
         AcceptButton = saveButton;
 
         var rightButtons = new FlowLayoutPanel
