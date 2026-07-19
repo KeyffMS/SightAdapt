@@ -9,8 +9,10 @@ internal sealed class VisualProfileNameDialog : Form
         string prompt,
         string initialName)
     {
-        Text = $"{ProductInfo.DisplayName} · {title}";
-        StartPosition = FormStartPosition.CenterParent;
+        Text =
+            $"{ProductInfo.DisplayName} · {title}";
+        StartPosition =
+            FormStartPosition.CenterParent;
         MinimumSize = new Size(480, 230);
         Size = new Size(540, 250);
         MaximizeBox = false;
@@ -23,72 +25,109 @@ internal sealed class VisualProfileNameDialog : Form
         {
             AutoEllipsis = true,
             Dock = DockStyle.Fill,
-            ForeColor = AppTheme.TextSecondary,
+            ForeColor =
+                AppTheme.TextSecondary,
             Font = AppTheme.CreateUiFont(9.5f),
             Text = prompt,
-            TextAlign = ContentAlignment.MiddleLeft,
+            TextAlign =
+                ContentAlignment.MiddleLeft,
         };
 
         _nameInput = new TextBox
         {
-            AccessibleName = "Visual profile name",
-            BackColor = AppTheme.SurfaceRaised,
-            BorderStyle = BorderStyle.FixedSingle,
+            AccessibleName =
+                "Visual profile name",
+            BackColor =
+                AppTheme.SurfaceRaised,
+            BorderStyle =
+                BorderStyle.FixedSingle,
             Dock = DockStyle.Fill,
             Font = AppTheme.CreateUiFont(11f),
             ForeColor = AppTheme.TextPrimary,
-            MaxLength = 80,
+            MaxLength =
+                VisualProfilePolicy
+                    .MaximumNameLength,
             Text = initialName,
         };
 
-        var cancelButton = new ModernButton
+        var cancel = new ModernButton
         {
             DialogResult = DialogResult.Cancel,
             Text = "Cancel",
-            VisualStyle = ModernButtonStyle.Ghost,
+            VisualStyle =
+                ModernButtonStyle.Ghost,
             MinimumSize = new Size(100, 40),
-            Margin = new Padding(0, 0, 8, 0),
+            Margin =
+                new Padding(0, 0, 8, 0),
         };
-        CancelButton = cancelButton;
+        CancelButton = cancel;
 
-        var confirmButton = new ModernButton
+        var confirm = new ModernButton
         {
             DialogResult = DialogResult.OK,
             Text = "Confirm",
-            VisualStyle = ModernButtonStyle.Primary,
+            VisualStyle =
+                ModernButtonStyle.Primary,
             MinimumSize = new Size(110, 40),
             Margin = Padding.Empty,
         };
-        AcceptButton = confirmButton;
+        AcceptButton = confirm;
 
         var buttons = new FlowLayoutPanel
         {
             Anchor = AnchorStyles.Right,
             AutoSize = true,
-            BackColor = AppTheme.WindowBackground,
-            FlowDirection = FlowDirection.LeftToRight,
+            BackColor =
+                AppTheme.WindowBackground,
+            FlowDirection =
+                FlowDirection.LeftToRight,
             Margin = Padding.Empty,
             WrapContents = false,
         };
-        buttons.Controls.Add(cancelButton);
-        buttons.Controls.Add(confirmButton);
+        buttons.Controls.Add(cancel);
+        buttons.Controls.Add(confirm);
 
         var layout = new TableLayoutPanel
         {
-            BackColor = AppTheme.WindowBackground,
+            BackColor =
+                AppTheme.WindowBackground,
             ColumnCount = 1,
             Dock = DockStyle.Fill,
-            Padding = new Padding(24, 18, 24, 18),
+            Padding =
+                new Padding(24, 18, 24, 18),
             RowCount = 3,
         };
-        layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 52));
-        layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 48));
-        layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-        layout.Controls.Add(promptLabel, 0, 0);
-        layout.Controls.Add(_nameInput, 0, 1);
-        layout.Controls.Add(buttons, 0, 2);
-        buttons.Anchor = AnchorStyles.Right | AnchorStyles.Bottom;
+        layout.ColumnStyles.Add(
+            new ColumnStyle(
+                SizeType.Percent,
+                100));
+        layout.RowStyles.Add(
+            new RowStyle(
+                SizeType.Absolute,
+                52));
+        layout.RowStyles.Add(
+            new RowStyle(
+                SizeType.Absolute,
+                48));
+        layout.RowStyles.Add(
+            new RowStyle(
+                SizeType.Percent,
+                100));
+        layout.Controls.Add(
+            promptLabel,
+            0,
+            0);
+        layout.Controls.Add(
+            _nameInput,
+            0,
+            1);
+        layout.Controls.Add(
+            buttons,
+            0,
+            2);
+        buttons.Anchor =
+            AnchorStyles.Right |
+            AnchorStyles.Bottom;
 
         Controls.Add(layout);
         Shown += (_, _) =>
@@ -107,12 +146,14 @@ internal sealed class VisualProfileNameDialog : Form
     {
         ArgumentNullException.ThrowIfNull(owner);
 
-        using var dialog = new VisualProfileNameDialog(
-            title,
-            prompt,
-            initialName);
+        using var dialog =
+            new VisualProfileNameDialog(
+                title,
+                prompt,
+                initialName);
 
-        if (dialog.ShowDialog(owner) != DialogResult.OK)
+        if (dialog.ShowDialog(owner) !=
+            DialogResult.OK)
         {
             name = string.Empty;
             return false;
