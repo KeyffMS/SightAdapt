@@ -7,7 +7,7 @@ on:
     branches: [main, "agent/**"]
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
@@ -16,6 +16,16 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+        with:
+          ref: agent/alpha-v0.4
+          fetch-depth: 0
+
+      - name: Apply staged architecture migration
+        shell: pwsh
+        run: |
+          if (Test-Path tools/patch_editor_reset_0_4A_3_004.py) {
+            python tools/patch_editor_reset_0_4A_3_004.py
+          }
 
       - name: Set up .NET
         uses: actions/setup-dotnet@v4
