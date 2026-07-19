@@ -219,7 +219,7 @@ public sealed class VisualProfileTests
             "Reader.exe",
             "C:\\Apps\\Reader.exe");
 
-        var result = ApplicationProfileToggleService.Toggle(settings, identity);
+        var result = ApplicationProfileManagementService.Toggle(settings, identity);
 
         Assert.IsTrue(result.WasCreated);
         Assert.IsTrue(result.IsEnabled);
@@ -260,8 +260,8 @@ public sealed class VisualProfileTests
             "Reader.exe",
             "C:\\Apps\\Reader.exe");
 
-        var disabled = ApplicationProfileToggleService.Toggle(settings, identity);
-        var enabled = ApplicationProfileToggleService.Toggle(settings, identity);
+        var disabled = ApplicationProfileManagementService.Toggle(settings, identity);
+        var enabled = ApplicationProfileManagementService.Toggle(settings, identity);
 
         Assert.IsFalse(disabled.WasCreated);
         Assert.IsFalse(disabled.IsEnabled);
@@ -293,7 +293,7 @@ public sealed class VisualProfileTests
             "Reader.exe",
             "C:\\Apps\\Reader.exe");
 
-        var result = ApplicationProfileToggleService.Toggle(settings, identity);
+        var result = ApplicationProfileManagementService.Toggle(settings, identity);
 
         Assert.IsFalse(result.IsEnabled);
         Assert.AreEqual(
