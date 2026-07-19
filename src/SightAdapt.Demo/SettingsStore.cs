@@ -169,7 +169,7 @@ internal sealed class SettingsStore
                 changed = true;
             }
 
-            profileIds.Add(profile.Id);
+            profileIds.Add(normalizedId);
 
             var normalizedTransformId = (profile.TransformId ?? string.Empty)
                 .Trim()
@@ -248,7 +248,8 @@ internal sealed class SettingsStore
 
             if (string.IsNullOrWhiteSpace(application.ExecutableName))
             {
-                application.ExecutableName = Path.GetFileName(application.ExecutablePath);
+                application.ExecutableName =
+                    Path.GetFileName(application.ExecutablePath) ?? string.Empty;
                 changed = true;
             }
 
@@ -262,7 +263,7 @@ internal sealed class SettingsStore
             if (string.IsNullOrWhiteSpace(application.DisplayName))
             {
                 application.DisplayName = Path.GetFileNameWithoutExtension(
-                    application.ExecutableName);
+                    application.ExecutableName) ?? string.Empty;
                 changed = true;
             }
 
@@ -343,7 +344,7 @@ internal sealed class SettingsStore
                 InvertVisualTransform.TransformId,
                 StringComparison.OrdinalIgnoreCase))
         {
-            var changed = profile.OutputBlack != 0.0f ||
+            var exactProfileChanged = profile.OutputBlack != 0.0f ||
                 profile.OutputWhite != 1.0f ||
                 profile.Brightness != 0.0f ||
                 profile.Contrast != 1.0f ||
@@ -356,7 +357,7 @@ internal sealed class SettingsStore
             profile.Contrast = 1.0f;
             profile.Saturation = 1.0f;
             profile.HueShiftDegrees = 0.0f;
-            return changed;
+            return exactProfileChanged;
         }
 
         var outputBlack = VisualProfileLimits.ClampFinite(
