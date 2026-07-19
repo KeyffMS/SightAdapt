@@ -10,9 +10,10 @@
     <RootNamespace>SightAdapt.Demo</RootNamespace>
     <Product>SightAdapt</Product>
     <Title>SightAdapt 0.4 Alpha</Title>
-    <Description>Automatic visual accessibility for Windows applications.</Description>
-    <Authors>KeyffMS / aiteracja.pl</Authors>
-    <Copyright>Copyright © KeyffMS / aiteracja.pl</Copyright>
+    <Description>Automatic visual accessibility for Windows applications</Description>
+    <Company>KeyffMS / aiteracja.pl</Company>
+    <Authors>$(Company)</Authors>
+    <Copyright>Copyright © $(Company)</Copyright>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <RepositoryUrl>https://github.com/KeyffMS/SightAdapt</RepositoryUrl>
     <Version>0.4.0-alpha</Version>
@@ -24,4 +25,9 @@
     <SupportedOSPlatformVersion>10.0.19041.0</SupportedOSPlatformVersion>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
   </PropertyGroup>
+
+  <ItemGroup>
+    <AssemblyMetadata Include="License" Value="MIT License" />
+    <AssemblyMetadata Include="RepositoryUrl" Value="$(RepositoryUrl)" />
+  </ItemGroup>
 </Project>
