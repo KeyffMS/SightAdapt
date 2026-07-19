@@ -29,7 +29,8 @@ internal sealed class ApplicationProfile
 
     public bool Enabled { get; set; } = true;
 
-    public string VisualProfileId { get; set; } = VisualProfile.DefaultSoftInvertId;
+    public string VisualProfileId { get; set; } =
+        VisualProfilePolicy.NewAssignmentProfileId;
 
     [JsonPropertyName("effect")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
