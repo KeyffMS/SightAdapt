@@ -30,7 +30,7 @@ internal static class ApplicationProfileManagementService
         UpdateIdentity(profile, identity);
         profile.Enabled = true;
         profile.LegacyEffect = null;
-        EnsureValidProfileReference(settings, profile);
+        EnsureValidProfileReference(settings, profile, wasCreated);
 
         return new ApplicationProfileToggleResult(profile, wasCreated, profile.Enabled);
     }
@@ -62,7 +62,7 @@ internal static class ApplicationProfileManagementService
 
         UpdateIdentity(profile, identity);
         profile.LegacyEffect = null;
-        EnsureValidProfileReference(settings, profile);
+        EnsureValidProfileReference(settings, profile, wasCreated);
 
         return new ApplicationProfileToggleResult(profile, wasCreated, profile.Enabled);
     }
@@ -169,12 +169,17 @@ internal static class ApplicationProfileManagementService
 
     private static void EnsureValidProfileReference(
         SightAdaptSettings settings,
-        ApplicationProfile profile)
+        ApplicationProfile profile,
+        bool wasCreated)
     {
-        if (ProfileResolver.FindVisualProfile(settings, profile.VisualProfileId) is null)
+        if (ProfileResolver.FindVisualProfile(settings, profile.VisualProfileId) is not null)
         {
-            profile.VisualProfileId = VisualProfilePolicy.NewAssignmentProfileId;
+            return;
         }
+
+        profile.VisualProfileId = wasCreated
+            ? VisualProfilePolicy.NewAssignmentProfileId
+            : VisualProfilePolicy.MissingReferenceFallbackProfileId;
     }
 
     private static void UpdateIdentity(
