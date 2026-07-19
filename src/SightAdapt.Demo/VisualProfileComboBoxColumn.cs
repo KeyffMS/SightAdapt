@@ -1,6 +1,8 @@
 namespace SightAdapt.Demo;
 
-internal sealed record VisualProfileOption(string Id, string Name)
+internal sealed record VisualProfileOption(
+    string Id,
+    string Name)
 {
     public override string ToString()
     {
@@ -8,64 +10,60 @@ internal sealed record VisualProfileOption(string Id, string Name)
     }
 }
 
-internal sealed class DataGridViewComboBoxColumn :
+internal sealed class StableVisualProfileComboBoxColumn :
     System.Windows.Forms.DataGridViewComboBoxColumn
 {
     private VisualProfileOption[] _options = [];
 
-    public DataGridViewComboBoxColumn()
+    public StableVisualProfileComboBoxColumn()
     {
-        DisplayMember = nameof(VisualProfileOption.Name);
-        ValueMember = nameof(VisualProfileOption.Id);
+        DisplayMember =
+            nameof(VisualProfileOption.Name);
+        ValueMember =
+            nameof(VisualProfileOption.Id);
         ValueType = typeof(string);
     }
 
-    public new object? DataSource
+    public void SetProfiles(
+        IEnumerable<VisualProfile> profiles)
     {
-        get => null;
-        set
+        ArgumentNullException.ThrowIfNull(profiles);
+
+        var nextOptions = profiles
+            .Where(profile => profile is not null)
+            .Select(profile =>
+                new VisualProfileOption(
+                    profile.Id,
+                    profile.Name))
+            .ToArray();
+
+        if (_options.SequenceEqual(nextOptions))
         {
-            // ConfigurationForm previously cleared and rebound DataSource while the
-            // combo box was committing an edit. WinForms can throw inside
-            // ItemFromComboBoxDataSource in that situation. Keep the column
-            // permanently unbound and update its Items collection only when the
-            // actual profile options change.
-            if (value is null)
-            {
-                return;
-            }
-
-            if (value is not IEnumerable<VisualProfile> profiles)
-            {
-                throw new ArgumentException(
-                    "The visual profile column accepts VisualProfile collections only.",
-                    nameof(value));
-            }
-
-            var nextOptions = profiles
-                .Select(profile => new VisualProfileOption(profile.Id, profile.Name))
-                .ToArray();
-
-            if (_options.SequenceEqual(nextOptions))
-            {
-                return;
-            }
-
-            _options = nextOptions;
-            Items.Clear();
-            Items.AddRange(_options.Cast<object>().ToArray());
+            return;
         }
+
+        _options = nextOptions;
+        Items.Clear();
+        Items.AddRange(
+            _options.Cast<object>().ToArray());
     }
 
     public override object Clone()
     {
-        var clone = (DataGridViewComboBoxColumn)base.Clone();
+        var clone =
+            (StableVisualProfileComboBoxColumn)
+            base.Clone();
         clone._options = _options.ToArray();
-        clone.DisplayMember = nameof(VisualProfileOption.Name);
-        clone.ValueMember = nameof(VisualProfileOption.Id);
+        clone.DisplayMember =
+            nameof(VisualProfileOption.Name);
+        clone.ValueMember =
+            nameof(VisualProfileOption.Id);
         clone.ValueType = typeof(string);
         clone.Items.Clear();
-        clone.Items.AddRange(clone._options.Cast<object>().ToArray());
+        clone.Items.AddRange(
+            clone._options
+                .Cast<object>()
+                .ToArray());
         return clone;
     }
 }
