@@ -12,6 +12,7 @@ public sealed class ApplicationStateControllerTests
 
         Assert.AreEqual(ApplicationRunState.Inactive, controller.Current.Kind);
         Assert.IsFalse(controller.Current.HasActiveOverlay);
+        Assert.IsTrue(controller.AllowsAutomaticActivation);
     }
 
     [TestMethod]
@@ -53,5 +54,35 @@ public sealed class ApplicationStateControllerTests
         Assert.AreEqual(ApplicationRunState.Emergency, controller.Current.Kind);
         Assert.AreEqual("All overlays stopped.", controller.Current.Message);
         Assert.IsFalse(controller.Current.HasActiveOverlay);
+        Assert.IsFalse(controller.AllowsAutomaticActivation);
+    }
+
+    [TestMethod]
+    public void EmergencyBlocksAutomaticActivationUntilExplicitlyCleared()
+    {
+        var controller = new ApplicationStateController();
+        controller.SetEmergency("Stopped");
+
+        Assert.ThrowsException<InvalidOperationException>(
+            () => controller.SetAutomaticActive((nint)42));
+        Assert.AreEqual(ApplicationRunState.Emergency, controller.Current.Kind);
+
+        controller.SetInactive();
+        controller.SetAutomaticActive((nint)42);
+
+        Assert.AreEqual(ApplicationRunState.AutomaticActive, controller.Current.Kind);
+        Assert.AreEqual((nint)42, controller.Current.TargetWindow);
+    }
+
+    [TestMethod]
+    public void ManualActivationRemainsAnExplicitEmergencyOverride()
+    {
+        var controller = new ApplicationStateController();
+        controller.SetEmergency("Stopped");
+
+        controller.SetManualActive((nint)42);
+
+        Assert.AreEqual(ApplicationRunState.ManualActive, controller.Current.Kind);
+        Assert.AreEqual((nint)42, controller.Current.TargetWindow);
     }
 }
