@@ -205,7 +205,7 @@ internal sealed class ConfigurationForm : Form
             Dock = DockStyle.Fill,
             ForeColor = AppTheme.TextSecondary,
             Font = AppTheme.CreateUiFont(9.5f),
-            Text = "Assign visual correction profiles and tune Soft Invert output for each Windows application.",
+            Text = "Assign and manage independent visual correction profiles for each Windows application.",
             TextAlign = ContentAlignment.TopLeft,
         };
 
@@ -448,6 +448,15 @@ internal sealed class ConfigurationForm : Form
         };
         browseButton.Click += (_, _) => BrowseForApplication();
 
+        var manageProfilesButton = new ModernButton
+        {
+            Text = "Manage profiles",
+            VisualStyle = ModernButtonStyle.Secondary,
+            MinimumSize = new Size(145, 40),
+            Margin = new Padding(0, 0, 8, 0),
+        };
+        manageProfilesButton.Click += (_, _) => ManageVisualProfiles();
+
         var removeButton = new ModernButton
         {
             Text = "Remove selected",
@@ -480,6 +489,7 @@ internal sealed class ConfigurationForm : Form
         leftButtons.Controls.AddRange([
             addCurrentButton,
             browseButton,
+            manageProfilesButton,
             _editVisualProfileButton,
             removeButton,
         ]);
@@ -733,6 +743,15 @@ internal sealed class ConfigurationForm : Form
             _settingsChanged();
             RefreshProfiles();
         }
+    }
+
+    private void ManageVisualProfiles()
+    {
+        VisualProfileManagerForm.ShowManager(
+            this,
+            _settings,
+            _settingsChanged);
+        RefreshProfiles();
     }
 
     private ApplicationProfile? GetSelectedApplicationProfile()
