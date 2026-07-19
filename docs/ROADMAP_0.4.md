@@ -2,9 +2,9 @@
 
 ## Purpose
 
-SightAdapt 0.4 Alpha will introduce configurable visual color profiles. The first goal is to move beyond strict black-to-white inversion and allow users to create a softer, more readable result for each application.
+SightAdapt 0.4 Alpha introduces configurable visual color profiles. The first goal is to move beyond strict black-to-white inversion and allow users to create a softer, more readable result for each application.
 
-This roadmap assumes that version 0.3.1 first completes a focused architecture and clean-code pass. That work must prepare the code for visual profiles without adding abstractions that are not required by the 0.4 scope.
+The 0.4 release is divided into four 0.4A increments that complete the profile editor and its interface before palette analysis begins.
 
 ## Guiding principles
 
@@ -19,11 +19,11 @@ Development should follow:
 
 ## 0.3.1 prerequisite: architecture hardening
 
-Before implementing the 0.4 editor, version 0.3.1 should establish:
+Before implementing the 0.4 editor, version 0.3.1 establishes:
 
 1. a single application-state controller for `Inactive`, `ManualActive`, `AutomaticActive`, and `Emergency`;
 2. an overlay controller separated from tray and settings UI concerns;
-3. a visual-transform abstraction with the current inversion as its first implementation;
+3. a visual-transform abstraction with inversion as its first implementation;
 4. a visual-profile model separate from application assignment;
 5. one `ProductInfo` source for product name, version, repository, author, and license;
 6. settings migration support and tests for existing 0.2/0.3 user configuration;
@@ -56,7 +56,7 @@ output = 0.92 - input * 0.84
 
 ### Profile parameters
 
-The first visual-profile model should support:
+The visual-profile model supports:
 
 - profile name;
 - output black level;
@@ -65,17 +65,16 @@ The first visual-profile model should support:
 - contrast;
 - saturation;
 - hue shift;
-- enabled/disabled state;
 - stable profile identifier.
 
-Application profiles should reference a visual-profile identifier instead of storing a transformation name such as `invert` directly.
+Application profiles reference a visual-profile identifier instead of storing a transformation name such as `invert` directly.
 
-### Editor UX
+### Editor UX baseline
 
 The profile editor should provide:
 
 - a dark, consistent SightAdapt interface;
-- a tonal range control for output black and output white;
+- tonal range controls for output black and output white;
 - brightness and contrast controls;
 - a saturation control;
 - a hue control displayed on a continuous color spectrum;
@@ -85,15 +84,98 @@ The profile editor should provide:
 - assignment of a selected visual profile to an application;
 - explicit text labels so color is never the only state indicator.
 
-The initial editor may use sliders and a hue spectrum. It does not need a full node editor or professional color-grading interface.
+The editor may use sliders and a hue spectrum. It does not need a node editor or a professional color-grading interface.
 
 ### Rendering scope
 
-0.4A should use the existing Windows Magnification API color matrix where the requested transformation can be represented accurately enough.
+0.4A uses the existing Windows Magnification API color matrix where the requested transformation can be represented accurately enough.
 
-The implementation must isolate transformation calculation from the current overlay backend so a later move to Windows Graphics Capture, Direct3D 11, HLSL, and LUT processing does not require changing the profile model or user-facing controls.
+Transformation calculation must remain isolated from the current overlay backend so a later move to Windows Graphics Capture, Direct3D 11, HLSL, and LUT processing does not require changing the profile model or user-facing controls.
+
+## 0.4A delivery increments
+
+### 0.4A.1 — built-in profiles and Soft Invert editor
+
+Status: implemented and under manual validation.
+
+Scope:
+
+- built-in `Exact invert` and `Soft invert` profiles;
+- configurable output black and output white;
+- brightness, contrast, saturation, and hue shift;
+- application-to-profile assignment;
+- grayscale and hue-spectrum preview;
+- schema migration and persistence;
+- immediate refresh of an active overlay;
+- stable profile selector behavior.
+
+### 0.4A.2 — user-defined profiles per application
+
+Status: next functional increment.
+
+Scope:
+
+- create a profile from Soft Invert defaults;
+- duplicate an existing editable profile;
+- rename user-defined profiles;
+- delete user-defined profiles;
+- prevent deletion or renaming of protected built-in profiles;
+- show how many applications use a profile before deletion;
+- reassign affected applications to a safe fallback profile;
+- allow different applications to use independent parameter sets;
+- validate unique, non-empty profile names;
+- test creation, duplication, rename, deletion, reassignment, and persistence.
+
+### 0.4A.3 — profile lifecycle hardening and regression
+
+Status: planned after 0.4A.2.
+
+Scope:
+
+- persistence round trips for multiple custom profiles;
+- invalid and duplicate identifier handling;
+- safe recovery from deleted or missing profile references;
+- migration from all earlier settings schemas;
+- manual and automatic activation regression;
+- local and persistent shortcut regression;
+- emergency shutdown regression;
+- repeated create/edit/delete operations;
+- long-running profile switching and overlay refresh checks;
+- clean user-facing validation and failure messages.
+
+### 0.4A.4 — interface corrections
+
+Status: planned final 0.4A increment before palette analysis.
+
+This stage is intentionally focused on interface quality and does not add a new color-processing capability.
+
+Scope:
+
+- correct clipping, alignment, spacing, and inconsistent control sizing;
+- stabilize table columns, profile selectors, selected rows, and edit states;
+- ensure readable labels and values at 100%, 125%, 150%, 175%, and 200% DPI;
+- verify resizing, minimum window sizes, and multi-monitor movement;
+- correct button hierarchy, enabled/disabled states, and destructive-action placement;
+- improve keyboard navigation, tab order, focus indicators, and default/cancel actions;
+- add or correct accessible names, descriptions, and text alternatives;
+- make validation, confirmation, empty-state, and error messages consistent;
+- preserve the dark theme across normal, hover, selected, disabled, and error states;
+- verify that no interface refresh occurs inside an active combo-box commit;
+- complete a manual visual-regression checklist before starting 0.4B.
+
+Acceptance criteria:
+
+1. profile names remain readable before and after repeated changes;
+2. changing a profile never raises an unhandled WinForms exception;
+3. controls remain usable and unclipped at supported DPI scales;
+4. all primary workflows are usable with keyboard only;
+5. destructive actions require clear confirmation;
+6. the selected application and selected profile remain predictable after refresh;
+7. no interface correction changes transformation semantics or stored profile values.
 
 ## 0.4B: palette analysis
+
+0.4B begins only after 0.4A.4 has passed its interface and regression acceptance checks.
 
 Palette analysis should operate on a sampled frame, not on a raw list of every unique pixel color.
 
@@ -133,6 +215,17 @@ Each rule should define:
 
 This stage will likely require a LUT or GPU shader. It should not be forced into the current 5x5 color matrix when that model cannot represent the requested transformation correctly.
 
+## Planned order
+
+```text
+0.4A.1  Built-in profiles and Soft Invert editor
+0.4A.2  User-defined profiles per application
+0.4A.3  Profile lifecycle hardening and regression
+0.4A.4  Interface corrections
+0.4B    Palette analysis
+0.4C    Targeted color corrections
+```
+
 ## Data model direction
 
 A conceptual model:
@@ -151,9 +244,9 @@ internal sealed class VisualProfile
 }
 ```
 
-Application assignment should reference `VisualProfile.Id`.
+Application assignment references `VisualProfile.Id`.
 
-The final implementation may adjust names and types, but it should preserve the separation between:
+The implementation must preserve the separation between:
 
 - application identity;
 - visual-profile definition;
@@ -184,17 +277,19 @@ Automated tests should cover:
 - manual and automatic activation;
 - emergency shutdown preventing immediate reactivation;
 - invalid profile references;
-- persistence round trips.
+- persistence round trips;
+- stable, unbound profile-selector options and repeated refreshes.
 
 Manual Windows testing should cover:
 
-- white and black UI themes;
+- white and black source application themes;
 - text antialiasing and readability;
 - gradients, icons, and photographs;
 - multiple DPI scales and monitors;
 - move, resize, minimize, restore, close, and application switching;
 - long-running stability;
-- keyboard-only operation and screen-reader labels in the profile editor.
+- keyboard-only operation and screen-reader labels;
+- the complete 0.4A.4 interface-corrections checklist.
 
 ## Non-goals for the first 0.4 Alpha
 
@@ -221,8 +316,9 @@ SightAdapt 0.4 Alpha is complete when:
 6. manual and automatic activation continue to work;
 7. the emergency action always removes the overlay and prevents automatic reactivation;
 8. transformation logic is independent of tray and configuration UI code;
-9. automated calculations and migration tests pass;
-10. manual Windows tests confirm readable output and stable overlay behavior.
+9. automated calculations, lifecycle, selector, and migration tests pass;
+10. manual Windows tests confirm readable output and stable overlay behavior;
+11. the 0.4A.4 interface-corrections acceptance criteria pass at supported DPI scales.
 
 ## Future direction after 0.4
 
