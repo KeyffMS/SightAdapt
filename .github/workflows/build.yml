@@ -19,10 +19,13 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Apply 0.4A.3.002
-        if: github.event_name == 'push' && github.ref == 'refs/heads/agent/alpha-v0.4' && !contains(github.event.head_commit.message, '[0.4A.3.002]')
+      - name: Apply staged architecture migration
+        if: github.event_name == 'push' && github.ref == 'refs/heads/agent/alpha-v0.4'
         shell: pwsh
-        run: python tools/apply_0_4A_3_002.py
+        run: |
+          if (Test-Path tools/apply_0_4A_3_002.py) {
+            python tools/apply_0_4A_3_002.py
+          }
 
       - name: Set up .NET
         uses: actions/setup-dotnet@v4
