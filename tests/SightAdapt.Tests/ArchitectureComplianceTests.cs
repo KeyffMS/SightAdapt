@@ -123,23 +123,41 @@ public sealed class ArchitectureComplianceTests
     }
 
     [TestMethod]
-    public void ProfileEditorUsesDomainLimitsAndFieldSpecificWrites()
+    public void ProfileEditorUsesDomainLimitsAndFieldSpecificSliders()
     {
         var source = ReadSource("VisualProfileEditorForm.cs");
         StringAssert.Contains(source, "VisualProfileLimits.MinimumOutputBlack");
         StringAssert.Contains(source, "VisualProfileLimits.MaximumHueShift");
-        StringAssert.Contains(source, "AttachPercentage(_outputBlackInput");
-        StringAssert.Contains(source, "setter((float)(input.Value / 100m));");
-        Assert.IsFalse(source.Contains("DecimalPlaces = 0", StringComparison.Ordinal));
+        StringAssert.Contains(source, "ModernProfileSlider");
+        StringAssert.Contains(source, "AttachPercentage(");
+        StringAssert.Contains(source, "value => _workingProfile.OutputBlack = value");
+        StringAssert.Contains(source, "value => _workingProfile.HueShiftDegrees = value");
+        StringAssert.Contains(source, "OutputLimitPreview");
+        Assert.IsFalse(source.Contains("NumericUpDown", StringComparison.Ordinal));
     }
 
     [TestMethod]
-    public void StableComboColumnDoesNotHideDataSource()
+    public void StableComboColumnOwnsModernSelectorAndStatusPainting()
     {
         var source = ReadSource("VisualProfileComboBoxColumn.cs");
         StringAssert.Contains(source, "StableVisualProfileComboBoxColumn");
         StringAssert.Contains(source, "public void SetProfiles");
+        StringAssert.Contains(source, "ModernVisualProfileComboBoxCell");
+        StringAssert.Contains(source, "GridCellPainting");
+        StringAssert.Contains(source, "AppTheme.Success");
         Assert.IsFalse(source.Contains("new object? DataSource", StringComparison.Ordinal));
+    }
+
+    [TestMethod]
+    public void TrayUsesOneMenuForLeftClickAndAbout()
+    {
+        var source = ReadSource("TrayPresenter.cs");
+        StringAssert.Contains(source, "private readonly ContextMenuStrip _menu;");
+        StringAssert.Contains(source, "_notifyIcon.MouseClick += NotifyIconMouseClick;");
+        StringAssert.Contains(source, "eventArgs.Button == MouseButtons.Left");
+        StringAssert.Contains(source, "_menu.Show(Cursor.Position);");
+        StringAssert.Contains(source, "new AboutForm(_icons.Inactive)");
+        Assert.IsTrue(SourceExists("AboutForm.cs"));
     }
 
     [TestMethod]
@@ -150,6 +168,7 @@ public sealed class ArchitectureComplianceTests
 
         StringAssert.Contains(source, "AssemblyProductAttribute");
         StringAssert.Contains(source, "AssemblyMetadataAttribute");
+        StringAssert.Contains(source, "GetMetadata(\"Milestone\"");
         Assert.IsFalse(source.Contains("0.4 Alpha", StringComparison.Ordinal));
         Assert.IsFalse(
             source.Contains(
@@ -158,6 +177,26 @@ public sealed class ArchitectureComplianceTests
         StringAssert.Contains(
             project,
             "<AssemblyMetadata Include=\"RepositoryUrl\"");
+        StringAssert.Contains(
+            project,
+            "<AssemblyMetadata Include=\"Milestone\"");
+        Assert.IsFalse(
+            project.Contains(
+                "<Title>SightAdapt 0.4 Alpha</Title>",
+                StringComparison.Ordinal));
+    }
+
+    [TestMethod]
+    public void AboutDialogUsesCanonicalProductMetadata()
+    {
+        var source = ReadSource("AboutForm.cs");
+        StringAssert.Contains(source, "ProductInfo.ProductName");
+        StringAssert.Contains(source, "ProductInfo.MilestoneLabel");
+        StringAssert.Contains(source, "ProductInfo.VersionLabel");
+        StringAssert.Contains(source, "ProductInfo.Author");
+        StringAssert.Contains(source, "ProductInfo.License");
+        StringAssert.Contains(source, "TrayIconSet");
+        Assert.IsFalse(source.Contains("Alpha 0.4", StringComparison.Ordinal));
     }
 
     [TestMethod]
