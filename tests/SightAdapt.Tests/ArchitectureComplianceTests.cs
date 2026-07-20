@@ -10,7 +10,7 @@ public sealed class ArchitectureComplianceTests
     public void AssignmentWritesAreRestrictedToAuthorityAndRecovery()
     {
         AssertPatternRestrictedTo(
-            @"(?m)^\s*(?!string\?\s+VisualProfileId\s*=).*?\bVisualProfileId\s*=",
+            @"(?m)^(?!\s*string\?\s+VisualProfileId\s*=)\s*.*\bVisualProfileId\s*=",
             "ApplicationProfile.cs",
             "ApplicationProfileManagementService.cs",
             "SettingsStore.cs",
