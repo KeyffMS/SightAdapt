@@ -1,5 +1,5 @@
-using System.Globalization;
 using System.Drawing.Drawing2D;
+using System.Globalization;
 
 namespace SightAdapt.Demo;
 
@@ -8,6 +8,7 @@ internal sealed class ModernProfileSlider : UserControl
     private readonly ProfileSliderTrack _track;
     private readonly TextBox _valueInput;
     private readonly Label _unitLabel;
+    private readonly TableLayoutPanel _valueEditor;
     private float _minimum;
     private float _maximum = 100f;
     private float _value;
@@ -18,7 +19,7 @@ internal sealed class ModernProfileSlider : UserControl
     {
         AccessibleRole = AccessibleRole.Slider;
         BackColor = AppTheme.SurfaceRaised;
-        MinimumSize = new Size(190, 36);
+        MinimumSize = new Size(160, 36);
         TabStop = false;
 
         _track = new ProfileSliderTrack(this)
@@ -26,6 +27,8 @@ internal sealed class ModernProfileSlider : UserControl
             Dock = DockStyle.Fill,
             Margin = Padding.Empty,
         };
+        Controls.Add(_track);
+
         _valueInput = new TextBox
         {
             AccessibleName = "Numeric slider value",
@@ -34,8 +37,8 @@ internal sealed class ModernProfileSlider : UserControl
             BorderStyle = BorderStyle.FixedSingle,
             Font = AppTheme.CreateUiFont(9.2f, FontStyle.Bold),
             ForeColor = AppTheme.TextPrimary,
-            Margin = new Padding(10, 3, 4, 3),
-            Size = new Size(82, 30),
+            Margin = Padding.Empty,
+            Size = new Size(78, 28),
             TextAlign = HorizontalAlignment.Right,
         };
         _unitLabel = new Label
@@ -45,34 +48,33 @@ internal sealed class ModernProfileSlider : UserControl
             BackColor = AppTheme.SurfaceRaised,
             ForeColor = AppTheme.TextSecondary,
             Font = AppTheme.CreateUiFont(9.2f, FontStyle.Bold),
-            Margin = Padding.Empty,
+            Margin = new Padding(7, 0, 0, 0),
             TextAlign = ContentAlignment.MiddleLeft,
         };
+        _valueEditor = new TableLayoutPanel
+        {
+            AccessibleName = "Slider numeric value editor",
+            AutoSize = true,
+            BackColor = AppTheme.SurfaceRaised,
+            ColumnCount = 2,
+            Margin = Padding.Empty,
+            RowCount = 1,
+        };
+        _valueEditor.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 78));
+        _valueEditor.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        _valueEditor.Controls.Add(_valueInput, 0, 0);
+        _valueEditor.Controls.Add(_unitLabel, 1, 0);
 
         _valueInput.Enter += (_, _) => _valueInput.SelectAll();
         _valueInput.Validating += (_, _) => CommitInput();
         _valueInput.KeyDown += ValueInputKeyDown;
 
-        var layout = new TableLayoutPanel
-        {
-            BackColor = AppTheme.SurfaceRaised,
-            ColumnCount = 3,
-            Dock = DockStyle.Fill,
-            Margin = Padding.Empty,
-            RowCount = 1,
-        };
-        layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        layout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 96));
-        layout.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-        layout.Controls.Add(_track, 0, 0);
-        layout.Controls.Add(_valueInput, 1, 0);
-        layout.Controls.Add(_unitLabel, 2, 0);
-        Controls.Add(layout);
-
         SynchronizeInput();
     }
 
     public event EventHandler? ValueChanged;
+
+    internal Control ValueEditor => _valueEditor;
 
     public float Minimum
     {
@@ -157,6 +159,7 @@ internal sealed class ModernProfileSlider : UserControl
         _valueInput.AccessibleName = string.IsNullOrWhiteSpace(AccessibleName)
             ? "Numeric slider value"
             : $"{AccessibleName} numeric value";
+        _valueEditor.AccessibleName = _valueInput.AccessibleName;
     }
 
     private void SetValue(float value, bool raiseEvent)
@@ -271,7 +274,7 @@ internal sealed class ProfileSliderTrack : Control
         AccessibleRole = AccessibleRole.Slider;
         BackColor = AppTheme.SurfaceRaised;
         Cursor = Cursors.Hand;
-        MinimumSize = new Size(110, 34);
+        MinimumSize = new Size(150, 34);
         TabStop = true;
         SetStyle(
             ControlStyles.AllPaintingInWmPaint |
@@ -386,7 +389,7 @@ internal sealed class ProfileSliderTrack : Control
         graphics.SmoothingMode = SmoothingMode.AntiAlias;
         graphics.Clear(BackColor);
 
-        var track = new Rectangle(6, Height / 2 - 3, Math.Max(1, Width - 12), 6);
+        var track = new Rectangle(10, Height / 2 - 3, Math.Max(1, Width - 20), 6);
         using var trackPath = DrawingHelpers.CreateRoundedRectangle(track, 3);
         using var baseBrush = new SolidBrush(AppTheme.Border);
         graphics.FillPath(baseBrush, trackPath);
@@ -401,8 +404,7 @@ internal sealed class ProfileSliderTrack : Control
         }
 
         const int thumbSize = 18;
-        var centerX = track.Left + fillWidth;
-        centerX = Math.Clamp(centerX, track.Left, track.Right);
+        var centerX = Math.Clamp(track.Left + fillWidth, track.Left, track.Right);
         var thumb = new Rectangle(
             centerX - thumbSize / 2,
             Height / 2 - thumbSize / 2,
@@ -426,8 +428,8 @@ internal sealed class ProfileSliderTrack : Control
 
     private void SetValueFromPosition(int x)
     {
-        var width = Math.Max(1, Width - 12);
-        _owner.SetValueFromRatio((float)(x - 6) / width);
+        var width = Math.Max(1, Width - 20);
+        _owner.SetValueFromRatio((float)(x - 10) / width);
     }
 }
 
@@ -465,7 +467,7 @@ internal sealed class OutputLimitPreview : Control
         var outputForeground = ColorEffectPreviewMath.Apply(sourceForeground, effect);
         var outputBackground = ColorEffectPreviewMath.Apply(sourceBackground, effect);
 
-        var gap = 10;
+        const int gap = 10;
         var sampleWidth = Math.Max(60, (Width - gap * 3) / 2);
         var sampleHeight = Height - 14;
         DrawSample(
