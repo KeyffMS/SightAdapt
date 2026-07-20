@@ -20,18 +20,22 @@ Development follows:
 
 | Concern | Authority / source of truth |
 |---|---|
-| Runtime application state | `ApplicationStateController` |
-| Overlay lifetime and active overlay identity | `OverlayController` |
+| Committed settings transaction | `SettingsCoordinator` |
+| Runtime application mode, target, active profile, suppression, and message | `ApplicationStateController.Current` |
+| Overlay resource lifetime and target handle | `OverlayController` |
+| Foreground target discovery | `ForegroundWindowTracker` |
+| Notification-area presentation | `TrayPresenter` |
 | Visual-profile lifecycle and tuning | `VisualProfileManagementService` |
 | Application-assignment mutations | `ApplicationProfileManagementService` |
 | Persisted automatic mode | `AutomaticModeManagementService` |
-| Built-in IDs, fallback rules, transform policy, user IDs, and name rules | `VisualProfilePolicy` |
+| Built-in IDs, fallback rules, user IDs, and name rules | `VisualProfilePolicy` |
 | Canonical Exact Invert and Soft Invert values | `VisualProfileDefaults` |
+| Supported transforms and tuning capability | `VisualTransformCatalog` |
+| Profile parameter limits | `VisualProfileLimits` |
 | Persisted applications, profiles, assignments, and automatic mode | `SightAdaptSettings` |
 | Settings recovery and migration | `SettingsStore.Normalize` |
-| Product metadata and milestone | `ProductInfo` backed by assembly metadata |
-| 0.4A.4 requirements and acceptance | `UI_REQUIREMENTS_0.4A.4.md` |
-| Slider value, range mapping, neutral point, and magnetic snapping | `ModernProfileSlider` in `ProfileSliderControl.cs` |
+| Product metadata and milestone | project/assembly metadata exposed by `ProductInfo` |
+| Completed 0.4A.4 requirements and acceptance | `UI_REQUIREMENTS_0.4A.4.md` |
 
 ## 0.4A delivery increments
 
@@ -81,48 +85,51 @@ Delivered:
 - emergency protection against automatic reactivation;
 - completed mutation authorities, canonical defaults, focused normalization stages, and architecture enforcement.
 
-### 0.4A.4 — interface corrections
+### 0.4A.4 — interface corrections and closing audit
 
-**Status: implementation complete; final manual verification pending only for neutral-centered slider behavior (`007`).**
+**Status: complete and manually accepted.**
 
-Accepted scope:
+Delivered and accepted:
 
 - modern About dialog with canonical metadata and GitHub link;
 - left and right tray clicks opening one shared menu;
-- custom modern-dark visual-profile selector in resting, active, and dropdown states;
+- custom modern-dark profile selector in resting, active, and dropdown states;
 - circular enabled/disabled application lamp;
 - canonical `SightAdapt · Alpha 0.4A.4` presentation without user-facing `Demo` wording;
 - brighter shared secondary and muted text;
 - redesigned profile editor with profile identity, output conversion sample, live preview, and direct numeric entry;
-- numeric fields aligned beside parameter titles;
+- full-width slider rails, neutral markers, centered neutral mapping, and gentle mouse-only snapping;
 - keyboard and accessibility behavior;
 - working-copy editing and existing persistence authorities preserved.
 
-Final review implementation:
+The closing assessment is recorded in [`ARCHITECTURE_AUDIT_0.4A.4_FINAL.md`](ARCHITECTURE_AUDIT_0.4A.4_FINAL.md).
 
-- clearly visible full-width slider rails;
-- centered neutral marker at `0%`, `100%`, `100%`, and `0°` for the four adjustment controls;
-- piecewise visual mapping that centers neutral values without changing stored ranges;
-- gentle mouse-only magnetic snapping near neutral;
-- accent segment drawn between neutral and current value;
-- slider behavior split from preview rendering into focused files.
+Closing assessment:
 
-Acceptance evidence and the only pending manual check are recorded in [`UI_REQUIREMENTS_0.4A.4.md`](UI_REQUIREMENTS_0.4A.4.md).
+| Principle | Score |
+|---|---:|
+| KISS | 9/10 |
+| DRY | 9/10 |
+| Clean Code | 9/10 |
+| SPoA | 9/10 |
+| SPoT | 9/10 |
 
-Latest implementation validation:
+No known blocking violation remains in the current `0.4A` scope. The audit records minor non-blocking technical debt rather than claiming permanent perfection.
+
+Validation:
 
 ```text
-implementation head: bea48eae32387cd66f0483a241e849a852ff9ddd
-workflow run: 29730817691
+code audit head: 74f6609581810584b853f80e12eb9a6ad1cd05da
+workflow run: 29740090542
 build: 0 warnings, 0 errors
-tests: 89 passed, 0 failed, 0 skipped
+tests: 91 passed, 0 failed, 0 skipped
 publish: self-contained Windows x64 succeeded
-artifact SHA-256: 3df3ce2b23ab46e7806daa4b1217b8bef6d3d3624b74aea4a1f1e0c431c9f253
+artifact SHA-256: 3d684f7d1f1175a811e14d1ceba54f64189a69f43a095581fffc764a3a8f47a7
 ```
 
 ## 0.4B — window-frame manipulation
 
-**Status: blocked until final `0.4A.4 / 007` screenshot acceptance.**
+**Status: active next increment for requirements and architecture definition.**
 
 Planned scope:
 
@@ -133,7 +140,15 @@ Planned scope:
 - guarantee deterministic cleanup and emergency restoration;
 - keep palette analysis outside this increment.
 
-Before implementation, `0.4B` must define its authority, source of truth, persisted model if any, failure behavior, and manual acceptance matrix.
+Before implementation, `0.4B` must define:
+
+1. the exact user-visible behavior;
+2. the runtime authority;
+3. the source of truth;
+4. whether any value is persisted;
+5. cleanup and emergency restoration order;
+6. unsupported-window and privilege behavior;
+7. a manual Windows acceptance matrix.
 
 ## 0.4C — reserved
 
@@ -181,8 +196,8 @@ This stage will probably require a LUT or GPU shader and must not be forced into
 0.4A.3.005      focused settings normalization                  complete
 0.4A.3.006      architectural enforcement and regression        complete
 0.4A.3.007      historical audit / later remediation             complete
-0.4A.4          interface corrections                           implemented / final slider review pending
-0.4B            window-frame manipulation                       blocked by 0.4A.4 acceptance
+0.4A.4          interface corrections and closing audit          complete / accepted
+0.4B            window-frame manipulation                       active requirements phase
 0.4C            reserved                                        intentionally open
 0.4D            palette analysis                                after 0.4B / optional 0.4C
 0.4E            targeted color corrections                      after 0.4D
@@ -200,7 +215,7 @@ This stage will probably require a LUT or GPU shader and must not be forced into
 
 ## 0.4A definition of done
 
-SightAdapt 0.4A closes when:
+SightAdapt 0.4A is complete because:
 
 1. users can create and save multiple independent visual profiles;
 2. Soft Invert parameters produce deterministic output;
@@ -208,9 +223,9 @@ SightAdapt 0.4A closes when:
 4. old and malformed settings recover without losing deterministically valid data;
 5. manual and automatic activation continue to work;
 6. emergency shutdown removes overlays and prevents automatic reactivation;
-7. KISS, DRY, Clean Code, SPoA, and SPoT are enforced by tests and remediated boundaries;
-8. all captured interface requirements, including `007`, are manually accepted;
-9. automated calculation, lifecycle, recovery, state, selector, migration, UI-contract, and architecture tests pass;
+7. architecture authority and truth boundaries are documented and regression-tested;
+8. all captured interface requirements are manually accepted;
+9. calculation, lifecycle, recovery, state, selector, migration, UI-contract, transaction, and architecture tests pass;
 10. manual screenshot review confirms readable and stable interface behavior.
 
 ## Future renderer direction
