@@ -325,6 +325,27 @@ internal sealed class VisualProfileEditorForm : Form
         string description,
         ModernProfileSlider slider)
     {
+        var header = new TableLayoutPanel
+        {
+            BackColor = AppTheme.SurfaceRaised,
+            ColumnCount = 2,
+            Dock = DockStyle.Fill,
+            Margin = Padding.Empty,
+            RowCount = 1,
+        };
+        header.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        header.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        header.Controls.Add(new Label
+        {
+            AutoEllipsis = false,
+            Dock = DockStyle.Fill,
+            ForeColor = AppTheme.TextPrimary,
+            Font = AppTheme.CreateUiFont(9.2f, FontStyle.Bold),
+            Text = title,
+            TextAlign = ContentAlignment.MiddleLeft,
+        }, 0, 0);
+        header.Controls.Add(slider.ValueEditor, 1, 0);
+
         var panel = new TableLayoutPanel
         {
             BackColor = AppTheme.SurfaceRaised,
@@ -335,18 +356,10 @@ internal sealed class VisualProfileEditorForm : Form
             RowCount = 3,
         };
         panel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        panel.RowStyles.Add(new RowStyle(SizeType.Absolute, 28));
-        panel.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         panel.RowStyles.Add(new RowStyle(SizeType.Absolute, 30));
-        panel.Controls.Add(new Label
-        {
-            AutoEllipsis = false,
-            Dock = DockStyle.Fill,
-            ForeColor = AppTheme.TextPrimary,
-            Font = AppTheme.CreateUiFont(9.2f, FontStyle.Bold),
-            Text = title,
-            TextAlign = ContentAlignment.MiddleLeft,
-        }, 0, 0);
+        panel.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+        panel.RowStyles.Add(new RowStyle(SizeType.Absolute, 28));
+        panel.Controls.Add(header, 0, 0);
         panel.Controls.Add(slider, 0, 1);
         panel.Controls.Add(new Label
         {
