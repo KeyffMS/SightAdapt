@@ -173,12 +173,25 @@ internal sealed class SettingsCoordinator
     {
         EventHandler ready = null!;
         EventHandler disposed = null!;
+        var retryTimer = new System.Windows.Forms.Timer
+        {
+            Interval = 50,
+        };
+        var released = false;
 
         void RemoveHandlers()
         {
+            if (released)
+            {
+                return;
+            }
+
+            released = true;
             control.EnabledChanged -= ready;
             control.Disposed -= disposed;
-            Application.Idle -= ready;
+            retryTimer.Tick -= ready;
+            retryTimer.Stop();
+            retryTimer.Dispose();
         }
 
         ready = (_, _) =>
@@ -201,11 +214,12 @@ internal sealed class SettingsCoordinator
 
         control.EnabledChanged += ready;
         control.Disposed += disposed;
-        Application.Idle += ready;
+        retryTimer.Tick += ready;
+        retryTimer.Start();
 
-        // Native dialogs can re-enable their owner without raising
-        // Control.EnabledChanged. Recheck after subscribing so a transition
-        // racing with registration cannot strand the observer either.
+        // Native dialogs can re-enable their owner HWND without raising
+        // Control.EnabledChanged. The low-frequency WinForms timer observes
+        // that transition inside the dialog message loop without busy waiting.
         ready(control, EventArgs.Empty);
     }
 
