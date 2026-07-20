@@ -30,7 +30,8 @@ Development follows:
 | Persisted applications, profiles, assignments, and automatic mode | `SightAdaptSettings` |
 | Settings recovery and migration | `SettingsStore.Normalize` |
 | Product metadata and milestone | `ProductInfo` backed by assembly metadata |
-| Completed 0.4A.4 interface requirements and acceptance | `UI_REQUIREMENTS_0.4A.4.md` |
+| 0.4A.4 requirements and acceptance | `UI_REQUIREMENTS_0.4A.4.md` |
+| Slider value, range mapping, neutral point, and magnetic snapping | `ModernProfileSlider` in `ProfileSliderControl.cs` |
 
 ## 0.4A delivery increments
 
@@ -82,9 +83,9 @@ Delivered:
 
 ### 0.4A.4 — interface corrections
 
-**Status: complete and manually accepted.**
+**Status: implementation complete; final manual verification pending only for neutral-centered slider behavior (`007`).**
 
-Delivered and accepted:
+Accepted scope:
 
 - modern About dialog with canonical metadata and GitHub link;
 - left and right tray clicks opening one shared menu;
@@ -93,26 +94,35 @@ Delivered and accepted:
 - canonical `SightAdapt · Alpha 0.4A.4` presentation without user-facing `Demo` wording;
 - brighter shared secondary and muted text;
 - redesigned profile editor with profile identity, output conversion sample, live preview, and direct numeric entry;
-- full-width sliders with numeric fields aligned beside parameter titles;
+- numeric fields aligned beside parameter titles;
 - keyboard and accessibility behavior;
 - working-copy editing and existing persistence authorities preserved.
 
-Acceptance evidence is recorded in [`UI_REQUIREMENTS_0.4A.4.md`](UI_REQUIREMENTS_0.4A.4.md).
+Final review implementation:
 
-Final implementation validation:
+- clearly visible full-width slider rails;
+- centered neutral marker at `0%`, `100%`, `100%`, and `0°` for the four adjustment controls;
+- piecewise visual mapping that centers neutral values without changing stored ranges;
+- gentle mouse-only magnetic snapping near neutral;
+- accent segment drawn between neutral and current value;
+- slider behavior split from preview rendering into focused files.
+
+Acceptance evidence and the only pending manual check are recorded in [`UI_REQUIREMENTS_0.4A.4.md`](UI_REQUIREMENTS_0.4A.4.md).
+
+Latest implementation validation:
 
 ```text
-implementation head: 35c29cde78e31e1b6568ae5906a02543d9683a0d
-workflow run: 29729010903
+implementation head: bea48eae32387cd66f0483a241e849a852ff9ddd
+workflow run: 29730817691
 build: 0 warnings, 0 errors
-tests: 86 passed, 0 failed, 0 skipped
+tests: 89 passed, 0 failed, 0 skipped
 publish: self-contained Windows x64 succeeded
-artifact SHA-256: e9ed56904536d75ac225faa957567e8490c9c27ca6d1d59b9fab0117844e0357
+artifact SHA-256: 3df3ce2b23ab46e7806daa4b1217b8bef6d3d3624b74aea4a1f1e0c431c9f253
 ```
 
 ## 0.4B — window-frame manipulation
 
-**Status: active next increment.**
+**Status: blocked until final `0.4A.4 / 007` screenshot acceptance.**
 
 Planned scope:
 
@@ -171,8 +181,8 @@ This stage will probably require a LUT or GPU shader and must not be forced into
 0.4A.3.005      focused settings normalization                  complete
 0.4A.3.006      architectural enforcement and regression        complete
 0.4A.3.007      historical audit / later remediation             complete
-0.4A.4          interface corrections                           complete / accepted
-0.4B            window-frame manipulation                       active next increment
+0.4A.4          interface corrections                           implemented / final slider review pending
+0.4B            window-frame manipulation                       blocked by 0.4A.4 acceptance
 0.4C            reserved                                        intentionally open
 0.4D            palette analysis                                after 0.4B / optional 0.4C
 0.4E            targeted color corrections                      after 0.4D
@@ -190,7 +200,7 @@ This stage will probably require a LUT or GPU shader and must not be forced into
 
 ## 0.4A definition of done
 
-SightAdapt 0.4A is complete because:
+SightAdapt 0.4A closes when:
 
 1. users can create and save multiple independent visual profiles;
 2. Soft Invert parameters produce deterministic output;
@@ -199,7 +209,7 @@ SightAdapt 0.4A is complete because:
 5. manual and automatic activation continue to work;
 6. emergency shutdown removes overlays and prevents automatic reactivation;
 7. KISS, DRY, Clean Code, SPoA, and SPoT are enforced by tests and remediated boundaries;
-8. the captured 0.4A.4 interface corrections are implemented and accepted;
+8. all captured interface requirements, including `007`, are manually accepted;
 9. automated calculation, lifecycle, recovery, state, selector, migration, UI-contract, and architecture tests pass;
 10. manual screenshot review confirms readable and stable interface behavior.
 
