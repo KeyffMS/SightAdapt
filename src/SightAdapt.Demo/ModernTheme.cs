@@ -11,8 +11,8 @@ internal static class AppTheme
     public static readonly Color SurfaceHover = Color.FromArgb(45, 53, 69);
     public static readonly Color Border = Color.FromArgb(54, 63, 81);
     public static readonly Color TextPrimary = Color.FromArgb(239, 243, 250);
-    public static readonly Color TextSecondary = Color.FromArgb(158, 169, 187);
-    public static readonly Color TextMuted = Color.FromArgb(112, 122, 141);
+    public static readonly Color TextSecondary = Color.FromArgb(190, 200, 216);
+    public static readonly Color TextMuted = Color.FromArgb(151, 164, 184);
     public static readonly Color Accent = Color.FromArgb(112, 139, 255);
     public static readonly Color AccentHover = Color.FromArgb(130, 154, 255);
     public static readonly Color AccentPressed = Color.FromArgb(91, 117, 229);
