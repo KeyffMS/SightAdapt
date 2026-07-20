@@ -2,11 +2,11 @@
 
 ## Status
 
-**Implementation complete. Requirements `001–006` remain accepted; final manual acceptance is pending only for requirement `007`.**
+**Complete and manually accepted.**
 
-The screenshot-driven `0.4A.4` interface stage remains active on `agent/fix-audit-v0.4` until the full-width neutral-centered slider behavior is confirmed in the running Windows application.
+The screenshot-driven `0.4A.4` interface stage is closed on `agent/fix-audit-v0.4`. Requirements `001–007` were implemented and accepted in the running Windows application.
 
-This document is the single source of truth for `0.4A.4` interface requirements and acceptance. Architecture remediation remains documented in [`ARCHITECTURE_REMEDIATION_0.4A.4.md`](ARCHITECTURE_REMEDIATION_0.4A.4.md).
+This document is the single source of truth for `0.4A.4` interface requirements and acceptance. The closing engineering assessment is recorded in [`ARCHITECTURE_AUDIT_0.4A.4_FINAL.md`](ARCHITECTURE_AUDIT_0.4A.4_FINAL.md).
 
 ## Engineering constraints
 
@@ -85,13 +85,13 @@ The form edits a working copy. Each control updates only its corresponding field
 
 Numeric input is aligned beside the parameter title. The slider occupies a separate row and retains one value authority with the text field.
 
-## 007 — full-width neutral-centered slider behavior
+### 007 — full-width neutral-centered slider behavior
 
-### 007.1 — complete visual rail
+#### 007.1 — complete visual rail
 
-The unfilled rail is clearly visible across the full available width of each parameter card. The active segment must not be mistaken for the total slider width.
+The unfilled rail is clearly visible across the full available width of each parameter card. The active segment is visually distinct from the total slider width.
 
-### 007.2 — neutral reference points
+#### 007.2 — neutral reference points
 
 The four color-adjustment sliders expose a visible neutral marker:
 
@@ -100,33 +100,35 @@ The four color-adjustment sliders expose a visible neutral marker:
 - `Saturation`: `100%`;
 - `Hue shift`: `0°`.
 
-Neutral values are visually centered. Asymmetric domain ranges use one canonical piecewise mapping so the neutral value remains at the midpoint without changing the stored numeric domain.
+Neutral values are visually centered. Asymmetric domain ranges use one piecewise mapping so the neutral value remains at the midpoint without changing the stored numeric domain.
 
-### 007.3 — gentle magnetic snapping
+#### 007.3 — gentle magnetic snapping
 
-During mouse dragging, the thumb snaps to the neutral value inside a small three-percent rail window. Direct numeric input and keyboard stepping retain exact canonical step behavior and are not silently changed by the mouse magnet.
+During mouse dragging, the thumb snaps to the neutral value inside a small three-percent rail window. Direct numeric input and keyboard stepping retain exact canonical step behavior.
 
-### 007.4 — visual direction
+#### 007.4 — visual direction
 
-For controls with a neutral point, the accent segment runs between the neutral marker and the current thumb. This makes positive and negative deviation readable without implying that the active segment is the complete rail.
+For controls with a neutral point, the accent segment runs between the neutral marker and the current thumb. Positive and negative deviation remain readable while the complete rail stays visible.
 
-### 007.5 — responsibility split
+#### 007.5 — responsibility split
 
-`ProfileSliderControl.cs` owns slider input, mapping, neutral reference, magnetic snapping, and track painting. `ProfileEditorControls.cs` owns only profile previews. This prevents one oversized mixed-responsibility UI file.
+`ProfileSliderControl.cs` owns slider input, mapping, neutral reference, magnetic snapping, and track painting. `ProfileEditorControls.cs` owns profile previews.
+
+## Acceptance decision
+
+The user confirmed the final full-width rail, neutral markers, centered mapping, and magnetic snapping in the running application. No additional screenshot defect remains open in `0.4A.4`.
 
 ## Automated validation
 
 ```text
-head: bea48eae32387cd66f0483a241e849a852ff9ddd
-workflow run: 29730817691
+code audit head: 74f6609581810584b853f80e12eb9a6ad1cd05da
+workflow run: 29740090542
 build: 0 warnings, 0 errors
-tests: 89 passed, 0 failed, 0 skipped
+tests: 91 passed, 0 failed, 0 skipped
 publish: self-contained Windows x64 succeeded
 artifact: SightAdapt-0.4-Alpha-win-x64
-artifact SHA-256: 3df3ce2b23ab46e7806daa4b1217b8bef6d3d3624b74aea4a1f1e0c431c9f253
+artifact SHA-256: 3d684f7d1f1175a811e14d1ceba54f64189a69f43a095581fffc764a3a8f47a7
 ```
-
-Focused regression checks cover full-width layout, centered neutral mapping, neutral marker painting, and magnetic snapping.
 
 ## Register
 
@@ -140,4 +142,4 @@ Focused regression checks cover full-width layout, centered neutral mapping, neu
 | `004.1–004.6` | Implemented and refined | Accepted |
 | `005.1–005.5` | Implemented | Accepted |
 | `006` | Implemented | Accepted |
-| `007.1–007.5` | Implemented and automatically validated | Manual screenshot verification pending |
+| `007.1–007.5` | Implemented and validated | Accepted |
