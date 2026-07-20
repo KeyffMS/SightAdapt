@@ -195,7 +195,7 @@ public sealed class ArchitectureComplianceTests
         StringAssert.Contains(source, "ProductInfo.VersionLabel");
         StringAssert.Contains(source, "ProductInfo.Author");
         StringAssert.Contains(source, "ProductInfo.License");
-        StringAssert.Contains(source, "TrayIconSet");
+        StringAssert.Contains(source, "Icon sourceIcon");
         Assert.IsFalse(source.Contains("Alpha 0.4", StringComparison.Ordinal));
     }
 
