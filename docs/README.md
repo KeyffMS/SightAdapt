@@ -2,11 +2,12 @@
 
 ## Product and engineering plans
 
-- [SightAdapt 0.4 Alpha roadmap](ROADMAP_0.4.md) — status of the 0.4 increments and planned color-analysis work.
+- [SightAdapt 0.4 Alpha roadmap](ROADMAP_0.4.md) — status of the 0.4 increments, active interface work, window-frame manipulation, palette analysis, and targeted correction order.
+- [SightAdapt 0.4A.4 Interface Correction Requirements](UI_REQUIREMENTS_0.4A.4.md) — active numbered screenshot intake, acceptance requirements, and Clean Code / KISS / SPoA / SPoT / DRY constraints.
 - [SightAdapt 0.4 Soft Color Profiles](SOFT_COLOR_PROFILES_0.4.md) — profile model, matrix order, editor parameters, settings schema, shortcut behavior, limitations, and acceptance checks.
 - [SightAdapt 0.4A.2 User-defined Profiles](USER_DEFINED_PROFILES_0.4A.2.md) — creation, duplication, rename, deletion, fallback reassignment, validation, tests, and manual acceptance.
 - [SightAdapt 0.4A.3 Lifecycle Hardening](HARDENING_0.4A.3.md) — historical lifecycle and recovery baseline, with its evidence limitations recorded.
-- [SightAdapt 0.4A.4 Architecture Remediation](ARCHITECTURE_REMEDIATION_0.4A.4.md) — transactionality, emergency ordering, complete runtime truth, DRY cleanup, tests, and manual validation.
+- [SightAdapt 0.4A.4 Architecture Remediation](ARCHITECTURE_REMEDIATION_0.4A.4.md) — completed refactored architecture baseline: transactionality, emergency ordering, complete runtime truth, DRY cleanup, tests, and manual validation.
 - [Superseded 0.4A.3.007 Architecture Audit](ARCHITECTURE_AUDIT_0.4A.3.007.md) — explains why the former unconditional `10/10` result was withdrawn.
 
 ## Architecture
