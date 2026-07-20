@@ -29,7 +29,8 @@ Development follows:
 | Canonical Exact Invert and Soft Invert names and tuning values | `VisualProfileDefaults` |
 | Persisted applications, profiles, assignments, and automatic-mode value | `SightAdaptSettings` |
 | Settings recovery and migration | `SettingsStore.Normalize` |
-| Product metadata | `ProductInfo` |
+| Product metadata and milestone | `ProductInfo` backed by assembly metadata |
+| Captured 0.4A.4 interface requirements and acceptance state | `UI_REQUIREMENTS_0.4A.4.md` |
 
 ## 0.4A delivery increments
 
@@ -65,7 +66,7 @@ Delivered:
 
 ### 0.4A.3 — lifecycle hardening and architectural completion
 
-**Status: complete and closed by the `0.4A.3.007` architecture audit.**
+**Status: complete; the subsequent independent remediation is recorded in `ARCHITECTURE_REMEDIATION_0.4A.4.md`.**
 
 Delivered baseline:
 
@@ -78,7 +79,7 @@ Delivered baseline:
 - repeated lifecycle and persistence regression;
 - emergency protection against automatic reactivation.
 
-Architectural closure:
+Architectural closure and remediation:
 
 | Subincrement | Result |
 |---|---|
@@ -88,39 +89,42 @@ Architectural closure:
 | `0.4A.3.004` | Canonical visual-profile defaults complete |
 | `0.4A.3.005` | Focused settings normalization stages complete |
 | `0.4A.3.006` | Architectural enforcement and regression complete |
-| `0.4A.3.007` | Final KISS / DRY / Clean Code / SPoA / SPoT 10/10 audit complete |
+| `0.4A.3.007` | Historical architecture audit completed; later independent findings remediated on `agent/fix-audit-v0.4` |
 
-Validated refactored baseline:
+Current refactored and interface-implementation validation:
 
 ```text
 build: 0 warnings, 0 errors
-tests: 80 passed, 0 failed, 0 skipped
+tests: 82 passed, 0 failed, 0 skipped
 publish: self-contained Windows x64 succeeded
 ```
 
-The final evidence and authority/truth maps are recorded in [`ARCHITECTURE_AUDIT_0.4A.3.007.md`](ARCHITECTURE_AUDIT_0.4A.3.007.md).
+The remediation boundaries and evidence are recorded in [`ARCHITECTURE_REMEDIATION_0.4A.4.md`](ARCHITECTURE_REMEDIATION_0.4A.4.md).
 
 ### 0.4A.4 — interface corrections
 
-**Status: active. Ready for screenshot-driven review and correction.**
+**Status: implementation complete; manual Windows, screenshot, keyboard, and DPI acceptance pending.**
 
-This stage completes interface quality after the refactored architecture baseline without changing color-processing semantics. User-provided screenshots define concrete visual defects and acceptance evidence for individual corrections.
+The captured corrections are implemented without changing color-processing semantics or direct persistence ownership. The complete numbered register, implementation notes, CI evidence, and manual acceptance state are maintained in [`UI_REQUIREMENTS_0.4A.4.md`](UI_REQUIREMENTS_0.4A.4.md). That document is the single source of truth for this interface increment.
 
-The complete numbered intake register and engineering constraints are maintained in [`UI_REQUIREMENTS_0.4A.4.md`](UI_REQUIREMENTS_0.4A.4.md). That document is the single source of truth for captured interface requirements. Implementation planning starts only after the user explicitly closes requirement intake.
+Implemented scope:
 
-Scope:
+- modern About dialog using canonical icon and product metadata;
+- left click on the notification-area icon opens the same menu instance as right click;
+- modern dark visual-profile selector and dropdown;
+- enabled/disabled application state rendered as a circular status lamp;
+- user-facing product name and `Alpha 0.4A.4` milestone sourced from assembly metadata;
+- redesigned visual-profile editor with profile identity, output-limit conversion sample, live preview, and modern sliders;
+- keyboard-operable slider controls with accessible names and focus cues;
+- working-copy editing and existing persistence authorities preserved.
 
-- correct clipping, alignment, spacing, and inconsistent control sizing;
-- stabilize tables, selectors, selected rows, and edit states;
+Remaining acceptance scope:
+
 - verify 100%, 125%, 150%, 175%, and 200% DPI;
 - verify resizing, minimum sizes, and multi-monitor movement;
-- correct button hierarchy and destructive-action placement;
-- improve keyboard navigation, focus, default, and cancel actions;
-- complete accessible names, descriptions, and text alternatives;
-- standardize validation, confirmation, empty-state, and error messages;
-- preserve the dark theme across all interaction states;
-- confirm that UI refresh never occurs inside an active combo-box commit;
-- complete manual visual regression before 0.4B.
+- verify keyboard-only workflows, tab order, default, and cancel actions;
+- verify selector, status-lamp, About, and editor interaction states in the running Windows application;
+- complete screenshot comparison and record any follow-up defects before accepting 0.4A.4.
 
 Acceptance criteria:
 
@@ -131,11 +135,11 @@ Acceptance criteria:
 5. Destructive actions require clear confirmation.
 6. Selected application and profile remain predictable after refresh.
 7. Interface corrections do not change stored values or transformation semantics.
-8. Each screenshot-reported defect is either corrected and verified or explicitly documented as out of scope.
+8. Every captured requirement is manually verified or receives a documented follow-up.
 
 ## 0.4B — window-frame manipulation
 
-**Starts only after 0.4A.4 acceptance.**
+**Starts only after 0.4A.4 manual acceptance.**
 
 Planned scope:
 
@@ -191,9 +195,9 @@ This stage will probably require a LUT or GPU shader and must not be forced into
 0.4A.3.004      canonical visual-profile defaults               complete
 0.4A.3.005      focused settings normalization                  complete
 0.4A.3.006      architectural enforcement and regression        complete
-0.4A.3.007      final 10/10 architecture audit                   complete
-0.4A.4          interface corrections                           active / screenshots accepted
-0.4B            window-frame manipulation                       after 0.4A.4
+0.4A.3.007      historical audit / later remediation             complete
+0.4A.4          interface corrections                           implemented / manual acceptance pending
+0.4B            window-frame manipulation                       after 0.4A.4 acceptance
 0.4C            reserved                                        intentionally open
 0.4D            palette analysis                                after 0.4B / optional 0.4C
 0.4E            targeted color corrections                      after 0.4D
@@ -219,9 +223,9 @@ SightAdapt 0.4A is complete when:
 4. Old and malformed settings recover without losing deterministically valid data.
 5. Manual and automatic activation continue to work.
 6. Emergency shutdown removes overlays and prevents automatic reactivation.
-7. KISS, DRY, Clean Code, SPoA, and SPoT remain enforced by the completed 0.4A.3 audit and tests.
+7. KISS, DRY, Clean Code, SPoA, and SPoT remain enforced by tests and the remediated architecture boundaries.
 8. 0.4A.4 interface acceptance passes at supported DPI scales.
-9. Automated calculation, lifecycle, recovery, state, selector, migration, and architecture tests pass.
+9. Automated calculation, lifecycle, recovery, state, selector, migration, UI-contract, and architecture tests pass.
 10. Manual Windows regression confirms readable output and stable overlay behavior.
 
 ## Future renderer direction
