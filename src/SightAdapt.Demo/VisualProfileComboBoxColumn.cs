@@ -337,7 +337,7 @@ internal sealed class ModernVisualProfileEditingControl :
         Keys keyData,
         bool dataGridViewWantsInputKey)
     {
-        return keyData & Keys.KeyCode switch
+        return (keyData & Keys.KeyCode) switch
         {
             Keys.Up or Keys.Down or Keys.Left or Keys.Right or
             Keys.Enter or Keys.Escape or Keys.Space or Keys.F4 => true,
