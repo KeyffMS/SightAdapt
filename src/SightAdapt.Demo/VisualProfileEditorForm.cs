@@ -1,4 +1,5 @@
 using System.Drawing.Drawing2D;
+using System.Globalization;
 
 namespace SightAdapt.Demo;
 
@@ -6,12 +7,13 @@ internal sealed class VisualProfileEditorForm : Form
 {
     private readonly VisualProfile _workingProfile;
     private readonly ColorProfilePreview _preview;
-    private readonly NumericUpDown _outputBlackInput;
-    private readonly NumericUpDown _outputWhiteInput;
-    private readonly NumericUpDown _brightnessInput;
-    private readonly NumericUpDown _contrastInput;
-    private readonly NumericUpDown _saturationInput;
-    private readonly NumericUpDown _hueInput;
+    private readonly OutputLimitPreview _outputPreview;
+    private readonly ModernProfileSlider _outputBlackSlider;
+    private readonly ModernProfileSlider _outputWhiteSlider;
+    private readonly ModernProfileSlider _brightnessSlider;
+    private readonly ModernProfileSlider _contrastSlider;
+    private readonly ModernProfileSlider _saturationSlider;
+    private readonly ModernProfileSlider _hueSlider;
     private bool _loadingValues;
 
     private VisualProfileEditorForm(VisualProfile profile)
@@ -31,33 +33,49 @@ internal sealed class VisualProfileEditorForm : Form
             Margin = Padding.Empty,
             Profile = _workingProfile,
         };
-        _outputBlackInput = CreatePercentageInput(
+        _outputPreview = new OutputLimitPreview
+        {
+            Dock = DockStyle.Fill,
+            Margin = Padding.Empty,
+            Profile = _workingProfile,
+        };
+        _outputBlackSlider = CreatePercentageSlider(
+            "Output black",
             VisualProfileLimits.MinimumOutputBlack,
             VisualProfileLimits.MaximumOutputBlack);
-        _outputWhiteInput = CreatePercentageInput(
+        _outputWhiteSlider = CreatePercentageSlider(
+            "Output white",
             VisualProfileLimits.MinimumOutputWhite,
             VisualProfileLimits.MaximumOutputWhite);
-        _brightnessInput = CreatePercentageInput(
+        _brightnessSlider = CreatePercentageSlider(
+            "Brightness",
             VisualProfileLimits.MinimumBrightness,
             VisualProfileLimits.MaximumBrightness);
-        _contrastInput = CreatePercentageInput(
+        _contrastSlider = CreatePercentageSlider(
+            "Contrast",
             VisualProfileLimits.MinimumContrast,
             VisualProfileLimits.MaximumContrast);
-        _saturationInput = CreatePercentageInput(
+        _saturationSlider = CreatePercentageSlider(
+            "Saturation",
             VisualProfileLimits.MinimumSaturation,
             VisualProfileLimits.MaximumSaturation);
-        _hueInput = CreateNumericInput(
-            (decimal)VisualProfileLimits.MinimumHueShift,
-            (decimal)VisualProfileLimits.MaximumHueShift,
-            0.5m,
-            1);
+        _hueSlider = new ModernProfileSlider
+        {
+            AccessibleName = "Hue shift",
+            DecimalPlaces = 1,
+            Minimum = VisualProfileLimits.MinimumHueShift,
+            Maximum = VisualProfileLimits.MaximumHueShift,
+            SmallChange = 0.5f,
+            Unit = "°",
+        };
 
         Text = $"{ProductInfo.DisplayName} · Edit {profile.Name}";
         StartPosition = FormStartPosition.CenterParent;
-        MinimumSize = new Size(820, 620);
-        Size = new Size(940, 700);
+        MinimumSize = new Size(940, 780);
+        Size = new Size(1060, 860);
         ShowIcon = false;
         BackColor = AppTheme.WindowBackground;
+        AccessibleName = $"Edit visual profile {profile.Name}";
         AppTheme.ApplyTo(this);
 
         Controls.Add(CreateRootLayout());
@@ -85,22 +103,24 @@ internal sealed class VisualProfileEditorForm : Form
             BackColor = AppTheme.WindowBackground,
             ColumnCount = 1,
             Dock = DockStyle.Fill,
-            Padding = new Padding(22, 18, 22, 18),
-            RowCount = 4,
+            Padding = new Padding(24, 18, 24, 18),
+            RowCount = 5,
         };
         root.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 82));
-        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 176));
+        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 88));
+        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 190));
+        root.RowStyles.Add(new RowStyle(SizeType.Absolute, 174));
         root.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         root.RowStyles.Add(new RowStyle(SizeType.Absolute, 66));
         root.Controls.Add(CreateHeader(), 0, 0);
-        root.Controls.Add(CreatePreviewCard(), 0, 1);
-        root.Controls.Add(CreateParametersCard(), 0, 2);
-        root.Controls.Add(CreateActionBar(), 0, 3);
+        root.Controls.Add(CreateOutputLimitsCard(), 0, 1);
+        root.Controls.Add(CreatePreviewCard(), 0, 2);
+        root.Controls.Add(CreateAdjustmentsCard(), 0, 3);
+        root.Controls.Add(CreateActionBar(), 0, 4);
         return root;
     }
 
-    private static Control CreateHeader()
+    private Control CreateHeader()
     {
         var layout = new TableLayoutPanel
         {
@@ -111,15 +131,15 @@ internal sealed class VisualProfileEditorForm : Form
             RowCount = 2,
         };
         layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        layout.RowStyles.Add(new RowStyle(SizeType.Percent, 58));
-        layout.RowStyles.Add(new RowStyle(SizeType.Percent, 42));
+        layout.RowStyles.Add(new RowStyle(SizeType.Percent, 62));
+        layout.RowStyles.Add(new RowStyle(SizeType.Percent, 38));
         layout.Controls.Add(new Label
         {
-            AutoSize = true,
+            AutoEllipsis = true,
             Dock = DockStyle.Fill,
             ForeColor = AppTheme.TextPrimary,
-            Font = AppTheme.CreateUiFont(17f, FontStyle.Bold),
-            Text = "Soft color profile",
+            Font = AppTheme.CreateUiFont(18f, FontStyle.Bold),
+            Text = _workingProfile.Name,
             TextAlign = ContentAlignment.BottomLeft,
         }, 0, 0);
         layout.Controls.Add(new Label
@@ -128,10 +148,73 @@ internal sealed class VisualProfileEditorForm : Form
             Dock = DockStyle.Fill,
             ForeColor = AppTheme.TextSecondary,
             Font = AppTheme.CreateUiFont(9.2f),
-            Text = "Adjust output limits and color balance. Changes apply to every application using this visual profile.",
+            Text = "Editing visual profile · changes apply to every application assigned to this profile.",
             TextAlign = ContentAlignment.TopLeft,
         }, 0, 1);
         return layout;
+    }
+
+    private Control CreateOutputLimitsCard()
+    {
+        var controls = new TableLayoutPanel
+        {
+            BackColor = AppTheme.Surface,
+            ColumnCount = 3,
+            Dock = DockStyle.Fill,
+            Margin = Padding.Empty,
+            Padding = new Padding(10, 4, 10, 10),
+            RowCount = 1,
+        };
+        controls.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 28));
+        controls.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 28));
+        controls.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 44));
+        controls.Controls.Add(CreateSliderPanel(
+            "Output black",
+            PercentageRange(
+                VisualProfileLimits.MinimumOutputBlack,
+                VisualProfileLimits.MaximumOutputBlack,
+                "minimum output level"),
+            _outputBlackSlider), 0, 0);
+        controls.Controls.Add(CreateSliderPanel(
+            "Output white",
+            PercentageRange(
+                VisualProfileLimits.MinimumOutputWhite,
+                VisualProfileLimits.MaximumOutputWhite,
+                "maximum output level"),
+            _outputWhiteSlider), 1, 0);
+        controls.Controls.Add(CreateConversionSamplePanel(), 2, 0);
+
+        return CreateSectionCard(
+            "OUTPUT LIMITS AND CONVERSION SAMPLE",
+            controls,
+            new Padding(0, 0, 0, 14));
+    }
+
+    private Control CreateConversionSamplePanel()
+    {
+        var panel = new TableLayoutPanel
+        {
+            BackColor = AppTheme.SurfaceRaised,
+            ColumnCount = 1,
+            Dock = DockStyle.Fill,
+            Margin = new Padding(6),
+            Padding = new Padding(12, 8, 12, 10),
+            RowCount = 2,
+        };
+        panel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        panel.RowStyles.Add(new RowStyle(SizeType.Absolute, 28));
+        panel.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+        panel.Controls.Add(new Label
+        {
+            AutoSize = true,
+            Dock = DockStyle.Fill,
+            ForeColor = AppTheme.TextPrimary,
+            Font = AppTheme.CreateUiFont(9.2f, FontStyle.Bold),
+            Text = "Black-on-white conversion",
+            TextAlign = ContentAlignment.MiddleLeft,
+        }, 0, 0);
+        panel.Controls.Add(_outputPreview, 0, 1);
+        return panel;
     }
 
     private Control CreatePreviewCard()
@@ -140,82 +223,173 @@ internal sealed class VisualProfileEditorForm : Form
         {
             BackColor = AppTheme.Surface,
             Dock = DockStyle.Fill,
-            Padding = new Padding(16, 10, 16, 14),
+            Padding = new Padding(16, 8, 16, 14),
         };
         host.Controls.Add(_preview);
+        return CreateSectionCard(
+            "LIVE PROFILE PREVIEW",
+            host,
+            new Padding(0, 0, 0, 14));
+    }
+
+    private Control CreateAdjustmentsCard()
+    {
+        var grid = new TableLayoutPanel
+        {
+            BackColor = AppTheme.Surface,
+            ColumnCount = 2,
+            Dock = DockStyle.Fill,
+            Margin = Padding.Empty,
+            Padding = new Padding(10, 4, 10, 10),
+            RowCount = 2,
+        };
+        grid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
+        grid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
+        grid.RowStyles.Add(new RowStyle(SizeType.Percent, 50));
+        grid.RowStyles.Add(new RowStyle(SizeType.Percent, 50));
+        grid.Controls.Add(CreateSliderPanel(
+            "Brightness",
+            PercentageRange(
+                VisualProfileLimits.MinimumBrightness,
+                VisualProfileLimits.MaximumBrightness,
+                "moves the whole output range"),
+            _brightnessSlider), 0, 0);
+        grid.Controls.Add(CreateSliderPanel(
+            "Contrast",
+            PercentageRange(
+                VisualProfileLimits.MinimumContrast,
+                VisualProfileLimits.MaximumContrast,
+                "expands or compresses differences"),
+            _contrastSlider), 1, 0);
+        grid.Controls.Add(CreateSliderPanel(
+            "Saturation",
+            PercentageRange(
+                VisualProfileLimits.MinimumSaturation,
+                VisualProfileLimits.MaximumSaturation,
+                "grayscale to amplified color"),
+            _saturationSlider), 0, 1);
+        grid.Controls.Add(CreateSliderPanel(
+            "Hue shift",
+            Range(
+                VisualProfileLimits.MinimumHueShift,
+                VisualProfileLimits.MaximumHueShift,
+                "°",
+                "rotates the color spectrum"),
+            _hueSlider), 1, 1);
+
+        return CreateSectionCard(
+            "COLOR ADJUSTMENTS",
+            grid,
+            Padding.Empty);
+    }
+
+    private static Control CreateSectionCard(
+        string title,
+        Control content,
+        Padding margin)
+    {
+        var host = new TableLayoutPanel
+        {
+            BackColor = AppTheme.Surface,
+            ColumnCount = 1,
+            Dock = DockStyle.Fill,
+            Margin = Padding.Empty,
+            RowCount = 2,
+        };
+        host.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        host.RowStyles.Add(new RowStyle(SizeType.Absolute, 32));
+        host.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         host.Controls.Add(new Label
         {
             AutoSize = true,
-            Dock = DockStyle.Top,
+            Dock = DockStyle.Fill,
             ForeColor = AppTheme.TextPrimary,
-            Font = AppTheme.CreateUiFont(9.5f, FontStyle.Bold),
-            Height = 28,
-            Text = "LIVE PROFILE PREVIEW",
+            Font = AppTheme.CreateUiFont(9.2f, FontStyle.Bold),
+            Padding = new Padding(16, 6, 0, 0),
+            Text = title,
             TextAlign = ContentAlignment.MiddleLeft,
-        });
+        }, 0, 0);
+        host.Controls.Add(content, 0, 1);
 
         var card = new RoundedPanel
         {
             Dock = DockStyle.Fill,
-            Margin = new Padding(0, 0, 0, 14),
+            Margin = margin,
             Padding = new Padding(1),
         };
         card.Controls.Add(host);
         return card;
     }
 
-    private Control CreateParametersCard()
+    private static Control CreateSliderPanel(
+        string title,
+        string description,
+        ModernProfileSlider slider)
     {
-        var grid = new TableLayoutPanel
+        var valueLabel = new Label
         {
-            BackColor = AppTheme.Surface,
-            ColumnCount = 3,
-            Dock = DockStyle.Fill,
+            Anchor = AnchorStyles.Right,
+            AutoSize = true,
+            ForeColor = AppTheme.AccentHover,
+            Font = AppTheme.CreateUiFont(9.2f, FontStyle.Bold),
             Margin = Padding.Empty,
-            Padding = new Padding(12),
-            RowCount = 2,
+            TextAlign = ContentAlignment.MiddleRight,
         };
-        for (var column = 0; column < 3; column++)
+
+        void RefreshValueLabel()
         {
-            grid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f / 3f));
+            valueLabel.Text = slider.FormattedValue;
         }
-        grid.RowStyles.Add(new RowStyle(SizeType.Percent, 50));
-        grid.RowStyles.Add(new RowStyle(SizeType.Percent, 50));
 
-        AddParameter(grid, 0, 0, "Output black", PercentageRange(
-            VisualProfileLimits.MinimumOutputBlack,
-            VisualProfileLimits.MaximumOutputBlack,
-            "prevents pure black output"), "%", _outputBlackInput);
-        AddParameter(grid, 1, 0, "Output white", PercentageRange(
-            VisualProfileLimits.MinimumOutputWhite,
-            VisualProfileLimits.MaximumOutputWhite,
-            "limits maximum brightness"), "%", _outputWhiteInput);
-        AddParameter(grid, 2, 0, "Brightness", PercentageRange(
-            VisualProfileLimits.MinimumBrightness,
-            VisualProfileLimits.MaximumBrightness,
-            "moves the whole output range"), "%", _brightnessInput);
-        AddParameter(grid, 0, 1, "Contrast", PercentageRange(
-            VisualProfileLimits.MinimumContrast,
-            VisualProfileLimits.MaximumContrast,
-            "expands or compresses differences"), "%", _contrastInput);
-        AddParameter(grid, 1, 1, "Saturation", PercentageRange(
-            VisualProfileLimits.MinimumSaturation,
-            VisualProfileLimits.MaximumSaturation,
-            "grayscale to amplified color"), "%", _saturationInput);
-        AddParameter(grid, 2, 1, "Hue shift", Range(
-            VisualProfileLimits.MinimumHueShift,
-            VisualProfileLimits.MaximumHueShift,
-            "°",
-            "rotates the color spectrum"), "°", _hueInput);
+        slider.ValueChanged += (_, _) => RefreshValueLabel();
+        RefreshValueLabel();
 
-        var card = new RoundedPanel
+        var header = new TableLayoutPanel
         {
+            BackColor = AppTheme.SurfaceRaised,
+            ColumnCount = 2,
             Dock = DockStyle.Fill,
             Margin = Padding.Empty,
-            Padding = new Padding(1),
+            RowCount = 1,
         };
-        card.Controls.Add(grid);
-        return card;
+        header.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        header.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        header.Controls.Add(new Label
+        {
+            AutoEllipsis = true,
+            Dock = DockStyle.Fill,
+            ForeColor = AppTheme.TextPrimary,
+            Font = AppTheme.CreateUiFont(9.2f, FontStyle.Bold),
+            Text = title,
+            TextAlign = ContentAlignment.MiddleLeft,
+        }, 0, 0);
+        header.Controls.Add(valueLabel, 1, 0);
+
+        var panel = new TableLayoutPanel
+        {
+            BackColor = AppTheme.SurfaceRaised,
+            ColumnCount = 1,
+            Dock = DockStyle.Fill,
+            Margin = new Padding(6),
+            Padding = new Padding(12, 8, 12, 8),
+            RowCount = 3,
+        };
+        panel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
+        panel.RowStyles.Add(new RowStyle(SizeType.Absolute, 26));
+        panel.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+        panel.RowStyles.Add(new RowStyle(SizeType.Absolute, 24));
+        panel.Controls.Add(header, 0, 0);
+        panel.Controls.Add(slider, 0, 1);
+        panel.Controls.Add(new Label
+        {
+            AutoEllipsis = true,
+            Dock = DockStyle.Fill,
+            ForeColor = AppTheme.TextMuted,
+            Font = AppTheme.CreateUiFont(8.1f),
+            Text = description,
+            TextAlign = ContentAlignment.MiddleLeft,
+        }, 0, 2);
+        return panel;
     }
 
     private Control CreateActionBar()
@@ -224,6 +398,8 @@ internal sealed class VisualProfileEditorForm : Form
             "Reset soft profile",
             ModernButtonStyle.Secondary,
             160);
+        reset.AccessibleDescription =
+            "Restore the canonical Soft invert tuning values.";
         reset.Click += (_, _) => ResetValues();
 
         var cancel = CreateButton("Cancel", ModernButtonStyle.Ghost, 100);
@@ -270,6 +446,7 @@ internal sealed class VisualProfileEditorForm : Form
     {
         return new ModernButton
         {
+            AccessibleName = text,
             Text = text,
             VisualStyle = style,
             MinimumSize = new Size(minimumWidth, 40),
@@ -277,131 +454,64 @@ internal sealed class VisualProfileEditorForm : Form
         };
     }
 
-    private static void AddParameter(
-        TableLayoutPanel grid,
-        int column,
-        int row,
-        string title,
-        string description,
-        string unit,
-        NumericUpDown input)
+    private static ModernProfileSlider CreatePercentageSlider(
+        string accessibleName,
+        float minimum,
+        float maximum)
     {
-        var value = new FlowLayoutPanel
+        return new ModernProfileSlider
         {
-            AutoSize = true,
-            BackColor = AppTheme.SurfaceRaised,
-            Dock = DockStyle.Fill,
-            FlowDirection = FlowDirection.LeftToRight,
-            Margin = Padding.Empty,
-            WrapContents = false,
-        };
-        value.Controls.Add(input);
-        value.Controls.Add(new Label
-        {
-            Anchor = AnchorStyles.Left,
-            AutoSize = true,
-            ForeColor = AppTheme.TextSecondary,
-            Font = AppTheme.CreateUiFont(9.5f, FontStyle.Bold),
-            Margin = new Padding(8, 0, 0, 0),
-            Text = unit,
-        });
-
-        var cell = new TableLayoutPanel
-        {
-            BackColor = AppTheme.SurfaceRaised,
-            ColumnCount = 1,
-            Dock = DockStyle.Fill,
-            Margin = new Padding(5),
-            Padding = new Padding(12, 8, 12, 8),
-            RowCount = 3,
-        };
-        cell.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        cell.RowStyles.Add(new RowStyle(SizeType.Percent, 34));
-        cell.RowStyles.Add(new RowStyle(SizeType.Percent, 36));
-        cell.RowStyles.Add(new RowStyle(SizeType.Percent, 30));
-        cell.Controls.Add(new Label
-        {
-            AutoSize = true,
-            Dock = DockStyle.Fill,
-            ForeColor = AppTheme.TextPrimary,
-            Font = AppTheme.CreateUiFont(9.5f, FontStyle.Bold),
-            Text = title,
-            TextAlign = ContentAlignment.BottomLeft,
-        }, 0, 0);
-        cell.Controls.Add(value, 0, 1);
-        cell.Controls.Add(new Label
-        {
-            AutoEllipsis = true,
-            Dock = DockStyle.Fill,
-            ForeColor = AppTheme.TextMuted,
-            Font = AppTheme.CreateUiFont(8.2f),
-            Text = description,
-            TextAlign = ContentAlignment.TopLeft,
-        }, 0, 2);
-        grid.Controls.Add(cell, column, row);
-    }
-
-    private static NumericUpDown CreatePercentageInput(float minimum, float maximum)
-    {
-        return CreateNumericInput(
-            (decimal)minimum * 100m,
-            (decimal)maximum * 100m,
-            0.25m,
-            2);
-    }
-
-    private static NumericUpDown CreateNumericInput(
-        decimal minimum,
-        decimal maximum,
-        decimal increment,
-        int decimalPlaces)
-    {
-        return new NumericUpDown
-        {
-            BackColor = AppTheme.SurfaceRaised,
-            BorderStyle = BorderStyle.FixedSingle,
-            DecimalPlaces = decimalPlaces,
-            Font = AppTheme.CreateUiFont(11f, FontStyle.Bold),
-            ForeColor = AppTheme.TextPrimary,
-            Increment = increment,
-            Maximum = maximum,
-            Minimum = minimum,
-            Size = new Size(108, 32),
-            TextAlign = HorizontalAlignment.Right,
-            ThousandsSeparator = false,
+            AccessibleName = accessibleName,
+            DecimalPlaces = 2,
+            Minimum = minimum * 100f,
+            Maximum = maximum * 100f,
+            SmallChange = 0.25f,
+            Unit = "%",
         };
     }
 
     private void AttachChangeHandlers()
     {
-        AttachPercentage(_outputBlackInput, value => _workingProfile.OutputBlack = value);
-        AttachPercentage(_outputWhiteInput, value => _workingProfile.OutputWhite = value);
-        AttachPercentage(_brightnessInput, value => _workingProfile.Brightness = value);
-        AttachPercentage(_contrastInput, value => _workingProfile.Contrast = value);
-        AttachPercentage(_saturationInput, value => _workingProfile.Saturation = value);
-        _hueInput.ValueChanged += (_, _) =>
-        {
-            if (_loadingValues)
-            {
-                return;
-            }
-
-            _workingProfile.HueShiftDegrees = (float)_hueInput.Value;
-            _preview.Invalidate();
-        };
+        AttachPercentage(
+            _outputBlackSlider,
+            value => _workingProfile.OutputBlack = value);
+        AttachPercentage(
+            _outputWhiteSlider,
+            value => _workingProfile.OutputWhite = value);
+        AttachPercentage(
+            _brightnessSlider,
+            value => _workingProfile.Brightness = value);
+        AttachPercentage(
+            _contrastSlider,
+            value => _workingProfile.Contrast = value);
+        AttachPercentage(
+            _saturationSlider,
+            value => _workingProfile.Saturation = value);
+        AttachSlider(
+            _hueSlider,
+            value => _workingProfile.HueShiftDegrees = value);
     }
 
-    private void AttachPercentage(NumericUpDown input, Action<float> setter)
+    private void AttachPercentage(
+        ModernProfileSlider slider,
+        Action<float> setter)
     {
-        input.ValueChanged += (_, _) =>
+        AttachSlider(slider, value => setter(value / 100f));
+    }
+
+    private void AttachSlider(
+        ModernProfileSlider slider,
+        Action<float> setter)
+    {
+        slider.ValueChanged += (_, _) =>
         {
             if (_loadingValues)
             {
                 return;
             }
 
-            setter((float)(input.Value / 100m));
-            _preview.Invalidate();
+            setter(slider.Value);
+            InvalidatePreviews();
         };
     }
 
@@ -410,12 +520,12 @@ internal sealed class VisualProfileEditorForm : Form
         _loadingValues = true;
         try
         {
-            SetValue(_outputBlackInput, (decimal)_workingProfile.OutputBlack * 100m);
-            SetValue(_outputWhiteInput, (decimal)_workingProfile.OutputWhite * 100m);
-            SetValue(_brightnessInput, (decimal)_workingProfile.Brightness * 100m);
-            SetValue(_contrastInput, (decimal)_workingProfile.Contrast * 100m);
-            SetValue(_saturationInput, (decimal)_workingProfile.Saturation * 100m);
-            SetValue(_hueInput, (decimal)_workingProfile.HueShiftDegrees);
+            _outputBlackSlider.Value = _workingProfile.OutputBlack * 100f;
+            _outputWhiteSlider.Value = _workingProfile.OutputWhite * 100f;
+            _brightnessSlider.Value = _workingProfile.Brightness * 100f;
+            _contrastSlider.Value = _workingProfile.Contrast * 100f;
+            _saturationSlider.Value = _workingProfile.Saturation * 100f;
+            _hueSlider.Value = _workingProfile.HueShiftDegrees;
         }
         finally
         {
@@ -429,22 +539,405 @@ internal sealed class VisualProfileEditorForm : Form
             _workingProfile,
             VisualProfileDefaults.SoftInvertTuning);
         LoadValues();
-        _preview.Invalidate();
+        InvalidatePreviews();
     }
 
-    private static void SetValue(NumericUpDown input, decimal value)
+    private void InvalidatePreviews()
     {
-        input.Value = Math.Clamp(value, input.Minimum, input.Maximum);
+        _preview.Invalidate();
+        _outputPreview.Invalidate();
     }
 
-    private static string PercentageRange(float minimum, float maximum, string explanation)
+    private static string PercentageRange(
+        float minimum,
+        float maximum,
+        string explanation)
     {
         return Range(minimum * 100f, maximum * 100f, "%", explanation);
     }
 
-    private static string Range(float minimum, float maximum, string unit, string explanation)
+    private static string Range(
+        float minimum,
+        float maximum,
+        string unit,
+        string explanation)
     {
         return $"{minimum:0.##}–{maximum:0.##}{unit} · {explanation}";
+    }
+}
+
+internal sealed class ModernProfileSlider : Control
+{
+    private float _minimum;
+    private float _maximum = 100f;
+    private float _value;
+    private float _smallChange = 1f;
+    private bool _hovered;
+
+    public ModernProfileSlider()
+    {
+        AccessibleRole = AccessibleRole.Slider;
+        BackColor = AppTheme.SurfaceRaised;
+        Cursor = Cursors.Hand;
+        MinimumSize = new Size(160, 34);
+        TabStop = true;
+        SetStyle(
+            ControlStyles.AllPaintingInWmPaint |
+            ControlStyles.OptimizedDoubleBuffer |
+            ControlStyles.ResizeRedraw |
+            ControlStyles.Selectable |
+            ControlStyles.UserPaint,
+            true);
+    }
+
+    public event EventHandler? ValueChanged;
+
+    public float Minimum
+    {
+        get => _minimum;
+        set
+        {
+            _minimum = value;
+            if (_maximum < _minimum)
+            {
+                _maximum = _minimum;
+            }
+            Value = _value;
+            Invalidate();
+        }
+    }
+
+    public float Maximum
+    {
+        get => _maximum;
+        set
+        {
+            _maximum = Math.Max(value, _minimum);
+            Value = _value;
+            Invalidate();
+        }
+    }
+
+    public float SmallChange
+    {
+        get => _smallChange;
+        set => _smallChange = value > 0f ? value : 1f;
+    }
+
+    public int DecimalPlaces { get; set; }
+
+    public string Unit { get; set; } = string.Empty;
+
+    public float Value
+    {
+        get => _value;
+        set
+        {
+            var next = Math.Clamp(value, Minimum, Maximum);
+            if (MathF.Abs(next - _value) < 0.0001f)
+            {
+                return;
+            }
+
+            _value = next;
+            AccessibleDescription = $"Current value: {FormattedValue}";
+            ValueChanged?.Invoke(this, EventArgs.Empty);
+            Invalidate();
+        }
+    }
+
+    public string FormattedValue =>
+        _value.ToString(
+            $"F{Math.Clamp(DecimalPlaces, 0, 4)}",
+            CultureInfo.CurrentCulture) + Unit;
+
+    protected override bool IsInputKey(Keys keyData)
+    {
+        return keyData is Keys.Left or Keys.Right or Keys.Up or Keys.Down or
+            Keys.Home or Keys.End or Keys.PageUp or Keys.PageDown ||
+            base.IsInputKey(keyData);
+    }
+
+    protected override void OnKeyDown(KeyEventArgs eventArgs)
+    {
+        base.OnKeyDown(eventArgs);
+
+        switch (eventArgs.KeyCode)
+        {
+            case Keys.Left:
+            case Keys.Down:
+                Value = Snap(Value - SmallChange);
+                break;
+            case Keys.Right:
+            case Keys.Up:
+                Value = Snap(Value + SmallChange);
+                break;
+            case Keys.PageDown:
+                Value = Snap(Value - SmallChange * 10f);
+                break;
+            case Keys.PageUp:
+                Value = Snap(Value + SmallChange * 10f);
+                break;
+            case Keys.Home:
+                Value = Minimum;
+                break;
+            case Keys.End:
+                Value = Maximum;
+                break;
+            default:
+                return;
+        }
+
+        eventArgs.Handled = true;
+        eventArgs.SuppressKeyPress = true;
+    }
+
+    protected override void OnMouseDown(MouseEventArgs eventArgs)
+    {
+        base.OnMouseDown(eventArgs);
+        if (eventArgs.Button != MouseButtons.Left)
+        {
+            return;
+        }
+
+        Focus();
+        Capture = true;
+        SetValueFromPosition(eventArgs.X);
+    }
+
+    protected override void OnMouseMove(MouseEventArgs eventArgs)
+    {
+        base.OnMouseMove(eventArgs);
+        if (Capture && (eventArgs.Button & MouseButtons.Left) != 0)
+        {
+            SetValueFromPosition(eventArgs.X);
+        }
+    }
+
+    protected override void OnMouseUp(MouseEventArgs eventArgs)
+    {
+        base.OnMouseUp(eventArgs);
+        if (eventArgs.Button == MouseButtons.Left)
+        {
+            Capture = false;
+        }
+    }
+
+    protected override void OnMouseEnter(EventArgs eventArgs)
+    {
+        base.OnMouseEnter(eventArgs);
+        _hovered = true;
+        Invalidate();
+    }
+
+    protected override void OnMouseLeave(EventArgs eventArgs)
+    {
+        base.OnMouseLeave(eventArgs);
+        _hovered = false;
+        Invalidate();
+    }
+
+    protected override void OnGotFocus(EventArgs eventArgs)
+    {
+        base.OnGotFocus(eventArgs);
+        Invalidate();
+    }
+
+    protected override void OnLostFocus(EventArgs eventArgs)
+    {
+        base.OnLostFocus(eventArgs);
+        Capture = false;
+        Invalidate();
+    }
+
+    protected override void OnEnabledChanged(EventArgs eventArgs)
+    {
+        base.OnEnabledChanged(eventArgs);
+        Invalidate();
+    }
+
+    protected override void OnPaint(PaintEventArgs eventArgs)
+    {
+        base.OnPaint(eventArgs);
+        var graphics = eventArgs.Graphics;
+        graphics.SmoothingMode = SmoothingMode.AntiAlias;
+        graphics.Clear(Parent?.BackColor ?? BackColor);
+
+        var track = new Rectangle(
+            10,
+            Math.Max(1, Height / 2 - 3),
+            Math.Max(1, Width - 20),
+            6);
+        using (var path = DrawingHelpers.CreateRoundedRectangle(track, 3))
+        using (var brush = new SolidBrush(
+                   Enabled ? AppTheme.Border : AppTheme.Surface))
+        {
+            graphics.FillPath(brush, path);
+        }
+
+        var ratio = Maximum <= Minimum
+            ? 0f
+            : (Value - Minimum) / (Maximum - Minimum);
+        var thumbX = track.Left +
+            (int)MathF.Round(ratio * track.Width);
+        var activeWidth = Math.Max(1, thumbX - track.Left);
+        var active = new Rectangle(
+            track.Left,
+            track.Top,
+            activeWidth,
+            track.Height);
+        using (var path = DrawingHelpers.CreateRoundedRectangle(active, 3))
+        using (var brush = new SolidBrush(
+                   Enabled ? AppTheme.Accent : AppTheme.TextMuted))
+        {
+            graphics.FillPath(brush, path);
+        }
+
+        const int thumbSize = 18;
+        var thumb = new Rectangle(
+            thumbX - thumbSize / 2,
+            Height / 2 - thumbSize / 2,
+            thumbSize,
+            thumbSize);
+        using var thumbBrush = new SolidBrush(
+            Enabled
+                ? _hovered || Focused
+                    ? AppTheme.AccentHover
+                    : AppTheme.TextPrimary
+                : AppTheme.TextMuted);
+        using var thumbBorder = new Pen(
+            Enabled ? AppTheme.Accent : AppTheme.Border,
+            2f);
+        graphics.FillEllipse(thumbBrush, thumb);
+        graphics.DrawEllipse(thumbBorder, thumb);
+
+        if (Focused && ShowFocusCues)
+        {
+            ControlPaint.DrawFocusRectangle(
+                graphics,
+                Rectangle.Inflate(ClientRectangle, -2, -2),
+                AppTheme.TextPrimary,
+                Parent?.BackColor ?? BackColor);
+        }
+    }
+
+    private void SetValueFromPosition(int x)
+    {
+        const int horizontalPadding = 10;
+        var usableWidth = Math.Max(1, Width - horizontalPadding * 2);
+        var ratio = Math.Clamp(
+            (x - horizontalPadding) / (float)usableWidth,
+            0f,
+            1f);
+        Value = Snap(Minimum + ratio * (Maximum - Minimum));
+    }
+
+    private float Snap(float value)
+    {
+        if (SmallChange <= 0f)
+        {
+            return value;
+        }
+
+        var steps = MathF.Round((value - Minimum) / SmallChange);
+        return Math.Clamp(
+            Minimum + steps * SmallChange,
+            Minimum,
+            Maximum);
+    }
+}
+
+internal sealed class OutputLimitPreview : Control
+{
+    public OutputLimitPreview()
+    {
+        DoubleBuffered = true;
+        BackColor = AppTheme.SurfaceRaised;
+        ForeColor = AppTheme.TextSecondary;
+        Font = AppTheme.CreateUiFont(7.8f, FontStyle.Bold);
+        MinimumSize = new Size(260, 90);
+        AccessibleName = "Black and white conversion preview";
+    }
+
+    public VisualProfile? Profile { get; set; }
+
+    protected override void OnPaint(PaintEventArgs eventArgs)
+    {
+        base.OnPaint(eventArgs);
+        eventArgs.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+        eventArgs.Graphics.Clear(BackColor);
+
+        if (Profile is null || Width < 180 || Height < 70)
+        {
+            return;
+        }
+
+        var transform = VisualTransformCatalog.Default.GetRequired(
+            Profile.TransformId);
+        var effect = transform.CreateColorEffect(Profile);
+        var gap = 10;
+        var top = 22;
+        var sampleHeight = Math.Max(38, Height - top - 4);
+        var sampleWidth = Math.Max(60, (Width - gap - 8) / 2);
+        var sourceBounds = new Rectangle(4, top, sampleWidth, sampleHeight);
+        var outputBounds = new Rectangle(
+            sourceBounds.Right + gap,
+            top,
+            Math.Max(60, Width - sourceBounds.Right - gap - 4),
+            sampleHeight);
+
+        DrawCaption(eventArgs.Graphics, "SOURCE", sourceBounds.Left, sampleWidth);
+        DrawCaption(eventArgs.Graphics, "OUTPUT", outputBounds.Left, outputBounds.Width);
+        DrawSample(
+            eventArgs.Graphics,
+            sourceBounds,
+            Color.White,
+            Color.Black);
+        DrawSample(
+            eventArgs.Graphics,
+            outputBounds,
+            ColorEffectPreviewMath.Apply(Color.White, effect),
+            ColorEffectPreviewMath.Apply(Color.Black, effect));
+    }
+
+    private void DrawCaption(
+        Graphics graphics,
+        string text,
+        int left,
+        int width)
+    {
+        TextRenderer.DrawText(
+            graphics,
+            text,
+            Font,
+            new Rectangle(left, 0, width, 20),
+            ForeColor,
+            TextFormatFlags.Left |
+            TextFormatFlags.VerticalCenter |
+            TextFormatFlags.NoPadding);
+    }
+
+    private static void DrawSample(
+        Graphics graphics,
+        Rectangle bounds,
+        Color background,
+        Color foreground)
+    {
+        using var path = DrawingHelpers.CreateRoundedRectangle(bounds, 7);
+        using var backgroundBrush = new SolidBrush(background);
+        using var borderPen = new Pen(AppTheme.Border);
+        graphics.FillPath(backgroundBrush, path);
+        graphics.DrawPath(borderPen, path);
+        TextRenderer.DrawText(
+            graphics,
+            "SightAdapt Aa",
+            AppTheme.CreateUiFont(10f, FontStyle.Bold),
+            Rectangle.Inflate(bounds, -8, -4),
+            foreground,
+            TextFormatFlags.HorizontalCenter |
+            TextFormatFlags.VerticalCenter |
+            TextFormatFlags.EndEllipsis |
+            TextFormatFlags.NoPadding);
     }
 }
 
@@ -465,6 +958,7 @@ internal sealed class ColorProfilePreview : Control
         ForeColor = AppTheme.TextSecondary;
         Font = AppTheme.CreateUiFont(7.5f, FontStyle.Bold);
         MinimumSize = new Size(200, 100);
+        AccessibleName = "Live grayscale and color profile preview";
     }
 
     public VisualProfile? Profile { get; set; }
@@ -480,7 +974,8 @@ internal sealed class ColorProfilePreview : Control
             return;
         }
 
-        var transform = VisualTransformCatalog.Default.GetRequired(Profile.TransformId);
+        var transform = VisualTransformCatalog.Default.GetRequired(
+            Profile.TransformId);
         var effect = transform.CreateColorEffect(Profile);
         const int labelWidth = 88;
         const int gap = 5;
@@ -503,9 +998,15 @@ internal sealed class ColorProfilePreview : Control
 
             for (var x = 0; x < stripWidth; x++)
             {
-                var ratio = stripWidth <= 1 ? 0f : (float)x / (stripWidth - 1);
-                var source = row < 2 ? CreateGray(ratio) : CreateHue(ratio * 360f);
-                var color = row is 1 or 3 ? ApplyColorEffect(source, effect) : source;
+                var ratio = stripWidth <= 1
+                    ? 0f
+                    : (float)x / (stripWidth - 1);
+                var source = row < 2
+                    ? ColorEffectPreviewMath.CreateGray(ratio)
+                    : ColorEffectPreviewMath.CreateHue(ratio * 360f);
+                var color = row is 1 or 3
+                    ? ColorEffectPreviewMath.Apply(source, effect)
+                    : source;
                 using var pen = new Pen(color);
                 eventArgs.Graphics.DrawLine(
                     pen,
@@ -517,10 +1018,18 @@ internal sealed class ColorProfilePreview : Control
         }
 
         using var border = new Pen(AppTheme.Border);
-        eventArgs.Graphics.DrawRectangle(border, 0, 0, Width - 1, Height - 1);
+        eventArgs.Graphics.DrawRectangle(
+            border,
+            0,
+            0,
+            Width - 1,
+            Height - 1);
     }
+}
 
-    private static Color ApplyColorEffect(Color source, MagColorEffect effect)
+internal static class ColorEffectPreviewMath
+{
+    public static Color Apply(Color source, MagColorEffect effect)
     {
         var red = source.R / 255f;
         var green = source.G / 255f;
@@ -531,13 +1040,13 @@ internal sealed class ColorProfilePreview : Control
             ToByte(red * effect.M02 + green * effect.M12 + blue * effect.M22 + effect.M42));
     }
 
-    private static Color CreateGray(float value)
+    public static Color CreateGray(float value)
     {
         var channel = ToByte(value);
         return Color.FromArgb(channel, channel, channel);
     }
 
-    private static Color CreateHue(float degrees)
+    public static Color CreateHue(float degrees)
     {
         var hue = (degrees % 360f + 360f) % 360f;
         var sector = hue / 60f;
