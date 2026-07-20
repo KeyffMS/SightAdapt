@@ -104,7 +104,9 @@ The final evidence and authority/truth maps are recorded in [`ARCHITECTURE_AUDIT
 
 **Status: active. Ready for screenshot-driven review and correction.**
 
-This stage improves interface quality without changing color-processing semantics. User-provided screenshots define concrete visual defects and acceptance evidence for individual corrections.
+This stage completes interface quality after the refactored architecture baseline without changing color-processing semantics. User-provided screenshots define concrete visual defects and acceptance evidence for individual corrections.
+
+The complete numbered intake register and engineering constraints are maintained in [`UI_REQUIREMENTS_0.4A.4.md`](UI_REQUIREMENTS_0.4A.4.md). That document is the single source of truth for captured interface requirements. Implementation planning starts only after the user explicitly closes requirement intake.
 
 Scope:
 
