@@ -131,12 +131,7 @@ internal sealed class SettingsCoordinator
         try
         {
             control.BeginInvoke((Action)(() =>
-            {
-                if (!control.IsDisposed && !control.Disposing)
-                {
-                    handler(this, EventArgs.Empty);
-                }
-            }));
+                InvokeControlObserverWhenReady(control, handler)));
         }
         catch (InvalidOperationException exception) when (
             control.IsDisposed ||
@@ -145,6 +140,70 @@ internal sealed class SettingsCoordinator
             Debug.WriteLine(
                 $"SightAdapt skipped a disposed settings observer: {exception}");
         }
+    }
+
+    private void InvokeControlObserverWhenReady(
+        Control control,
+        EventHandler handler)
+    {
+        if (control.IsDisposed || control.Disposing)
+        {
+            return;
+        }
+
+        var editingGrid = FindEditingGrid(control);
+        if (editingGrid is not null)
+        {
+            DeferUntilGridEditEnds(control, editingGrid, handler);
+            return;
+        }
+
+        handler(this, EventArgs.Empty);
+    }
+
+    private void DeferUntilGridEditEnds(
+        Control control,
+        DataGridView grid,
+        EventHandler handler)
+    {
+        DataGridViewCellEventHandler cellEndEdit = null!;
+        cellEndEdit = (_, _) =>
+        {
+            grid.CellEndEdit -= cellEndEdit;
+            if (!control.IsDisposed && !control.Disposing)
+            {
+                DeferControlObserver(control, handler);
+            }
+        };
+        grid.CellEndEdit += cellEndEdit;
+    }
+
+    private static DataGridView? FindEditingGrid(Control control)
+    {
+        if (control is DataGridView grid && IsEditing(grid))
+        {
+            return grid;
+        }
+
+        foreach (Control child in control.Controls)
+        {
+            var editingGrid = FindEditingGrid(child);
+            if (editingGrid is not null)
+            {
+                return editingGrid;
+            }
+        }
+
+        return null;
+    }
+
+    private static bool IsEditing(DataGridView grid)
+    {
+        return !grid.IsDisposed &&
+               (grid.IsCurrentCellInEditMode ||
+                grid.IsCurrentCellDirty ||
+                grid.IsCurrentRowDirty ||
+                grid.EditingControl is not null);
     }
 
     private static bool IsExpectedError(Exception exception)
