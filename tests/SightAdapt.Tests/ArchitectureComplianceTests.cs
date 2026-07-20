@@ -139,11 +139,11 @@ public sealed class ArchitectureComplianceTests
     [TestMethod]
     public void ProfileSliderSupportsSynchronizedNumericEntry()
     {
-        var source = ReadSource("ProfileEditorControls.cs");
+        var source = ReadSource("ProfileSliderControl.cs");
         StringAssert.Contains(source, "private readonly TextBox _valueInput;");
         StringAssert.Contains(source, "private void CommitInput()");
         StringAssert.Contains(source, "NormalizeDecimalSeparator");
-        StringAssert.Contains(source, "Value = Snap(value);");
+        StringAssert.Contains(source, "Value = SnapToStep(value);");
         StringAssert.Contains(source, "_valueInput.Validating");
         Assert.IsFalse(source.Contains("NumericUpDown", StringComparison.Ordinal));
     }
