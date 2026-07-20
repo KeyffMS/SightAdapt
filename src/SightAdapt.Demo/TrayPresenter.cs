@@ -5,6 +5,7 @@ namespace SightAdapt.Demo;
 internal sealed class TrayPresenter : IDisposable
 {
     private readonly TrayIconSet _icons;
+    private readonly ContextMenuStrip _menu;
     private readonly NotifyIcon _notifyIcon;
     private readonly ToolStripMenuItem _statusItem;
     private readonly ToolStripMenuItem _toggleItem;
@@ -72,6 +73,11 @@ internal sealed class TrayPresenter : IDisposable
             AppTheme.AccentHover,
             FontStyle.Bold);
 
+        var aboutItem = new ToolStripMenuItem(
+            $"About {ProductInfo.ProductName}...");
+        aboutItem.Click += (_, _) => ShowAbout();
+        AppTheme.StyleMenuItem(aboutItem, AppTheme.TextSecondary);
+
         var disableItem = new ToolStripMenuItem(
             "Emergency disable all overlays");
         disableItem.Click += (_, _) => emergencyDisable();
@@ -85,14 +91,16 @@ internal sealed class TrayPresenter : IDisposable
         exitItem.Click += (_, _) => exit();
         AppTheme.StyleMenuItem(exitItem, AppTheme.TextSecondary);
 
-        var menu = AppTheme.CreateContextMenu();
-        menu.Items.AddRange([
+        _menu = AppTheme.CreateContextMenu();
+        _menu.AccessibleName = "SightAdapt notification-area menu";
+        _menu.Items.AddRange([
             _statusItem,
             new ToolStripSeparator(),
             _toggleItem,
             toggleProfileItem,
             _automaticModeItem,
             configureItem,
+            aboutItem,
             new ToolStripSeparator(),
             disableItem,
             new ToolStripSeparator(),
@@ -103,9 +111,10 @@ internal sealed class TrayPresenter : IDisposable
         {
             Icon = _icons.Inactive,
             Text = $"{ProductInfo.DisplayName} · Inactive",
-            ContextMenuStrip = menu,
+            ContextMenuStrip = _menu,
             Visible = true,
         };
+        _notifyIcon.MouseClick += NotifyIconMouseClick;
         _notifyIcon.DoubleClick += (_, _) => toggleForActiveWindow();
     }
 
@@ -212,11 +221,29 @@ internal sealed class TrayPresenter : IDisposable
             return;
         }
 
+        _notifyIcon.MouseClick -= NotifyIconMouseClick;
         _notifyIcon.Visible = false;
-        _notifyIcon.ContextMenuStrip?.Dispose();
+        _notifyIcon.ContextMenuStrip = null;
+        _menu.Dispose();
         _notifyIcon.Dispose();
         _icons.Dispose();
         _disposed = true;
+    }
+
+    private void NotifyIconMouseClick(
+        object? sender,
+        MouseEventArgs eventArgs)
+    {
+        if (eventArgs.Button == MouseButtons.Left)
+        {
+            _menu.Show(Cursor.Position);
+        }
+    }
+
+    private void ShowAbout()
+    {
+        using var about = new AboutForm(_icons.Inactive);
+        about.ShowDialog();
     }
 
     private void ApplyActiveState(
