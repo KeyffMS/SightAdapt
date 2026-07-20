@@ -69,7 +69,7 @@ public sealed class NativeDialogDispatchRegressionTests
             Assert.AreEqual(
                 1,
                 observer.CallCount,
-                "Application.Idle must release an observer when a native dialog re-enables its owner without EnabledChanged.");
+                "The modal-owner retry timer must release an observer when a native dialog re-enables its owner without EnabledChanged.");
             Assert.IsFalse(coordinator.Current.AutomaticMode);
         }
         finally
