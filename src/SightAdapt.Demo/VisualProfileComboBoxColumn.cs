@@ -19,8 +19,8 @@ internal sealed class StableVisualProfileComboBoxColumn :
     private DataGridView? _attachedGrid;
 
     public StableVisualProfileComboBoxColumn()
-        : base(new ModernVisualProfileComboBoxCell())
     {
+        CellTemplate = new ModernVisualProfileComboBoxCell();
         DisplayMember = nameof(VisualProfileOption.Name);
         ValueMember = nameof(VisualProfileOption.Id);
         ValueType = typeof(string);
@@ -105,12 +105,17 @@ internal sealed class StableVisualProfileComboBoxColumn :
             return;
         }
 
+        var graphics = eventArgs.Graphics;
+        if (graphics is null)
+        {
+            return;
+        }
+
         eventArgs.PaintBackground(
             eventArgs.CellBounds,
             (eventArgs.State & DataGridViewElementStates.Selected) != 0);
 
-        var enabled = eventArgs.FormattedValue is true ||
-            eventArgs.Value is true;
+        var enabled = eventArgs.FormattedValue is true;
         const int diameter = 15;
         var bounds = new Rectangle(
             eventArgs.CellBounds.Left +
@@ -120,14 +125,14 @@ internal sealed class StableVisualProfileComboBoxColumn :
             diameter,
             diameter);
 
-        eventArgs.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+        graphics.SmoothingMode = SmoothingMode.AntiAlias;
         using var fill = new SolidBrush(
             enabled ? AppTheme.Success : AppTheme.Surface);
         using var border = new Pen(
             enabled ? AppTheme.Success : AppTheme.TextMuted,
             enabled ? 1.5f : 1.2f);
-        eventArgs.Graphics.FillEllipse(fill, bounds);
-        eventArgs.Graphics.DrawEllipse(border, bounds);
+        graphics.FillEllipse(fill, bounds);
+        graphics.DrawEllipse(border, bounds);
 
         if ((eventArgs.State & DataGridViewElementStates.Selected) != 0 &&
             grid.CurrentCellAddress.X == eventArgs.ColumnIndex &&
@@ -135,7 +140,7 @@ internal sealed class StableVisualProfileComboBoxColumn :
         {
             var focusBounds = Rectangle.Inflate(bounds, 5, 5);
             ControlPaint.DrawFocusRectangle(
-                eventArgs.Graphics,
+                graphics,
                 focusBounds,
                 AppTheme.TextPrimary,
                 AppTheme.Selection);
@@ -322,11 +327,12 @@ internal sealed class ModernVisualProfileComboBoxCell :
         };
         graphics.DrawLines(
             arrowPen,
-            [
-                new Point(centerX - 4, centerY - 2),
-                new Point(centerX, centerY + 2),
-                new Point(centerX + 4, centerY - 2),
-            ]);
+            new Point[]
+            {
+                new(centerX - 4, centerY - 2),
+                new(centerX, centerY + 2),
+                new(centerX + 4, centerY - 2),
+            });
 
         if ((cellState & DataGridViewElementStates.Selected) != 0 &&
             DataGridView?.CurrentCellAddress.X == ColumnIndex &&
