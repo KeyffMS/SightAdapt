@@ -1,3 +1,6 @@
+using System.ComponentModel;
+using System.Diagnostics;
+
 namespace SightAdapt.Demo;
 
 internal sealed class AboutForm : Form
@@ -20,12 +23,12 @@ internal sealed class AboutForm : Form
         ShowInTaskbar = false;
         ShowIcon = true;
         Icon = _windowIcon;
-        ClientSize = new Size(620, 390);
-        MinimumSize = new Size(620, 390);
+        ClientSize = new Size(720, 470);
+        MinimumSize = new Size(720, 470);
         BackColor = AppTheme.WindowBackground;
         AccessibleName = $"About {ProductInfo.ProductName}";
         AccessibleDescription =
-            "Product name, current milestone, version, author, and license information.";
+            "Product name, milestone, version, author, license, and repository information.";
         AppTheme.ApplyTo(this);
 
         Controls.Add(CreateRootLayout());
@@ -75,8 +78,8 @@ internal sealed class AboutForm : Form
             Anchor = AnchorStyles.None,
             BackColor = AppTheme.SurfaceRaised,
             Image = _logo,
-            Margin = new Padding(0),
-            Size = new Size(132, 132),
+            Margin = Padding.Empty,
+            Size = new Size(144, 144),
             SizeMode = PictureBoxSizeMode.CenterImage,
             TabStop = false,
         };
@@ -87,45 +90,47 @@ internal sealed class AboutForm : Form
             ColumnCount = 1,
             Dock = DockStyle.Fill,
             Margin = Padding.Empty,
-            RowCount = 6,
+            RowCount = 7,
         };
         identity.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        identity.RowStyles.Add(new RowStyle(SizeType.Absolute, 52));
-        identity.RowStyles.Add(new RowStyle(SizeType.Absolute, 34));
+        identity.RowStyles.Add(new RowStyle(SizeType.Absolute, 58));
+        identity.RowStyles.Add(new RowStyle(SizeType.Absolute, 36));
+        identity.RowStyles.Add(new RowStyle(SizeType.Absolute, 58));
+        identity.RowStyles.Add(new RowStyle(SizeType.Absolute, 42));
         identity.RowStyles.Add(new RowStyle(SizeType.Absolute, 38));
-        identity.RowStyles.Add(new RowStyle(SizeType.Absolute, 34));
-        identity.RowStyles.Add(new RowStyle(SizeType.Absolute, 34));
+        identity.RowStyles.Add(new RowStyle(SizeType.Absolute, 38));
         identity.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         identity.Controls.Add(CreateLabel(
             ProductInfo.ProductName,
-            22f,
+            23f,
             FontStyle.Bold,
             AppTheme.TextPrimary), 0, 0);
         identity.Controls.Add(CreateLabel(
             ProductInfo.MilestoneLabel,
-            11f,
+            11.5f,
             FontStyle.Bold,
             AppTheme.AccentHover), 0, 1);
-        identity.Controls.Add(CreateLabel(
+        identity.Controls.Add(CreateWrappingLabel(
             ProductInfo.Tagline,
-            9.5f,
+            9.6f,
             FontStyle.Regular,
             AppTheme.TextSecondary), 0, 2);
-        identity.Controls.Add(CreateLabel(
+        identity.Controls.Add(CreateWrappingLabel(
             $"Version: {ProductInfo.VersionLabel}",
-            9f,
+            9.2f,
             FontStyle.Regular,
             AppTheme.TextSecondary), 0, 3);
         identity.Controls.Add(CreateLabel(
             $"Author: {ProductInfo.Author}",
-            9f,
+            9.2f,
             FontStyle.Regular,
             AppTheme.TextSecondary), 0, 4);
+        identity.Controls.Add(CreateRepositoryLink(), 0, 5);
         identity.Controls.Add(CreateLabel(
             ProductInfo.License,
-            9f,
+            9.2f,
             FontStyle.Bold,
-            AppTheme.TextPrimary), 0, 5);
+            AppTheme.TextPrimary), 0, 6);
 
         var layout = new TableLayoutPanel
         {
@@ -133,10 +138,10 @@ internal sealed class AboutForm : Form
             ColumnCount = 2,
             Dock = DockStyle.Fill,
             Margin = Padding.Empty,
-            Padding = new Padding(24),
+            Padding = new Padding(26),
             RowCount = 1,
         };
-        layout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 164));
+        layout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 178));
         layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         layout.Controls.Add(logo, 0, 0);
         layout.Controls.Add(identity, 1, 0);
@@ -150,6 +155,28 @@ internal sealed class AboutForm : Form
         };
         card.Controls.Add(layout);
         return card;
+    }
+
+    private static LinkLabel CreateRepositoryLink()
+    {
+        var link = new LinkLabel
+        {
+            AccessibleName = "Open SightAdapt repository on GitHub",
+            ActiveLinkColor = AppTheme.TextPrimary,
+            AutoEllipsis = false,
+            AutoSize = true,
+            BackColor = AppTheme.Surface,
+            Dock = DockStyle.Fill,
+            Font = AppTheme.CreateUiFont(9.2f, FontStyle.Bold),
+            LinkBehavior = LinkBehavior.HoverUnderline,
+            LinkColor = AppTheme.AccentHover,
+            TabStop = true,
+            Text = ProductInfo.RepositoryDisplay,
+            TextAlign = ContentAlignment.MiddleLeft,
+            VisitedLinkColor = AppTheme.AccentHover,
+        };
+        link.LinkClicked += (_, _) => OpenRepository();
+        return link;
     }
 
     private Control CreateActionBar()
@@ -187,12 +214,50 @@ internal sealed class AboutForm : Form
     {
         return new Label
         {
-            AutoEllipsis = true,
+            AutoEllipsis = false,
             Dock = DockStyle.Fill,
             ForeColor = color,
             Font = AppTheme.CreateUiFont(size, style),
             Text = text,
             TextAlign = ContentAlignment.MiddleLeft,
         };
+    }
+
+    private static Label CreateWrappingLabel(
+        string text,
+        float size,
+        FontStyle style,
+        Color color)
+    {
+        return new Label
+        {
+            AutoEllipsis = false,
+            AutoSize = false,
+            Dock = DockStyle.Fill,
+            ForeColor = color,
+            Font = AppTheme.CreateUiFont(size, style),
+            Text = text,
+            TextAlign = ContentAlignment.MiddleLeft,
+        };
+    }
+
+    private static void OpenRepository()
+    {
+        try
+        {
+            Process.Start(new ProcessStartInfo(ProductInfo.RepositoryUrl)
+            {
+                UseShellExecute = true,
+            });
+        }
+        catch (Exception exception) when (
+            exception is Win32Exception or InvalidOperationException)
+        {
+            MessageBox.Show(
+                $"The repository could not be opened.\n\n{exception.Message}",
+                ProductInfo.ProductName,
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Warning);
+        }
     }
 }
