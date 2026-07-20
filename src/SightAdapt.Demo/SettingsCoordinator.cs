@@ -151,6 +151,12 @@ internal sealed class SettingsCoordinator
             return;
         }
 
+        if (!control.Enabled)
+        {
+            DeferUntilControlIsEnabled(control, handler);
+            return;
+        }
+
         var editingGrid = FindEditingGrid(control);
         if (editingGrid is not null)
         {
@@ -159,6 +165,38 @@ internal sealed class SettingsCoordinator
         }
 
         handler(this, EventArgs.Empty);
+    }
+
+    private void DeferUntilControlIsEnabled(
+        Control control,
+        EventHandler handler)
+    {
+        EventHandler enabledChanged = null!;
+        EventHandler disposed = null!;
+
+        void RemoveHandlers()
+        {
+            control.EnabledChanged -= enabledChanged;
+            control.Disposed -= disposed;
+        }
+
+        enabledChanged = (_, _) =>
+        {
+            if (!control.Enabled)
+            {
+                return;
+            }
+
+            RemoveHandlers();
+            if (!control.IsDisposed && !control.Disposing)
+            {
+                DeferControlObserver(control, handler);
+            }
+        };
+        disposed = (_, _) => RemoveHandlers();
+
+        control.EnabledChanged += enabledChanged;
+        control.Disposed += disposed;
     }
 
     private void DeferUntilGridEditEnds(
