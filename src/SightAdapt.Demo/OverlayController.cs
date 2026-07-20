@@ -16,8 +16,6 @@ internal sealed class OverlayController : IDisposable
 
     public nint TargetWindow => IsActive ? _overlay!.TargetHandle : nint.Zero;
 
-    public string? VisualProfileId { get; private set; }
-
     public event EventHandler? OverlayClosed;
 
     public void Activate(nint targetWindow, VisualProfile visualProfile)
@@ -27,29 +25,38 @@ internal sealed class OverlayController : IDisposable
 
         if (targetWindow == nint.Zero)
         {
-            throw new ArgumentException("A target window is required.", nameof(targetWindow));
+            throw new ArgumentException(
+                "A target window is required.",
+                nameof(targetWindow));
         }
 
-        var transform = _transformCatalog.GetRequired(visualProfile.TransformId);
-        var colorEffect = transform.CreateColorEffect(visualProfile);
+        var transform =
+            _transformCatalog.GetRequired(
+                visualProfile.TransformId);
+        var colorEffect =
+            transform.CreateColorEffect(
+                visualProfile);
 
         if (IsActive && TargetWindow == targetWindow)
         {
-            _overlay!.ApplyColorEffect(colorEffect, transform.Id);
-            VisualProfileId = visualProfile.Id;
+            _overlay!.ApplyColorEffect(
+                colorEffect,
+                transform.Id);
             return;
         }
 
         Disable();
 
-        var overlay = new MagnifierOverlay(targetWindow, colorEffect, transform.Id);
+        var overlay = new MagnifierOverlay(
+            targetWindow,
+            colorEffect,
+            transform.Id);
         overlay.FormClosed += HandleOverlayClosed;
 
         try
         {
             overlay.Show();
             _overlay = overlay;
-            VisualProfileId = visualProfile.Id;
         }
         catch
         {
@@ -63,13 +70,11 @@ internal sealed class OverlayController : IDisposable
     {
         if (_overlay is null)
         {
-            VisualProfileId = null;
             return;
         }
 
         var overlay = _overlay;
         _overlay = null;
-        VisualProfileId = null;
 
         overlay.FormClosed -= HandleOverlayClosed;
         overlay.Close();
@@ -87,7 +92,9 @@ internal sealed class OverlayController : IDisposable
         _disposed = true;
     }
 
-    private void HandleOverlayClosed(object? sender, FormClosedEventArgs eventArgs)
+    private void HandleOverlayClosed(
+        object? sender,
+        FormClosedEventArgs eventArgs)
     {
         if (!ReferenceEquals(sender, _overlay))
         {
@@ -96,7 +103,6 @@ internal sealed class OverlayController : IDisposable
 
         var overlay = _overlay!;
         _overlay = null;
-        VisualProfileId = null;
 
         overlay.FormClosed -= HandleOverlayClosed;
         overlay.Dispose();
