@@ -137,6 +137,18 @@ public sealed class ArchitectureComplianceTests
     }
 
     [TestMethod]
+    public void ProfileSliderSupportsSynchronizedNumericEntry()
+    {
+        var source = ReadSource("ProfileEditorControls.cs");
+        StringAssert.Contains(source, "private readonly TextBox _valueInput;");
+        StringAssert.Contains(source, "private void CommitInput()");
+        StringAssert.Contains(source, "NormalizeDecimalSeparator");
+        StringAssert.Contains(source, "Value = Snap(value);");
+        StringAssert.Contains(source, "_valueInput.Validating");
+        Assert.IsFalse(source.Contains("NumericUpDown", StringComparison.Ordinal));
+    }
+
+    [TestMethod]
     public void StableComboColumnOwnsModernSelectorAndStatusPainting()
     {
         var source = ReadSource("VisualProfileComboBoxColumn.cs");
@@ -146,6 +158,25 @@ public sealed class ArchitectureComplianceTests
         StringAssert.Contains(source, "GridCellPainting");
         StringAssert.Contains(source, "AppTheme.Success");
         Assert.IsFalse(source.Contains("new object? DataSource", StringComparison.Ordinal));
+    }
+
+    [TestMethod]
+    public void ProfileSelectorUsesCustomDarkEditingControl()
+    {
+        var source = ReadSource("VisualProfileComboBoxColumn.cs");
+        StringAssert.Contains(source, "ModernVisualProfileEditingControl");
+        StringAssert.Contains(source, "IDataGridViewEditingControl");
+        StringAssert.Contains(source, "ToolStripDropDown");
+        StringAssert.Contains(source, "ListBox");
+        StringAssert.Contains(source, "public override Type EditType");
+        Assert.IsFalse(
+            source.Contains(
+                "DataGridViewComboBoxEditingControl",
+                StringComparison.Ordinal));
+        Assert.IsFalse(
+            source.Contains(
+                "EditingControlShowing",
+                StringComparison.Ordinal));
     }
 
     [TestMethod]
@@ -197,6 +228,29 @@ public sealed class ArchitectureComplianceTests
         StringAssert.Contains(source, "ProductInfo.License");
         StringAssert.Contains(source, "Icon sourceIcon");
         Assert.IsFalse(source.Contains("Alpha 0.4", StringComparison.Ordinal));
+    }
+
+    [TestMethod]
+    public void AboutDialogExposesRepositoryWithoutClippingMetadata()
+    {
+        var source = ReadSource("AboutForm.cs");
+        StringAssert.Contains(source, "ProductInfo.RepositoryDisplay");
+        StringAssert.Contains(source, "ProductInfo.RepositoryUrl");
+        StringAssert.Contains(source, "new Size(720, 470)");
+        StringAssert.Contains(source, "AutoEllipsis = false");
+        StringAssert.Contains(source, "OpenRepository");
+    }
+
+    [TestMethod]
+    public void DarkThemeSecondaryTextUsesReadableContrast()
+    {
+        var source = ReadSource("ModernTheme.cs");
+        StringAssert.Contains(
+            source,
+            "TextSecondary = Color.FromArgb(190, 200, 216)");
+        StringAssert.Contains(
+            source,
+            "TextMuted = Color.FromArgb(151, 164, 184)");
     }
 
     [TestMethod]
