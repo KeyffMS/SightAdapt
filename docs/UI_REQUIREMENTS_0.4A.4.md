@@ -2,188 +2,125 @@
 
 ## Status
 
-**Requirement intake is closed. The captured corrections are implemented on `agent/fix-audit-v0.4`; manual Windows, screenshot, and DPI acceptance remains pending.**
+**Implementation is complete on `agent/fix-audit-v0.4`. Manual Windows, screenshot, keyboard, resize, multi-monitor, and DPI acceptance remains pending.**
 
-Implementation branch: `agent/fix-audit-v0.4`.
-
-This document is the single source of truth for screenshot-driven interface corrections in the active `0.4A.4` interface phase. The completed architecture-remediation baseline remains documented separately in [`ARCHITECTURE_REMEDIATION_0.4A.4.md`](ARCHITECTURE_REMEDIATION_0.4A.4.md).
+This document is the single source of truth for screenshot-driven `0.4A.4` interface requirements. Architecture remediation remains documented in [`ARCHITECTURE_REMEDIATION_0.4A.4.md`](ARCHITECTURE_REMEDIATION_0.4A.4.md).
 
 ## Engineering constraints
 
-Every correction must preserve:
+Every correction preserves:
 
-- **Clean Code** — explicit names, focused responsibilities, readable control composition, and testable behavior;
-- **KISS** — the smallest WinForms solution that satisfies the captured requirement;
-- **Single Point of Authority** — one component owns each UI action and state-changing operation;
-- **Single Point of Truth** — product name, version, author, state, profile data, and visual defaults come from their canonical sources;
-- **DRY** — no duplicated menu construction, version strings, state rules, theme values, or profile-editing logic;
-- existing color-processing semantics and persisted profile values;
-- deterministic emergency behavior and input transparency;
-- keyboard usability, accessibility metadata, supported DPI scaling, and the modern dark theme.
-
-Implementation does not close `0.4A.4` by itself. The increment closes only after manual visual and interaction acceptance.
+- **Clean Code** — focused, named, testable responsibilities;
+- **KISS** — the smallest WinForms solution satisfying the requirement;
+- **SPoA** — one owner for each UI action and mutation;
+- **SPoT** — product metadata, state, limits, transforms, and theme values come from canonical sources;
+- **DRY** — no duplicated menu construction, version strings, state rules, transform formulas, or profile mutation logic;
+- persisted values, color-processing semantics, emergency behavior, input transparency, keyboard access, accessibility metadata, DPI scaling, and the modern dark theme.
 
 ## Numbered requirements
 
 ### 001 — About window
 
-Add an `About SightAdapt...` entry to the notification-area menu.
+Add `About SightAdapt...` to the tray menu. The modern-dark dialog shows the canonical icon, product name, current milestone, informational version, author, license, and repository information from `ProductInfo`. It supports keyboard closing, predictable focus, accessible names, and DPI scaling.
 
-The command must open a dedicated modern-dark dialog containing a clean, balanced presentation of:
-
-1. the canonical SightAdapt graphic, icon, or logo;
-2. the product name;
-3. the current product version or milestone label;
-4. the author or company attribution.
-
-The dialog must obtain product metadata from the canonical assembly/product metadata source instead of duplicating text in the form. It must support keyboard closing, predictable focus, DPI scaling, and accessible names.
-
-**Implementation:** `AboutForm` uses the canonical tray icon and `ProductInfo` metadata. The tray exposes one `About SightAdapt...` command.
+**Implementation:** `AboutForm` and the existing canonical tray icon.
 
 ### 002 — notification-area left click
 
-A left click on the SightAdapt notification-area icon must open the same menu that is currently opened by a right click.
+Left click must open the same `ContextMenuStrip` instance as right click in every runtime state and after restart.
 
-Acceptance details:
-
-1. left and right click use the same menu instance and command definitions;
-2. no separate or duplicated menu-building path is introduced;
-3. the behavior remains the same while inactive, manually active, automatically active, faulted, or emergency-stopped;
-4. the action remains correct after application restart.
-
-**Implementation:** `TrayPresenter` owns one `ContextMenuStrip`; the left-click handler shows that same instance.
+**Implementation:** `TrayPresenter` owns one menu and opens it from the left-click handler.
 
 ### 003 — configuration window
 
-#### 003.1 — modern visual-profile selector
+#### 003.1 — visual-profile selector
 
-Replace the visually inconsistent profile selector presentation with a modern-dark treatment covering:
+The closed selector, active editing state, dropdown button, opened list, hover, focus, selection, disabled state, and read-only state must remain modern-dark. Profile names must not clip or render stale values.
 
-1. the closed selector border and background;
-2. the dropdown button and indicator;
-3. the opened list background and border;
-4. selected, hovered, focused, disabled, and read-only states;
-5. readable profile names without clipping or stale selection rendering.
+**Implementation:** `StableVisualProfileComboBoxColumn`, `ModernVisualProfileComboBoxCell`, `ModernVisualProfileEditingControl`, and a custom owner-drawn `ToolStripDropDown`. The native `DataGridViewComboBoxEditingControl` is not used.
 
-The existing stable selector behavior and profile-assignment semantics must not change.
+#### 003.2 — activity lamp
 
-**Implementation:** `StableVisualProfileComboBoxColumn` owns the modern closed-cell painting and dark owner-drawn dropdown while retaining the explicit `SetProfiles` API.
+Enabled applications use a green circular lamp. Disabled applications use a dark gray circle with a lighter outline. The underlying checkbox value remains the interaction and accessibility authority.
 
-#### 003.2 — application activity lamp
+#### 003.3 — canonical product presentation
 
-Replace the current checkbox-style activity indicator in the configured-applications table with a compact circular status lamp:
-
-1. **enabled** — a clear green filled circle;
-2. **disabled** — a dark gray circle with a slightly lighter outline;
-3. both states must fit the modern dark theme and remain distinguishable at supported DPI scales;
-4. the visual must expose an accessible enabled/disabled state and must not become a second authority for assignment state.
-
-**Implementation:** the existing checkbox value remains the interaction and accessibility authority; the grid paints it as the required status lamp.
-
-#### 003.3 — canonical product name and current version
-
-Remove user-facing `Demo` wording such as `SightAdapt.Demo` from window titles and product presentation.
-
-Display the current SightAdapt alpha milestone using canonical product metadata. The milestone text must be updated in one authoritative location when the release stage changes; forms and tray presentation must not contain independent hard-coded copies.
-
-Captured examples of the intended progression:
-
-- historical label at requirement capture: `Alpha 0.4A.3.007`;
-- later milestone example: `Alpha 0.4B`.
-
-The actual displayed value at implementation time must reflect the current canonical milestone.
-
-**Implementation:** the project metadata contains the current `Alpha 0.4A.4` milestone; `ProductInfo` composes all user-facing product labels from assembly metadata.
+User-facing `Demo` wording is removed. The current milestone is defined once in assembly metadata and exposed through `ProductInfo`. Current milestone: `Alpha 0.4A.4`.
 
 ### 004 — visual-profile editor
 
-#### 004.1 — edited profile identity
+#### 004.1 — profile identity
 
-Show the name of the profile being edited prominently at the top of the editor. The identity must come from the supplied working profile and must not be duplicated or reconstructed from unrelated UI state.
+The supplied working profile name is shown prominently at the top.
 
-**Implementation:** the editor header displays `_workingProfile.Name`.
+#### 004.2 — modern sliders
 
-#### 004.2 — modern slider controls
+`Output black`, `Output white`, `Brightness`, `Contrast`, `Saturation`, and `Hue shift` use modern sliders with canonical ranges, current values, units, mouse control, arrow keys, Page Up/Down, Home, End, focus cues, and accessible names.
 
-Replace the current spinner-style numeric inputs and up/down arrows with modern-dark sliders for profile adjustment.
+#### 004.3 — layout capacity
 
-Each slider must:
+The editor is larger, DPI-scaled, resizable, and has an explicit minimum size.
 
-1. show its current numeric value and unit;
-2. preserve the existing domain limits and stored-value precision;
-3. support keyboard adjustment and accessible naming;
-4. use canonical limits and descriptions rather than form-local copies.
+#### 004.4 — output conversion sample
 
-**Implementation:** `ModernProfileSlider` supports mouse, arrow, Page Up/Down, Home, End, focus cues, value labels, units, and canonical `VisualProfileLimits`.
+`Output black` and `Output white` appear first beside a black-on-white source/output sample. The sample and live strips use the same working profile and canonical `VisualTransformCatalog`.
 
-#### 004.3 — editor size and layout capacity
+#### 004.5 — section order
 
-The editor may be made moderately larger and must define a usable minimum size so the new layout remains unclipped at supported DPI scales. Resizing must remain predictable.
+1. profile identity;
+2. output-limit controls and sample;
+3. live grayscale and hue preview;
+4. brightness, contrast, saturation, and hue controls;
+5. reset, cancel, and save actions.
 
-**Implementation:** the editor uses a larger DPI-scaled table layout with an explicit minimum size.
+#### 004.6 — persistence invariants
 
-#### 004.4 — output black/white controls and conversion sample
+The form edits a working copy. Each control updates only its corresponding field. Persistence remains owned by `SettingsCoordinator` and `VisualProfileManagementService.UpdateTuning`. Transformation semantics and untouched values remain unchanged.
 
-Place `Output black` and `Output white` in the first control row.
+### 005 — first-review refinements
 
-Beside them, show a compact visual conversion sample that clearly demonstrates how a black-on-white source sample is transformed by the current output limits. The sample must update from the same working profile as the rest of the live preview and must not implement an independent transformation formula.
+#### 005.1 — GitHub link
 
-**Implementation:** `OutputLimitPreview` uses the same canonical transform catalog and working profile as `ColorProfilePreview`.
+About includes a visible, keyboard-focusable link showing `ProductInfo.RepositoryDisplay` and opening `ProductInfo.RepositoryUrl`.
 
-#### 004.5 — required editor section order
+#### 005.2 — About size
 
-Arrange the editor in this order:
+The dialog and identity layout are enlarged. Tagline, full informational version, author, repository, and license do not use ellipsis.
 
-1. profile name and editor context;
-2. `Output black`, `Output white`, and the black/white conversion sample;
-3. the existing live grayscale and color comparison preview;
-4. four adjustment sliders: `Brightness`, `Contrast`, `Saturation`, and `Hue shift`;
-5. reset, cancel, and save actions with a clear primary-action hierarchy.
+#### 005.3 — text contrast
 
-**Implementation:** the editor root layout follows this exact order.
+Canonical `AppTheme.TextSecondary` and `AppTheme.TextMuted` are brighter across the application while remaining subordinate to primary text.
 
-#### 004.6 — editing and persistence invariants
+#### 005.4 — selector after activation
 
-The redesigned editor must continue to edit a working copy and return a result through the existing profile-management authority. It must not mutate persisted settings directly, rewrite untouched fields through rounded UI values, or change transformation semantics.
+The active selector and its opened list remain custom modern-dark and never fall back to a native Windows combo appearance.
 
-**Implementation:** each slider updates only its corresponding field on `_workingProfile`; the form returns a working copy and persistence remains owned by `VisualProfileManagementService.UpdateTuning` through `SettingsCoordinator`.
+#### 005.5 — direct numeric input
 
-## Cross-cutting acceptance requirements
+Every slider includes a synchronized numeric `TextBox`. Both comma and dot decimal separators are accepted. Values are clamped and snapped to canonical limits and steps. Enter commits, Escape restores, and slider or keyboard changes update the field.
 
-1. Controls remain readable and unclipped at 100%, 125%, 150%, 175%, and 200% DPI.
-2. Primary actions are usable with keyboard only, with predictable tab order, focus, default, and cancel behavior.
-3. Selected application and profile state remain stable during refresh.
-4. No UI refresh occurs inside an active combo-box commit.
-5. Dark-theme colors and interaction states come from shared theme sources rather than repeated literals where practical.
-6. Product metadata, profile limits, runtime state, and mutation behavior remain owned by their existing canonical authorities.
-7. Automated architecture and behavioral tests remain green; new behavior receives focused regression coverage where practical.
-8. Each screenshot-reported item is marked implemented and verified, deferred with a reason, or explicitly out of scope.
-9. Manual Windows validation is required before `0.4A.4` acceptance.
+## Acceptance requirements
+
+1. No clipping at 100%, 125%, 150%, 175%, or 200% DPI.
+2. Keyboard-only operation has predictable tab order, focus, default, and cancel actions.
+3. Selected application and profile remain stable through refresh.
+4. No UI refresh occurs inside an active selector commit.
+5. About, dropdown, lamp, sliders, direct input, previews, reset, cancel, and save work in the running Windows application.
+6. Persisted values and transformation results remain unchanged except for explicitly edited fields.
+7. Each item is manually accepted or receives a documented follow-up.
 
 ## Automated validation
 
-```text
-head: b937f46b5b1f6304276be3e09a93bb38602a9d43
-build: 0 warnings, 0 errors
-tests: 82 passed, 0 failed, 0 skipped
-publish: self-contained Windows x64 succeeded
-workflow run: 29724659171
-artifact: SightAdapt-0.4-Alpha-win-x64
-artifact SHA-256: f128dfbe4d6f1282e5f174657db40db0b04884c58f2dd136f742cf2d7567f022
-```
+The final CI evidence is recorded after the latest documentation head completes the Windows workflow. Focused source-level regression checks cover the repository link, About capacity, text contrast, custom dropdown editing control, and synchronized numeric input.
 
-## Intake register
+## Register
 
-| ID | Area | Implementation status | Acceptance status |
-|---|---|---|---|
-| `001` | About window | Implemented | Manual verification pending |
-| `002` | Notification-area left click | Implemented | Manual verification pending |
-| `003.1` | Visual-profile selector styling | Implemented | Manual verification pending |
-| `003.2` | Application activity lamp | Implemented | Manual verification pending |
-| `003.3` | Product name and milestone presentation | Implemented | Manual verification pending |
-| `004.1` | Edited profile identity | Implemented | Manual verification pending |
-| `004.2` | Modern slider controls | Implemented | Manual verification pending |
-| `004.3` | Editor size and layout capacity | Implemented | Manual verification pending |
-| `004.4` | Output-limit conversion sample | Implemented | Manual verification pending |
-| `004.5` | Editor section order | Implemented | Manual verification pending |
-| `004.6` | Editing and persistence invariants | Implemented | Automated validation passed; manual regression pending |
+| ID | Implementation | Manual acceptance |
+|---|---|---|
+| `001` | Implemented and refined | Pending |
+| `002` | Implemented | Pending |
+| `003.1` | Implemented and refined | Pending |
+| `003.2` | Implemented | Pending |
+| `003.3` | Implemented | Pending |
+| `004.1–004.6` | Implemented and refined | Pending |
+| `005.1–005.5` | Implemented | Pending |
