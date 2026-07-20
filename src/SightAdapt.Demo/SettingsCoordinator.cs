@@ -1,3 +1,5 @@
+using System.Diagnostics;
+
 namespace SightAdapt.Demo;
 
 internal sealed record SettingsCommitResult(
@@ -75,7 +77,7 @@ internal sealed class SettingsCoordinator
         }
 
         Current.ReplaceWith(candidate);
-        Changed?.Invoke(this, EventArgs.Empty);
+        PublishChanged();
         return SettingsCommitResult<T>.Success(value);
     }
 
@@ -94,6 +96,55 @@ internal sealed class SettingsCoordinator
 
         Current.ReplaceWith(candidate);
         return SettingsCommitResult.Success();
+    }
+
+    private void PublishChanged()
+    {
+        var handlers = Changed?
+            .GetInvocationList()
+            .OfType<EventHandler>()
+            .ToArray();
+
+        if (handlers is null)
+        {
+            return;
+        }
+
+        foreach (var handler in handlers)
+        {
+            if (handler.Target is Control control &&
+                control.IsHandleCreated &&
+                !control.IsDisposed)
+            {
+                DeferControlObserver(control, handler);
+                continue;
+            }
+
+            handler(this, EventArgs.Empty);
+        }
+    }
+
+    private void DeferControlObserver(
+        Control control,
+        EventHandler handler)
+    {
+        try
+        {
+            control.BeginInvoke((Action)(() =>
+            {
+                if (!control.IsDisposed && !control.Disposing)
+                {
+                    handler(this, EventArgs.Empty);
+                }
+            }));
+        }
+        catch (InvalidOperationException exception) when (
+            control.IsDisposed ||
+            !control.IsHandleCreated)
+        {
+            Debug.WriteLine(
+                $"SightAdapt skipped a disposed settings observer: {exception}");
+        }
     }
 
     private static bool IsExpectedError(Exception exception)
