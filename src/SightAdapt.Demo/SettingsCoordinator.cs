@@ -171,32 +171,42 @@ internal sealed class SettingsCoordinator
         Control control,
         EventHandler handler)
     {
-        EventHandler enabledChanged = null!;
+        EventHandler ready = null!;
         EventHandler disposed = null!;
 
         void RemoveHandlers()
         {
-            control.EnabledChanged -= enabledChanged;
+            control.EnabledChanged -= ready;
             control.Disposed -= disposed;
+            Application.Idle -= ready;
         }
 
-        enabledChanged = (_, _) =>
+        ready = (_, _) =>
         {
+            if (control.IsDisposed || control.Disposing)
+            {
+                RemoveHandlers();
+                return;
+            }
+
             if (!control.Enabled)
             {
                 return;
             }
 
             RemoveHandlers();
-            if (!control.IsDisposed && !control.Disposing)
-            {
-                DeferControlObserver(control, handler);
-            }
+            DeferControlObserver(control, handler);
         };
         disposed = (_, _) => RemoveHandlers();
 
-        control.EnabledChanged += enabledChanged;
+        control.EnabledChanged += ready;
         control.Disposed += disposed;
+        Application.Idle += ready;
+
+        // Native dialogs can re-enable their owner without raising
+        // Control.EnabledChanged. Recheck after subscribing so a transition
+        // racing with registration cannot strand the observer either.
+        ready(control, EventArgs.Empty);
     }
 
     private void DeferUntilGridEditEnds(
