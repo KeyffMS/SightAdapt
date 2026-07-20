@@ -108,13 +108,13 @@ The final screenshot review established that the remaining interface was accepta
 ## Final automated validation
 
 ```text
-implementation head: 35c29cde78e31e1b6568ae5906a02543d9683a0d
-workflow run: 29729010903
+final head: cddb8c91cc5e1b77a016ac129074e0aadb878ece
+workflow run: 29729239085
 build: 0 warnings, 0 errors
 tests: 86 passed, 0 failed, 0 skipped
 publish: self-contained Windows x64 succeeded
 artifact: SightAdapt-0.4-Alpha-win-x64
-artifact SHA-256: e9ed56904536d75ac225faa957567e8490c9c27ca6d1d59b9fab0117844e0357
+artifact SHA-256: 8ff29da91f53bffe2f4245ce0addf31dd32ed46ab5d636d8be9b17ba6ee5ab7f
 ```
 
 ## Register
