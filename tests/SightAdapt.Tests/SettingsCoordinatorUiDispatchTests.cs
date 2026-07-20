@@ -19,6 +19,12 @@ public sealed class SettingsCoordinatorUiDispatchTests
         RunOnSta(RunGridEditScenario);
     }
 
+    [TestMethod]
+    public void WinFormsObserverWaitsWhileModalOwnerIsDisabled()
+    {
+        RunOnSta(RunDisabledObserverScenario);
+    }
+
     private static void RunOnSta(Action scenario)
     {
         Exception? failure = null;
@@ -110,6 +116,42 @@ public sealed class SettingsCoordinatorUiDispatchTests
             Assert.AreEqual(0, observer.Grid.Rows.Count);
             Assert.IsFalse(coordinator.Current.AutomaticMode);
             observer.Close();
+        }
+        finally
+        {
+            DeleteTemporaryDirectory(directory);
+        }
+    }
+
+    private static void RunDisabledObserverScenario()
+    {
+        var directory = CreateTemporaryDirectory();
+
+        try
+        {
+            var coordinator = CreateCoordinator(directory);
+            using var observer = new SettingsChangedProbe
+            {
+                Enabled = false,
+            };
+            _ = observer.Handle;
+            coordinator.Changed += observer.HandleChanged;
+
+            var result = coordinator.Commit(settings =>
+                AutomaticModeManagementService.Disable(settings));
+
+            Assert.IsTrue(result.Succeeded);
+            Application.DoEvents();
+            Assert.AreEqual(
+                0,
+                observer.CallCount,
+                "A disabled modal owner must not refresh behind its active dialog.");
+
+            observer.Enabled = true;
+            WaitFor(() => observer.CallCount == 1);
+
+            Assert.AreEqual(1, observer.CallCount);
+            Assert.IsFalse(coordinator.Current.AutomaticMode);
         }
         finally
         {
