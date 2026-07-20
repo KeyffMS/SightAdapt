@@ -12,17 +12,20 @@ internal static class ProductInfo
             attribute => attribute.Product,
             "SightAdapt");
 
-    public static string DisplayName { get; } =
-        GetAttribute<AssemblyTitleAttribute>(
-            attribute => attribute.Title,
-            ProductName);
-
     public static string VersionLabel { get; } =
         Assembly
             .GetCustomAttribute<AssemblyInformationalVersionAttribute>()
             ?.InformationalVersion ??
         Assembly.GetName().Version?.ToString() ??
         string.Empty;
+
+    public static string MilestoneLabel { get; } =
+        GetMetadata("Milestone", VersionLabel);
+
+    public static string DisplayName { get; } =
+        string.IsNullOrWhiteSpace(MilestoneLabel)
+            ? ProductName
+            : $"{ProductName} · {MilestoneLabel}";
 
     public static string WindowTitle { get; } =
         $"{DisplayName} · Application and color profiles";
