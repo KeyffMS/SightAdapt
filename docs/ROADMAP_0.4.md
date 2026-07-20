@@ -2,7 +2,7 @@
 
 ## Purpose
 
-SightAdapt 0.4 Alpha introduces configurable visual color profiles for individual Windows applications. The 0.4A sequence completes profile behavior, lifecycle reliability, architectural consistency, and interface quality before palette analysis begins.
+SightAdapt 0.4 Alpha introduces configurable visual color profiles for individual Windows applications. The 0.4A sequence completes profile behavior, lifecycle reliability, architectural consistency, and interface quality. Later increments add window-frame manipulation, leave room for an additional reserved capability, and then continue with palette analysis and targeted color corrections.
 
 ## Engineering principles
 
@@ -90,11 +90,11 @@ Architectural closure:
 | `0.4A.3.006` | Architectural enforcement and regression complete |
 | `0.4A.3.007` | Final KISS / DRY / Clean Code / SPoA / SPoT 10/10 audit complete |
 
-Validated implementation baseline:
+Validated refactored baseline:
 
 ```text
 build: 0 warnings, 0 errors
-tests: 64 passed, 0 failed, 0 skipped
+tests: 80 passed, 0 failed, 0 skipped
 publish: self-contained Windows x64 succeeded
 ```
 
@@ -102,9 +102,9 @@ The final evidence and authority/truth maps are recorded in [`ARCHITECTURE_AUDIT
 
 ### 0.4A.4 — interface corrections
 
-**Status: active next increment.**
+**Status: active. Ready for screenshot-driven review and correction.**
 
-This stage improves interface quality without changing color-processing semantics.
+This stage improves interface quality without changing color-processing semantics. User-provided screenshots define concrete visual defects and acceptance evidence for individual corrections.
 
 Scope:
 
@@ -129,10 +129,30 @@ Acceptance criteria:
 5. Destructive actions require clear confirmation.
 6. Selected application and profile remain predictable after refresh.
 7. Interface corrections do not change stored values or transformation semantics.
+8. Each screenshot-reported defect is either corrected and verified or explicitly documented as out of scope.
 
-## 0.4B — palette analysis
+## 0.4B — window-frame manipulation
 
 **Starts only after 0.4A.4 acceptance.**
+
+Planned scope:
+
+- manipulate the target window frame or surrounding chrome independently from color-profile processing;
+- preserve predictable target-window position, size, focus, and input behavior;
+- handle move, resize, minimize, maximize, restore, DPI changes, and multi-monitor transitions;
+- define supported window types and explicit fallback behavior for unsupported, elevated, protected, or custom-framed windows;
+- guarantee deterministic cleanup and emergency restoration;
+- keep palette analysis outside this increment.
+
+## 0.4C — reserved
+
+**Intentionally unassigned.**
+
+This letter remains available for an additional capability that may emerge during 0.4A.4 or 0.4B work. No implementation should use `0.4C` until its scope, authority, source of truth, and acceptance criteria are explicitly defined.
+
+## 0.4D — palette analysis
+
+**Starts after 0.4B and any deliberately introduced 0.4C increment are accepted.**
 
 Planned scope:
 
@@ -144,7 +164,7 @@ Planned scope:
 - keep analysis preview-only and avoid retaining captured images;
 - handle protected, DRM-controlled, elevated, or unavailable windows clearly.
 
-## 0.4C — targeted color corrections
+## 0.4E — targeted color corrections
 
 After palette analysis is stable, SightAdapt may add ordered rules containing:
 
@@ -170,9 +190,11 @@ This stage will probably require a LUT or GPU shader and must not be forced into
 0.4A.3.005      focused settings normalization                  complete
 0.4A.3.006      architectural enforcement and regression        complete
 0.4A.3.007      final 10/10 architecture audit                   complete
-0.4A.4          interface corrections                           active
-0.4B            palette analysis                                after 0.4A.4
-0.4C            targeted color corrections                      later
+0.4A.4          interface corrections                           active / screenshots accepted
+0.4B            window-frame manipulation                       after 0.4A.4
+0.4C            reserved                                        intentionally open
+0.4D            palette analysis                                after 0.4B / optional 0.4C
+0.4E            targeted color corrections                      after 0.4D
 ```
 
 ## Settings and migration requirements
@@ -185,9 +207,9 @@ This stage will probably require a LUT or GPU shader and must not be forced into
 - recover safely from invalid or partially written configuration;
 - keep settings in `%LOCALAPPDATA%\SightAdapt\settings.json` unless a documented migration changes that path.
 
-## Definition of done
+## 0.4A definition of done
 
-SightAdapt 0.4 Alpha is complete when:
+SightAdapt 0.4A is complete when:
 
 1. Users can create and save multiple independent visual profiles.
 2. Soft Invert parameters produce deterministic output.
