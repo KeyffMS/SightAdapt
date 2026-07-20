@@ -45,7 +45,7 @@ internal sealed class ModernProfileSlider : UserControl
             BackColor = AppTheme.SurfaceRaised,
             ForeColor = AppTheme.TextSecondary,
             Font = AppTheme.CreateUiFont(9.2f, FontStyle.Bold),
-            Margin = new Padding(0, 0, 0, 0),
+            Margin = Padding.Empty,
             TextAlign = ContentAlignment.MiddleLeft,
         };
 
@@ -150,9 +150,9 @@ internal sealed class ModernProfileSlider : UserControl
         Value = maximum ? Maximum : Minimum;
     }
 
-    protected override void OnAccessibleNameChanged(EventArgs eventArgs)
+    protected override void OnHandleCreated(EventArgs eventArgs)
     {
-        base.OnAccessibleNameChanged(eventArgs);
+        base.OnHandleCreated(eventArgs);
         _track.AccessibleName = AccessibleName;
         _valueInput.AccessibleName = string.IsNullOrWhiteSpace(AccessibleName)
             ? "Numeric slider value"
