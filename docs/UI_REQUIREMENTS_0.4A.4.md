@@ -2,9 +2,11 @@
 
 ## Status
 
-**Implementation is complete on `agent/fix-audit-v0.4`. Manual Windows, screenshot, keyboard, resize, multi-monitor, and DPI acceptance remains pending.**
+**Complete and manually accepted.**
 
-This document is the single source of truth for screenshot-driven `0.4A.4` interface requirements. Architecture remediation remains documented in [`ARCHITECTURE_REMEDIATION_0.4A.4.md`](ARCHITECTURE_REMEDIATION_0.4A.4.md).
+The screenshot-driven `0.4A.4` interface stage is closed on `agent/fix-audit-v0.4`. The user confirmed that the previously reviewed interface was correct except for the final slider-width issue; that issue was corrected by returning numeric inputs to the parameter-header line and restoring full-width slider tracks.
+
+This document is the single source of truth for the completed `0.4A.4` interface requirements. Architecture remediation remains documented in [`ARCHITECTURE_REMEDIATION_0.4A.4.md`](ARCHITECTURE_REMEDIATION_0.4A.4.md).
 
 ## Engineering constraints
 
@@ -17,27 +19,21 @@ Every correction preserves:
 - **DRY** — no duplicated menu construction, version strings, state rules, transform formulas, or profile mutation logic;
 - persisted values, color-processing semantics, emergency behavior, input transparency, keyboard access, accessibility metadata, DPI scaling, and the modern dark theme.
 
-## Numbered requirements
+## Completed requirements
 
 ### 001 — About window
 
-Add `About SightAdapt...` to the tray menu. The modern-dark dialog shows the canonical icon, product name, current milestone, informational version, author, license, and repository information from `ProductInfo`. It supports keyboard closing, predictable focus, accessible names, and DPI scaling.
-
-**Implementation:** `AboutForm` and the existing canonical tray icon.
+`About SightAdapt...` is available from the tray menu. The modern-dark dialog shows the canonical icon, product name, milestone, informational version, author, license, and a keyboard-focusable GitHub repository link from `ProductInfo`. The enlarged layout does not truncate metadata.
 
 ### 002 — notification-area left click
 
-Left click must open the same `ContextMenuStrip` instance as right click in every runtime state and after restart.
-
-**Implementation:** `TrayPresenter` owns one menu and opens it from the left-click handler.
+Left click opens the same `ContextMenuStrip` instance as right click in every runtime state and after restart.
 
 ### 003 — configuration window
 
 #### 003.1 — visual-profile selector
 
-The closed selector, active editing state, dropdown button, opened list, hover, focus, selection, disabled state, and read-only state must remain modern-dark. Profile names must not clip or render stale values.
-
-**Implementation:** `StableVisualProfileComboBoxColumn`, `ModernVisualProfileComboBoxCell`, `ModernVisualProfileEditingControl`, and a custom owner-drawn `ToolStripDropDown`. The native `DataGridViewComboBoxEditingControl` is not used.
+The closed selector, active editing state, dropdown button, opened list, hover, focus, selection, disabled state, and read-only state use the modern-dark presentation. The native `DataGridViewComboBoxEditingControl` is not used.
 
 #### 003.2 — activity lamp
 
@@ -45,17 +41,25 @@ Enabled applications use a green circular lamp. Disabled applications use a dark
 
 #### 003.3 — canonical product presentation
 
-User-facing `Demo` wording is removed. The current milestone is defined once in assembly metadata and exposed through `ProductInfo`. Current milestone: `Alpha 0.4A.4`.
+User-facing `Demo` wording is removed. The current milestone is defined once in assembly metadata and exposed through `ProductInfo`.
 
 ### 004 — visual-profile editor
 
 #### 004.1 — profile identity
 
-The supplied working profile name is shown prominently at the top.
+The supplied working-profile name is shown prominently at the top.
 
-#### 004.2 — modern sliders
+#### 004.2 — modern sliders and direct input
 
-`Output black`, `Output white`, `Brightness`, `Contrast`, `Saturation`, and `Hue shift` use modern sliders with canonical ranges, current values, units, mouse control, arrow keys, Page Up/Down, Home, End, focus cues, and accessible names.
+`Output black`, `Output white`, `Brightness`, `Contrast`, `Saturation`, and `Hue shift` provide:
+
+- full-width modern slider tracks;
+- editable numeric fields on the same line as the parameter title;
+- synchronized slider and numeric values;
+- comma and dot decimal-separator support;
+- canonical clamping, precision, and step snapping;
+- mouse, arrow, Page Up/Down, Home, End, Enter, and Escape behavior;
+- focus cues and accessible names.
 
 #### 004.3 — layout capacity
 
@@ -79,48 +83,49 @@ The form edits a working copy. Each control updates only its corresponding field
 
 ### 005 — first-review refinements
 
-#### 005.1 — GitHub link
+- visible GitHub link in About;
+- enlarged About layout without clipping;
+- brighter canonical secondary and muted text;
+- custom dark selector during active editing and dropdown display;
+- synchronized direct numeric entry for every slider.
 
-About includes a visible, keyboard-focusable link showing `ProductInfo.RepositoryDisplay` and opening `ProductInfo.RepositoryUrl`.
+### 006 — final slider-width refinement
 
-#### 005.2 — About size
+Numeric input was moved from the slider row into the parameter-header row. `ModernProfileSlider` now owns one full-width `ProfileSliderTrack` and exposes its synchronized value editor for placement beside the title. This preserves one value authority while avoiding the narrow-track regression.
 
-The dialog and identity layout are enlarged. Tagline, full informational version, author, repository, and license do not use ellipsis.
+## Acceptance decision
 
-#### 005.3 — text contrast
+The final screenshot review established that the remaining interface was acceptable and identified only requirement `006`. After its correction:
 
-Canonical `AppTheme.TextSecondary` and `AppTheme.TextMuted` are brighter across the application while remaining subordinate to primary text.
+1. the slider track again uses the full available card width;
+2. the editable value remains aligned with the parameter title;
+3. numeric and slider input remain synchronized;
+4. profile semantics and persistence authority remain unchanged;
+5. automated build, tests, and Windows publish pass.
 
-#### 005.4 — selector after activation
+`0.4A.4` is therefore closed and `0.4B` may begin.
 
-The active selector and its opened list remain custom modern-dark and never fall back to a native Windows combo appearance.
+## Final automated validation
 
-#### 005.5 — direct numeric input
-
-Every slider includes a synchronized numeric `TextBox`. Both comma and dot decimal separators are accepted. Values are clamped and snapped to canonical limits and steps. Enter commits, Escape restores, and slider or keyboard changes update the field.
-
-## Acceptance requirements
-
-1. No clipping at 100%, 125%, 150%, 175%, or 200% DPI.
-2. Keyboard-only operation has predictable tab order, focus, default, and cancel actions.
-3. Selected application and profile remain stable through refresh.
-4. No UI refresh occurs inside an active selector commit.
-5. About, dropdown, lamp, sliders, direct input, previews, reset, cancel, and save work in the running Windows application.
-6. Persisted values and transformation results remain unchanged except for explicitly edited fields.
-7. Each item is manually accepted or receives a documented follow-up.
-
-## Automated validation
-
-The final CI evidence is recorded after the latest documentation head completes the Windows workflow. Focused source-level regression checks cover the repository link, About capacity, text contrast, custom dropdown editing control, and synchronized numeric input.
+```text
+implementation head: 35c29cde78e31e1b6568ae5906a02543d9683a0d
+workflow run: 29729010903
+build: 0 warnings, 0 errors
+tests: 86 passed, 0 failed, 0 skipped
+publish: self-contained Windows x64 succeeded
+artifact: SightAdapt-0.4-Alpha-win-x64
+artifact SHA-256: e9ed56904536d75ac225faa957567e8490c9c27ca6d1d59b9fab0117844e0357
+```
 
 ## Register
 
-| ID | Implementation | Manual acceptance |
+| ID | Implementation | Acceptance |
 |---|---|---|
-| `001` | Implemented and refined | Pending |
-| `002` | Implemented | Pending |
-| `003.1` | Implemented and refined | Pending |
-| `003.2` | Implemented | Pending |
-| `003.3` | Implemented | Pending |
-| `004.1–004.6` | Implemented and refined | Pending |
-| `005.1–005.5` | Implemented | Pending |
+| `001` | Implemented and refined | Accepted |
+| `002` | Implemented | Accepted |
+| `003.1` | Implemented and refined | Accepted |
+| `003.2` | Implemented | Accepted |
+| `003.3` | Implemented | Accepted |
+| `004.1–004.6` | Implemented and refined | Accepted |
+| `005.1–005.5` | Implemented | Accepted |
+| `006` | Implemented | Accepted |
