@@ -14,7 +14,8 @@ The assessment covers:
 - transaction and failure boundaries;
 - runtime-state consistency;
 - architecture and behavioral regression evidence;
-- the UI changes completed through requirement `007`.
+- the UI changes completed through requirement `007`;
+- the post-acceptance profile-selector reentrancy fix tracked by issue `#9`.
 
 The scores are engineering assessments for the current `0.4A` scope. They are not universal or permanent guarantees.
 
@@ -91,24 +92,37 @@ The following items do not block `0.4B`, but should remain visible:
 3. `ModernProfileSlider` infers common neutral values from range and unit. New parameter types must define neutral semantics explicitly rather than relying on that convention.
 4. Source-level architecture tests are useful guardrails but must continue to be paired with behavioral tests for transaction rollback, state transitions, persistence, and lifecycle behavior.
 
+## Post-audit regression fix — issue #9
+
+Changing an application's visual profile could raise `InvalidOperationException` because `SettingsCoordinator.Changed` invoked `ConfigurationForm.SettingsChanged` synchronously while the custom `DataGridView` editing control was still committing its cell value. `RefreshProfiles()` then attempted `Rows.Clear()` inside the active grid commit stack.
+
+The correction keeps the transaction and runtime ordering intact while removing UI reentrancy:
+
+- non-Control observers, including `SightAdaptContext`, continue to receive `Changed` synchronously;
+- WinForms `Control` observers are dispatched with `BeginInvoke` after the current grid commit stack returns;
+- disposed-control races are ignored only when the observer handle has already been destroyed and are written to diagnostics;
+- `SettingsCoordinatorUiDispatchTests.WinFormsObserverRunsAfterCommitStackCompletes` verifies that a Control observer is not called inside `Commit`, then receives exactly one notification from the Windows message queue.
+
+This preserves one settings transaction authority while making UI presentation explicitly non-reentrant.
+
 ## Validation evidence
 
 ```text
-code audit head: 74f6609581810584b853f80e12eb9a6ad1cd05da
-workflow run: 29740090542
+implementation head: 9d86a853f456f777d306d48bc8de77aedd045d32
+workflow run: 29746408418
 build: 0 warnings, 0 errors
-tests: 91 passed, 0 failed, 0 skipped
+tests: 92 passed, 0 failed, 0 skipped
 publish: self-contained Windows x64 succeeded
 artifact: SightAdapt-0.4-Alpha-win-x64
-artifact SHA-256: 3d684f7d1f1175a811e14d1ceba54f64189a69f43a095581fffc764a3a8f47a7
+artifact SHA-256: d4cd27a734a5603ce8934ccd4f25008a42086d1de5e9ba29eb75a0f78bd0f69b
 ```
 
-The 91-test suite includes transaction rollback, state transitions, emergency ordering, settings recovery, profile lifecycle, assignment authority, transform behavior, selector contracts, slider behavior, and closing audit regressions.
+The 92-test suite includes transaction rollback, state transitions, emergency ordering, settings recovery, profile lifecycle, assignment authority, transform behavior, selector contracts, slider behavior, closing audit regressions, and deferred WinForms settings notification.
 
 ## Decision
 
 No known blocking Clean Code, KISS, DRY, SPoA, or SPoT violation remains in the current `0.4A` scope.
 
-`0.4A.4 / 007` has been manually accepted. After the documentation head completes CI, `0.4A` may be closed and `0.4B` may begin.
+`0.4A.4 / 007` has been manually accepted, and issue `#9` has an automated regression fix. `0.4A` remains closed and `0.4B` may proceed after a local smoke test of profile switching.
 
 This decision does not mean that the code is permanently perfect. New `0.4B` work must define its authority, truth, persisted model, cleanup contract, failure behavior, and acceptance matrix before implementation.
