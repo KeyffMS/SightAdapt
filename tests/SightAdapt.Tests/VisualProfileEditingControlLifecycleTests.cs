@@ -9,9 +9,9 @@ namespace SightAdapt.Demo.Tests;
 public sealed class VisualProfileEditingControlLifecycleTests
 {
     [TestMethod]
-    public void DropDownSelectionEndsCellEditAndReleasesTheInterface()
+    public void SelectionCommitEndsCellEditAndReleasesTheInterface()
     {
-        RunOnSta(RunDropDownSelectionScenario);
+        RunOnSta(RunSelectionScenario);
     }
 
     private static void RunOnSta(Action scenario)
@@ -41,7 +41,7 @@ public sealed class VisualProfileEditingControlLifecycleTests
         }
     }
 
-    private static void RunDropDownSelectionScenario()
+    private static void RunSelectionScenario()
     {
         using var form = new Form
         {
@@ -77,16 +77,9 @@ public sealed class VisualProfileEditingControlLifecycleTests
         var editingControl =
             (ModernVisualProfileEditingControl)grid.EditingControl;
 
-        InvokePrivate(editingControl, "ShowDropDown");
-        Application.DoEvents();
-        var list = GetPrivateField<ListBox>(editingControl, "_list");
-        list.SelectedItem = list.Items
-            .Cast<VisualProfileOption>()
-            .Single(option => option.Id == VisualProfile.DefaultSoftInvertId);
-
         var cellEndEditCount = 0;
         grid.CellEndEdit += (_, _) => cellEndEditCount++;
-        InvokePrivate(editingControl, "CommitListSelection");
+        InvokePrivate(editingControl, "MoveSelection", 1);
 
         WaitFor(() =>
             cellEndEditCount == 1 &&
@@ -102,22 +95,18 @@ public sealed class VisualProfileEditingControlLifecycleTests
         form.Close();
     }
 
-    private static T GetPrivateField<T>(object instance, string name)
-        where T : class
-    {
-        return (T)(instance.GetType().GetField(
-            name,
-            BindingFlags.Instance | BindingFlags.NonPublic)?.GetValue(instance) ??
-            throw new MissingFieldException(instance.GetType().FullName, name));
-    }
-
-    private static void InvokePrivate(object instance, string name)
+    private static void InvokePrivate(
+        object instance,
+        string name,
+        params object[] arguments)
     {
         try
         {
-            instance.GetType().GetMethod(
+            var method = instance.GetType().GetMethod(
                 name,
-                BindingFlags.Instance | BindingFlags.NonPublic)?.Invoke(instance, null);
+                BindingFlags.Instance | BindingFlags.NonPublic) ??
+                throw new MissingMethodException(instance.GetType().FullName, name);
+            method.Invoke(instance, arguments);
         }
         catch (TargetInvocationException exception) when (exception.InnerException is not null)
         {
