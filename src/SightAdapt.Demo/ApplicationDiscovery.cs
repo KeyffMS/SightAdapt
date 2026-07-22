@@ -5,23 +5,37 @@ namespace SightAdapt.Demo;
 
 internal static class ApplicationDiscovery
 {
+    private static readonly ApplicationIdentityCache IdentityCache = new();
+
     public static bool TryGetIdentity(
         nint window,
         out ApplicationIdentity identity)
     {
         identity = null!;
 
+        NativeMethods.GetWindowThreadProcessId(window, out var processId);
+        if (processId == 0)
+        {
+            return false;
+        }
+
+        if (IdentityCache.TryGet(processId, out identity))
+        {
+            return true;
+        }
+
         if (!NativeMethods.TryGetProcessPath(
                 window,
                 out var executablePath))
         {
+            IdentityCache.Remove(processId);
             return false;
         }
 
         try
         {
-            identity =
-                FromExecutablePath(executablePath);
+            identity = FromExecutablePath(executablePath);
+            IdentityCache.Set(processId, identity);
             return true;
         }
         catch (Exception exception) when (
@@ -29,6 +43,7 @@ internal static class ApplicationDiscovery
             IOException or
             UnauthorizedAccessException)
         {
+            IdentityCache.Remove(processId);
             Debug.WriteLine(
                 $"SightAdapt could not resolve application identity: " +
                 $"{exception}");
