@@ -179,7 +179,7 @@ public sealed class ConfigurationGridCommitRegressionTests
             var reader = new ApplicationIdentity(
                 "Reader",
                 "reader.exe",
-                @"C:\Appseader.exe");
+                @"C:\Apps\reader.exe");
             var writer = new ApplicationIdentity(
                 "Writer",
                 "writer.exe",

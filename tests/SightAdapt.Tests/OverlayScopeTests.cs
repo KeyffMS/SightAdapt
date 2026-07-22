@@ -14,7 +14,7 @@ public sealed class OverlayScopeTests
             new ApplicationIdentity(
                 "Reader",
                 "reader.exe",
-                @"C:\Appseader.exe"));
+                @"C:\Apps\reader.exe"));
 
         Assert.IsTrue(result.WasCreated);
         Assert.AreEqual(OverlayScope.ClientArea, result.Profile.OverlayScope);
@@ -30,7 +30,7 @@ public sealed class OverlayScopeTests
             new ApplicationIdentity(
                 "Reader",
                 "reader.exe",
-                @"C:\Appseader.exe"))
+                @"C:\Apps\reader.exe"))
             .Profile;
 
         ApplicationProfileManagementService.SetOverlayScope(
