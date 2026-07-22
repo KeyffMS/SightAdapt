@@ -152,6 +152,9 @@ jobs:
           Set-StrictMode -Version Latest
           $ErrorActionPreference = 'Stop'
           & .github/audit-release.ps1
+          if (Test-Path .github/audit-release-post.ps1) {
+            & .github/audit-release-post.ps1
+          }
           git diff --check
           if ($LASTEXITCODE -ne 0) {
             throw 'The resulting source diff contains whitespace errors.'
@@ -182,6 +185,9 @@ jobs:
         run: |
           Remove-Item .github/audit-release-request.json
           Remove-Item .github/audit-release.ps1
+          if (Test-Path .github/audit-release-post.ps1) {
+            Remove-Item .github/audit-release-post.ps1
+          }
           if (Test-Path .github/audit-release.patch) {
             Remove-Item .github/audit-release.patch
           }
