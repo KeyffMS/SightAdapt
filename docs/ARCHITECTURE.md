@@ -49,7 +49,7 @@ A failed mutation or failed write does not replace committed settings and does n
 | Concern | Authority |
 |---|---|
 | Settings transaction | `SettingsCoordinator` |
-| Migration, normalization, recovery, and reference repair | `SettingsStore.Normalize` |
+| Migration, scope canonicalization, normalization, recovery, and reference repair | `SettingsStore.Normalize` |
 | Application assignment mutations and overlay scope | `ApplicationProfileManagementService` |
 | Visual-profile lifecycle and tuning | `VisualProfileManagementService` |
 | Automatic-mode mutation | `AutomaticModeManagementService` |

@@ -142,6 +142,7 @@ internal sealed class SettingsStore
             new SettingsNormalizationContext(settings);
         CanonicalizeBuiltInProfiles(context);
         NormalizeCustomProfiles(context);
+        NormalizeApplicationOverlayScopes(context);
         NormalizeApplications(context);
         RepairProfileReferences(context);
         context.Commit(settings);
@@ -300,6 +301,34 @@ internal sealed class SettingsStore
                 StringComparison.Ordinal))
         {
             profile.Name = normalizedName;
+            context.MarkChanged();
+        }
+    }
+
+    private static void NormalizeApplicationOverlayScopes(
+        SettingsNormalizationContext context)
+    {
+        foreach (var application in
+                 context.SourceApplications)
+        {
+            var persistedId =
+                application.OverlayScopeId ??
+                string.Empty;
+            OverlayScopePolicy.TryParseId(
+                persistedId,
+                out var scope);
+            var canonicalId =
+                OverlayScopePolicy.ToId(scope);
+
+            if (string.Equals(
+                    persistedId,
+                    canonicalId,
+                    StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            application.OverlayScopeId = canonicalId;
             context.MarkChanged();
         }
     }

@@ -90,15 +90,30 @@ public sealed class OverlayScopeTests
     }
 
     [TestMethod]
-    public void InvalidPersistedScopeRecoversToDefault()
+    public void InvalidPersistedScopeIsRecoveredBySettingsNormalization()
     {
         var profile = new ApplicationProfile
         {
+            DisplayName = "Reader",
+            ExecutableName = "reader.exe",
+            ExecutablePath = @"C:\Apps\reader.exe",
             OverlayScopeId = "unknown-scope",
         };
+        var settings = new SightAdaptSettings
+        {
+            Applications = [profile],
+        };
 
+        Assert.AreEqual("unknown-scope", profile.OverlayScopeId);
+        Assert.ThrowsException<ArgumentException>(() =>
+        {
+            _ = profile.OverlayScope;
+        });
+
+        Assert.IsTrue(SettingsStore.Normalize(settings));
         Assert.AreEqual(OverlayScope.ClientArea, profile.OverlayScope);
         Assert.AreEqual("client-area", profile.OverlayScopeId);
+        Assert.IsFalse(SettingsStore.Normalize(settings));
     }
 
     [TestMethod]

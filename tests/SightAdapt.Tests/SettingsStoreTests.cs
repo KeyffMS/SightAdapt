@@ -78,6 +78,106 @@ public sealed class SettingsStoreTests
     }
 
     [TestMethod]
+    public void LoadKeepsCanonicalOverlayScopeWithoutMigration()
+    {
+        using var temporaryDirectory = new TemporaryDirectory();
+        var settingsPath = Path.Combine(temporaryDirectory.Path, "settings.json");
+        File.WriteAllText(
+            settingsPath,
+            """
+            {
+              "schemaVersion": 4,
+              "applications": [
+                {
+                  "displayName": "Reader",
+                  "executableName": "reader.exe",
+                  "executablePath": "C:\\Apps\\reader.exe",
+                  "visualProfileId": "default-soft-invert",
+                  "overlayScope": "screen"
+                }
+              ]
+            }
+            """);
+
+        var store = new SettingsStore(settingsPath);
+        var settings = store.Load();
+
+        Assert.IsFalse(store.SettingsWereMigrated);
+        Assert.AreEqual("screen", settings.Applications[0].OverlayScopeId);
+        Assert.AreEqual(OverlayScope.Screen, settings.Applications[0].OverlayScope);
+    }
+
+    [TestMethod]
+    public void LoadCanonicalizesOverlayScopeAliasAndReportsMigration()
+    {
+        using var temporaryDirectory = new TemporaryDirectory();
+        var settingsPath = Path.Combine(temporaryDirectory.Path, "settings.json");
+        File.WriteAllText(
+            settingsPath,
+            """
+            {
+              "schemaVersion": 4,
+              "applications": [
+                {
+                  "displayName": "Reader",
+                  "executableName": "reader.exe",
+                  "executablePath": "C:\\Apps\\reader.exe",
+                  "visualProfileId": "default-soft-invert",
+                  "overlayScope": "full-window"
+                }
+              ]
+            }
+            """);
+
+        var store = new SettingsStore(settingsPath);
+        var settings = store.Load();
+
+        Assert.IsTrue(store.SettingsWereMigrated);
+        Assert.AreEqual("window", settings.Applications[0].OverlayScopeId);
+        Assert.AreEqual(OverlayScope.Window, settings.Applications[0].OverlayScope);
+
+        store.Save(settings);
+        StringAssert.Contains(
+            File.ReadAllText(settingsPath),
+            "\"overlayScope\": \"window\"");
+    }
+
+    [TestMethod]
+    public void LoadRepairsInvalidOverlayScopeAndReportsMigration()
+    {
+        using var temporaryDirectory = new TemporaryDirectory();
+        var settingsPath = Path.Combine(temporaryDirectory.Path, "settings.json");
+        File.WriteAllText(
+            settingsPath,
+            """
+            {
+              "schemaVersion": 4,
+              "applications": [
+                {
+                  "displayName": "Reader",
+                  "executableName": "reader.exe",
+                  "executablePath": "C:\\Apps\\reader.exe",
+                  "visualProfileId": "default-soft-invert",
+                  "overlayScope": "unknown-scope"
+                }
+              ]
+            }
+            """);
+
+        var store = new SettingsStore(settingsPath);
+        var settings = store.Load();
+
+        Assert.IsTrue(store.SettingsWereMigrated);
+        Assert.AreEqual("client-area", settings.Applications[0].OverlayScopeId);
+        Assert.AreEqual(OverlayScope.ClientArea, settings.Applications[0].OverlayScope);
+
+        store.Save(settings);
+        StringAssert.Contains(
+            File.ReadAllText(settingsPath),
+            "\"overlayScope\": \"client-area\"");
+    }
+
+    [TestMethod]
     public void NormalizeRemovesDuplicateApplicationPaths()
     {
         var settings = new SightAdaptSettings

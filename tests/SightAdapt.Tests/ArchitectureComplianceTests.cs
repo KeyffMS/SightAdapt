@@ -265,6 +265,7 @@ public sealed class ArchitectureComplianceTests
         var source = ReadSource("SettingsStore.cs");
         StringAssert.Contains(source, "CanonicalizeBuiltInProfiles(context);");
         StringAssert.Contains(source, "NormalizeCustomProfiles(context);");
+        StringAssert.Contains(source, "NormalizeApplicationOverlayScopes(context);");
         StringAssert.Contains(source, "NormalizeApplications(context);");
         StringAssert.Contains(source, "RepairProfileReferences(context);");
         StringAssert.Contains(source, "private sealed class SettingsNormalizationContext");

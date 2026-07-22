@@ -1,5 +1,0 @@
-{
-  "version": "0.5.0.20",
-  "issue": 20,
-  "title": "Move overlay scope recovery into SettingsStore normalization"
-}
