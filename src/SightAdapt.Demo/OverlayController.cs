@@ -49,14 +49,15 @@ internal sealed class OverlayController : IDisposable
             visualProfile.TransformId);
         var colorEffect = transform.CreateColorEffect(visualProfile);
 
-        if (IsActive && TargetWindow == targetWindow)
+        if (IsActive)
         {
-            _overlay!.ApplyColorEffect(colorEffect, transform.Id);
-            _overlay.ApplyOverlayScope(overlayScope);
+            _overlay!.Retarget(
+                targetWindow,
+                colorEffect,
+                transform.Id,
+                overlayScope);
             return;
         }
-
-        Disable();
 
         var overlay = new MagnifierOverlay(
             targetWindow,
