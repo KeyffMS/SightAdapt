@@ -1,0 +1,40 @@
+name: Apply issue 8 overlay scope
+
+on:
+  push:
+    branches:
+      - agent/issue-8-overlay-scope-per-app-v0.4
+
+permissions:
+  contents: write
+
+jobs:
+  apply-issue-8:
+    if: ${{ github.actor != 'github-actions[bot]' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out issue 8 branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/issue-8-overlay-scope-per-app-v0.4
+          fetch-depth: 0
+
+      - name: Apply runtime and model changes
+        run: python tools/issue8_model_runtime.py
+
+      - name: Apply UI and regression changes
+        run: python tools/issue8_ui_tests.py
+
+      - name: Remove temporary automation
+        run: |
+          rm tools/issue8_model_runtime.py
+          rm tools/issue8_ui_tests.py
+          rm .github/workflows/apply-issue-8-overlay-scope.yml
+
+      - name: Commit issue 8 implementation
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Implement per-application overlay scope"
+          git push origin HEAD:agent/issue-8-overlay-scope-per-app-v0.4
