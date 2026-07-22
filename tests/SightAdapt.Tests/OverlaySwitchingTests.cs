@@ -1,6 +1,6 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
-namespace SightAdapt.Demo.Tests;
+namespace SightAdapt.Tests;
 
 [TestClass]
 public sealed class OverlaySwitchingTests
@@ -87,7 +87,7 @@ public sealed class OverlaySwitchingTests
         Path.Combine(
             RepositoryRoot,
             "src",
-            "SightAdapt.Demo");
+            "SightAdapt");
 
     private static string RepositoryRoot
     {
@@ -99,7 +99,7 @@ public sealed class OverlaySwitchingTests
                 if (Directory.Exists(Path.Combine(
                         directory.FullName,
                         "src",
-                        "SightAdapt.Demo")))
+                        "SightAdapt")))
                 {
                     return directory.FullName;
                 }

@@ -1,7 +1,7 @@
 using System.Text.RegularExpressions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
-namespace SightAdapt.Demo.Tests;
+namespace SightAdapt.Tests;
 
 [TestClass]
 public sealed class ArchitectureComplianceTests
@@ -201,7 +201,7 @@ public sealed class ArchitectureComplianceTests
     public void ProductMetadataComesFromAssemblyConfiguration()
     {
         var source = ReadSource("ProductInfo.cs");
-        var project = ReadSource("SightAdapt.Demo.csproj");
+        var project = ReadSource("SightAdapt.csproj");
 
         StringAssert.Contains(source, "AssemblyProductAttribute");
         StringAssert.Contains(source, "AssemblyMetadataAttribute");
@@ -394,7 +394,7 @@ public sealed class ArchitectureComplianceTests
     }
 
     private static string SourceDirectory =>
-        Path.Combine(RepositoryRoot, "src", "SightAdapt.Demo");
+        Path.Combine(RepositoryRoot, "src", "SightAdapt");
 
     private static string RepositoryRoot
     {
@@ -406,7 +406,7 @@ public sealed class ArchitectureComplianceTests
                 if (Directory.Exists(Path.Combine(
                         directory.FullName,
                         "src",
-                        "SightAdapt.Demo")))
+                        "SightAdapt")))
                 {
                     return directory.FullName;
                 }

@@ -1,7 +1,7 @@
 using System.Windows.Forms;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
-namespace SightAdapt.Demo.Tests;
+namespace SightAdapt.Tests;
 
 [TestClass]
 public sealed class ConfigurationGridCommitRegressionTests

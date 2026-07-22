@@ -11,7 +11,7 @@ SightAdapt is in an early proof-of-concept stage. Contributions should prioritiz
 Build the demo with:
 
 ```powershell
-dotnet build src/SightAdapt.Demo/SightAdapt.Demo.csproj -c Release
+dotnet build src/SightAdapt/SightAdapt.csproj -c Release
 ```
 
 ## Pull requests

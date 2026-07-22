@@ -1,6 +1,6 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
-namespace SightAdapt.Demo.Tests;
+namespace SightAdapt.Tests;
 
 [TestClass]
 public sealed class AutomaticModeManagementTests

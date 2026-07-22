@@ -16,6 +16,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\SightAdapt.Demo\SightAdapt.Demo.csproj" />
+    <ProjectReference Include="..\..\src\SightAdapt\SightAdapt.csproj" />
   </ItemGroup>
 </Project>

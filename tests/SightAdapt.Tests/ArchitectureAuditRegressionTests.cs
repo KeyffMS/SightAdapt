@@ -1,7 +1,7 @@
 using System.Text.RegularExpressions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
-namespace SightAdapt.Demo.Tests;
+namespace SightAdapt.Tests;
 
 [TestClass]
 public sealed class ArchitectureAuditRegressionTests
@@ -63,7 +63,7 @@ public sealed class ArchitectureAuditRegressionTests
         Path.Combine(
             RepositoryRoot,
             "src",
-            "SightAdapt.Demo");
+            "SightAdapt");
 
     private static string RepositoryRoot
     {
@@ -78,7 +78,7 @@ public sealed class ArchitectureAuditRegressionTests
                 if (Directory.Exists(Path.Combine(
                         directory.FullName,
                         "src",
-                        "SightAdapt.Demo")))
+                        "SightAdapt")))
                 {
                     return directory.FullName;
                 }

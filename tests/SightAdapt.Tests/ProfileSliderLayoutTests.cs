@@ -1,6 +1,6 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
-namespace SightAdapt.Demo.Tests;
+namespace SightAdapt.Tests;
 
 [TestClass]
 public sealed class ProfileSliderLayoutTests
@@ -39,7 +39,7 @@ public sealed class ProfileSliderLayoutTests
     }
 
     private static string SourceDirectory =>
-        Path.Combine(RepositoryRoot, "src", "SightAdapt.Demo");
+        Path.Combine(RepositoryRoot, "src", "SightAdapt");
 
     private static string RepositoryRoot
     {
@@ -48,7 +48,7 @@ public sealed class ProfileSliderLayoutTests
             var directory = new DirectoryInfo(AppContext.BaseDirectory);
             while (directory is not null)
             {
-                if (Directory.Exists(Path.Combine(directory.FullName, "src", "SightAdapt.Demo")))
+                if (Directory.Exists(Path.Combine(directory.FullName, "src", "SightAdapt")))
                 {
                     return directory.FullName;
                 }
