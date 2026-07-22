@@ -13,29 +13,30 @@ internal static class ApplicationDiscovery
     {
         identity = null!;
 
-        NativeMethods.GetWindowThreadProcessId(window, out var processId);
-        if (processId == 0)
+        if (!NativeMethods.TryGetProcessIdentityKey(
+                window,
+                out var processKey))
         {
             return false;
         }
 
-        if (IdentityCache.TryGet(processId, out identity))
+        if (IdentityCache.TryGet(processKey, out identity))
         {
             return true;
         }
 
         if (!NativeMethods.TryGetProcessPath(
-                window,
+                processKey,
                 out var executablePath))
         {
-            IdentityCache.Remove(processId);
+            IdentityCache.Remove(processKey);
             return false;
         }
 
         try
         {
             identity = FromExecutablePath(executablePath);
-            IdentityCache.Set(processId, identity);
+            IdentityCache.Set(processKey, identity);
             return true;
         }
         catch (Exception exception) when (
@@ -43,7 +44,7 @@ internal static class ApplicationDiscovery
             IOException or
             UnauthorizedAccessException)
         {
-            IdentityCache.Remove(processId);
+            IdentityCache.Remove(processKey);
             Debug.WriteLine(
                 $"SightAdapt could not resolve application identity: " +
                 $"{exception}");

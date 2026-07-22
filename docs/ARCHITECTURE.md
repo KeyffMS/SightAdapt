@@ -10,7 +10,7 @@ ForegroundWindowTracker
 (detect and deduplicate)
       ↓
 ApplicationDiscovery
-(process path and bounded cache)
+(process lifetime, path, and bounded cache)
       ↓
 ProfileResolver
 (committed assignment)
@@ -80,7 +80,7 @@ A failed mutation or failed write does not replace committed settings and does n
 | Parameter ranges | `VisualProfileLimits` |
 | Product name, version, milestone, repository, author, and license | project and assembly metadata exposed through `ProductInfo` |
 
-`ApplicationIdentityCache` is an optimization, not a product source of truth.
+`ApplicationIdentityCache` is an optimization, not a product source of truth. Entries are keyed by both PID and process creation time so a reused PID cannot inherit another process lifetime's identity.
 
 ## Foreground and overlay lifecycle
 

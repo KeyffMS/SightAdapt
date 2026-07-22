@@ -1,5 +1,0 @@
-{
-  "version": "0.5.0.17",
-  "issue": 17,
-  "title": "Prevent stale application identities when Windows reuses a PID"
-}
