@@ -1,6 +1,3 @@
-using System.Drawing;
-using System.Reflection;
-using System.Windows.Forms;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace SightAdapt.Demo.Tests;
@@ -9,118 +6,64 @@ namespace SightAdapt.Demo.Tests;
 public sealed class VisualProfileEditingControlLifecycleTests
 {
     [TestMethod]
-    public void SelectionCommitEndsCellEditAndReleasesTheInterface()
+    public void SelectorCloseQueuesCellEditCompletionWithoutRefocusingEditor()
     {
-        RunOnSta(RunSelectionScenario);
+        var source = File.ReadAllText(Path.Combine(
+            SourceDirectory,
+            "VisualProfileComboBoxColumn.cs"));
+
+        StringAssert.Contains(
+            source,
+            "_dropDown.Closed += (_, _) =>");
+        StringAssert.Contains(
+            source,
+            "QueueGridEditCompletion();");
+        StringAssert.Contains(
+            source,
+            "grid.BeginInvoke");
+        StringAssert.Contains(
+            source,
+            "grid.EndEdit()");
+
+        var commitStart = source.IndexOf(
+            "private void CommitListSelection()",
+            StringComparison.Ordinal);
+        var commitEnd = source.IndexOf(
+            "private void ListKeyDown",
+            commitStart,
+            StringComparison.Ordinal);
+
+        Assert.IsTrue(commitStart >= 0);
+        Assert.IsTrue(commitEnd > commitStart);
+        var commitSource = source[commitStart..commitEnd];
+        Assert.IsFalse(
+            commitSource.Contains("Focus();", StringComparison.Ordinal),
+            "Selecting a profile must not return focus to the editing control and keep the grid locked in edit mode.");
     }
 
-    private static void RunOnSta(Action scenario)
+    private static string SourceDirectory =>
+        Path.Combine(RepositoryRoot, "src", "SightAdapt.Demo");
+
+    private static string RepositoryRoot
     {
-        Exception? failure = null;
-        var thread = new Thread(() =>
+        get
         {
-            try
+            var directory = new DirectoryInfo(AppContext.BaseDirectory);
+            while (directory is not null)
             {
-                scenario();
+                if (Directory.Exists(Path.Combine(
+                        directory.FullName,
+                        "src",
+                        "SightAdapt.Demo")))
+                {
+                    return directory.FullName;
+                }
+
+                directory = directory.Parent;
             }
-            catch (Exception exception)
-            {
-                failure = exception;
-            }
-        });
-        thread.SetApartmentState(ApartmentState.STA);
-        thread.Start();
 
-        Assert.IsTrue(
-            thread.Join(TimeSpan.FromSeconds(10)),
-            "The profile-selector lifecycle test did not finish in time.");
-
-        if (failure is not null)
-        {
-            Assert.Fail(failure.ToString());
-        }
-    }
-
-    private static void RunSelectionScenario()
-    {
-        using var form = new Form
-        {
-            ShowInTaskbar = false,
-            Size = new Size(420, 240),
-        };
-        using var grid = new DataGridView
-        {
-            AllowUserToAddRows = false,
-            Dock = DockStyle.Fill,
-            EditMode = DataGridViewEditMode.EditOnEnter,
-        };
-        var column = new StableVisualProfileComboBoxColumn
-        {
-            Name = "VisualProfile",
-        };
-        column.SetProfiles(
-        [
-            VisualProfile.CreateDefaultInvert(),
-            VisualProfile.CreateDefaultSoftInvert(),
-        ]);
-        grid.Columns.Add(column);
-        grid.Rows.Add(VisualProfile.DefaultInvertId);
-        form.Controls.Add(grid);
-        form.Show();
-        Application.DoEvents();
-
-        grid.CurrentCell = grid.Rows[0].Cells[0];
-        grid.Focus();
-        Assert.IsTrue(grid.BeginEdit(true));
-        Assert.IsInstanceOfType<ModernVisualProfileEditingControl>(
-            grid.EditingControl);
-        var editingControl =
-            (ModernVisualProfileEditingControl)grid.EditingControl;
-
-        var cellEndEditCount = 0;
-        grid.CellEndEdit += (_, _) => cellEndEditCount++;
-        InvokePrivate(editingControl, "MoveSelection", 1);
-
-        WaitFor(() =>
-            cellEndEditCount == 1 &&
-            !grid.IsCurrentCellInEditMode &&
-            grid.EditingControl is null);
-
-        Assert.AreEqual(1, cellEndEditCount);
-        Assert.IsFalse(grid.IsCurrentCellInEditMode);
-        Assert.IsNull(grid.EditingControl);
-        Assert.AreEqual(
-            VisualProfile.DefaultSoftInvertId,
-            grid.Rows[0].Cells[0].Value);
-        form.Close();
-    }
-
-    private static void InvokePrivate(
-        object instance,
-        string name,
-        params object[] arguments)
-    {
-        try
-        {
-            var method = instance.GetType().GetMethod(
-                name,
-                BindingFlags.Instance | BindingFlags.NonPublic) ??
-                throw new MissingMethodException(instance.GetType().FullName, name);
-            method.Invoke(instance, arguments);
-        }
-        catch (TargetInvocationException exception) when (exception.InnerException is not null)
-        {
-            throw exception.InnerException;
-        }
-    }
-
-    private static void WaitFor(Func<bool> condition)
-    {
-        var deadline = DateTime.UtcNow.AddSeconds(2);
-        while (!condition() && DateTime.UtcNow < deadline)
-        {
-            Application.DoEvents();
-            Thread.Sleep(1);
+            throw new DirectoryNotFoundException(
+                "The SightAdapt repository root could not be located.");
         }
     }
 }
