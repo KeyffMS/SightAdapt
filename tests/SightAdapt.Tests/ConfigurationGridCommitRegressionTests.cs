@@ -89,9 +89,12 @@ public sealed class ConfigurationGridCommitRegressionTests
             Assert.AreEqual(
                 VisualProfile.DefaultInvertId,
                 grid.Rows[0].Cells["VisualProfile"].Value);
+            Assert.IsInstanceOfType<ApplicationProfile>(grid.Rows[0].Tag);
+            var committedRowProfile =
+                (ApplicationProfile)grid.Rows[0].Tag!;
             Assert.AreEqual(
                 VisualProfile.DefaultInvertId,
-                ((ApplicationProfile)grid.Rows[0].Tag).VisualProfileId);
+                committedRowProfile.VisualProfileId);
 
             Assert.IsTrue(grid.EndEdit());
             grid.CurrentCell = grid.Rows[0].Cells["Application"];
