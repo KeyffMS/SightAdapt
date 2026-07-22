@@ -22,15 +22,11 @@ jobs:
       - name: Prepare release tree
         run: python tools/prepare_release_0_5.py
 
-      - name: Remove temporary preparation files
-        run: |
-          rm -f .github/workflows/prepare-release-0.5.yml
-          rm -f tools/prepare_release_0_5.py
-
       - name: Commit release preparation
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git status --short
           git add -A
           git commit -m "Prepare SightAdapt 0.5 Alpha"
           git push origin HEAD:release/0.5-alpha
