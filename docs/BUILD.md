@@ -1,4 +1,3 @@
-
 # Build SightAdapt as a standalone EXE
 
 These steps create a self-contained Windows x64 executable. The published application is started directly as `SightAdapt.exe`; `dotnet run` is not required.
@@ -29,13 +28,13 @@ cd SightAdapt
 
 ```powershell
 dotnet restore .\src\SightAdapt\SightAdapt.csproj
-dotnet restore .	ests\SightAdapt.Tests\SightAdapt.Tests.csproj
+dotnet restore .\tests\SightAdapt.Tests\SightAdapt.Tests.csproj
 ```
 
 ## 4. Run the tests
 
 ```powershell
-dotnet test .	ests\SightAdapt.Tests\SightAdapt.Tests.csproj `
+dotnet test .\tests\SightAdapt.Tests\SightAdapt.Tests.csproj `
     --configuration Release `
     --no-restore
 ```
@@ -50,13 +49,13 @@ dotnet publish .\src\SightAdapt\SightAdapt.csproj `
     --runtime win-x64 `
     --self-contained true `
     -p:PublishSingleFile=true `
-    --output .rtifacts\win-x64
+    --output .\artifacts\win-x64
 ```
 
 ## 6. Start the executable
 
 ```powershell
-.rtifacts\win-x64\SightAdapt.exe
+.\artifacts\win-x64\SightAdapt.exe
 ```
 
 The application appears in the Windows notification area.
@@ -86,17 +85,18 @@ The commit suffix identifies the exact source revision.
 The publication directory contains `SightAdapt.exe` and any files required by the selected .NET publication mode:
 
 ```text
-artifacts\win-x64```
+artifacts\win-x64\
+```
 
 To rebuild from a clean state:
 
 ```powershell
-Remove-Item .rtifacts\win-x64 -Recurse -Force -ErrorAction SilentlyContinue
+Remove-Item .\artifacts\win-x64 -Recurse -Force -ErrorAction SilentlyContinue
 
 dotnet publish .\src\SightAdapt\SightAdapt.csproj `
     --configuration Release `
     --runtime win-x64 `
     --self-contained true `
     -p:PublishSingleFile=true `
-    --output .rtifacts\win-x64
+    --output .\artifacts\win-x64
 ```
