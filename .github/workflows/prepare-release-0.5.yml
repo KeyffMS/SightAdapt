@@ -5,11 +5,11 @@ on:
     branches: [main]
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   prepare:
-    if: ${{ github.actor != 'github-actions[bot]' && github.head_ref == 'release/0.5-alpha' }}
+    if: ${{ github.head_ref == 'release/0.5-alpha' }}
     runs-on: ubuntu-latest
 
     steps:
@@ -22,11 +22,44 @@ jobs:
       - name: Prepare release tree
         run: python tools/prepare_release_0_5.py
 
-      - name: Commit release preparation
+      - name: Remove temporary preparation files
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git status --short
+          rm -f .github/workflows/prepare-release-0.5.yml
+          rm -f tools/prepare_release_0_5.py
           git add -A
-          git commit -m "Prepare SightAdapt 0.5 Alpha"
-          git push origin HEAD:release/0.5-alpha
+
+      - name: Package final tracked tree
+        shell: bash
+        run: |
+          mkdir -p release-package/tree
+          git ls-files -s -z > release-package/index.z
+          python - <<'PY'
+          from pathlib import Path
+          import shutil
+          import subprocess
+
+          root = Path.cwd()
+          package = root / 'release-package' / 'tree'
+          paths = subprocess.run(
+              ['git', 'ls-files', '-z'],
+              check=True,
+              capture_output=True,
+          ).stdout.split(b'\0')
+          for raw in paths:
+              if not raw:
+                  continue
+              relative = raw.decode('utf-8')
+              source = root / relative
+              target = package / relative
+              target.parent.mkdir(parents=True, exist_ok=True)
+              shutil.copy2(source, target)
+          PY
+
+      - name: Upload prepared release tree
+        uses: actions/upload-artifact@v4
+        with:
+          name: SightAdapt-0.5-release-tree
+          path: release-package/
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 1
