@@ -108,48 +108,30 @@ internal sealed class VisualTransformCatalog
             definition => definition.Id,
             StringComparer.OrdinalIgnoreCase);
 
-    private readonly IReadOnlyDictionary<
-        string,
-        VisualTransformDefinition> _definitions;
-
-    public VisualTransformCatalog(
-        IEnumerable<VisualTransformDefinition>? definitions = null)
-    {
-        var available =
-            definitions?.ToArray() ?? CanonicalDefinitions;
-
-        _definitions = available.ToDictionary(
-            definition => definition.Id,
-            StringComparer.OrdinalIgnoreCase);
-    }
-
-    public VisualTransformCatalog(
-        IEnumerable<IVisualTransform> transforms)
-        : this(transforms?.Select(CreateDefinition) ??
-               throw new ArgumentNullException(nameof(transforms)))
+    private VisualTransformCatalog()
     {
     }
 
     public static VisualTransformCatalog Default { get; } = new();
 
-    public static bool IsSupported(string? transformId)
+    public bool IsSupported(string? transformId)
     {
-        return TryGetCanonicalDefinition(
+        return TryGetDefinition(
             transformId,
             out _);
     }
 
-    public static bool SupportsTuning(string? transformId)
+    public bool SupportsTuning(string? transformId)
     {
-        return TryGetCanonicalDefinition(
+        return TryGetDefinition(
                 transformId,
                 out var definition) &&
             definition.SupportsTuning;
     }
 
-    public static string GetDisplayName(string? transformId)
+    public string GetDisplayName(string? transformId)
     {
-        return TryGetCanonicalDefinition(
+        return TryGetDefinition(
                 transformId,
                 out var definition)
             ? definition.DisplayName
@@ -159,7 +141,7 @@ internal sealed class VisualTransformCatalog
     public IVisualTransform GetRequired(string transformId)
     {
         if (string.IsNullOrWhiteSpace(transformId) ||
-            !_definitions.TryGetValue(
+            !DefinitionsById.TryGetValue(
                 transformId.Trim(),
                 out var definition))
         {
@@ -170,7 +152,7 @@ internal sealed class VisualTransformCatalog
         return definition.Transform;
     }
 
-    private static bool TryGetCanonicalDefinition(
+    private static bool TryGetDefinition(
         string? transformId,
         out VisualTransformDefinition definition)
     {
@@ -187,17 +169,7 @@ internal sealed class VisualTransformCatalog
         return false;
     }
 
-    private static VisualTransformDefinition CreateDefinition(
-        IVisualTransform transform)
-    {
-        ArgumentNullException.ThrowIfNull(transform);
 
-        return new VisualTransformDefinition(
-            transform.Id,
-            GetDisplayName(transform.Id),
-            SupportsTuning(transform.Id),
-            transform);
-    }
 }
 
 internal sealed class ColorAffineMatrix

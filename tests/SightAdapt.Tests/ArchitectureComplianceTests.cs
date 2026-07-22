@@ -112,8 +112,8 @@ public sealed class ArchitectureComplianceTests
         var editor = ReadSource("VisualProfileEditorForm.cs");
         var manager = ReadSource("VisualProfileManagerForm.cs");
 
-        StringAssert.Contains(model, "VisualTransformCatalog.SupportsTuning");
-        StringAssert.Contains(policy, "VisualTransformCatalog.IsSupported");
+        StringAssert.Contains(model, "VisualTransformCatalog.Default.SupportsTuning");
+        StringAssert.Contains(policy, "VisualTransformCatalog.Default.IsSupported");
         StringAssert.Contains(editor, "VisualTransformCatalog.Default");
         StringAssert.Contains(manager, "VisualTransformCatalog");
         Assert.IsFalse(

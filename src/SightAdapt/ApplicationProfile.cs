@@ -161,7 +161,7 @@ internal sealed class VisualProfile
 
     [JsonIgnore]
     public bool SupportsTuning =>
-        VisualTransformCatalog.SupportsTuning(TransformId);
+        VisualTransformCatalog.Default.SupportsTuning(TransformId);
 
     public VisualProfile CreateWorkingCopy()
     {
