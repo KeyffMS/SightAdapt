@@ -1,4 +1,4 @@
-name: Validate and tag sequential releases
+name: Apply, validate, and tag sequential audit releases
 
 on:
   push:
@@ -7,9 +7,13 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: sequential-audit-release
+  cancel-in-progress: false
+
 jobs:
   release:
-    if: startsWith(github.event.head_commit.message, 'Release ')
+    if: startsWith(github.event.head_commit.message, 'Queue ')
     runs-on: windows-latest
 
     steps:
@@ -23,30 +27,87 @@ jobs:
         with:
           dotnet-version: 8.0.x
 
-      - name: Resolve and verify release version
+      - name: Resolve release request
         shell: pwsh
         run: |
-          $message = @'
-          ${{ github.event.head_commit.message }}
-          '@.Trim()
-          $match = [regex]::Match($message, '^Release (?<version>0\.5\.0\.(?:1[6-9]|2[0-9]|30))(?::|$)')
-          if (-not $match.Success) {
-            throw "Release commit message must start with 'Release 0.5.0.16:' through 'Release 0.5.0.30:'."
+          $requestPath = '.github/audit-release-request.json'
+          $patchPath = '.github/audit-release.patch'
+          if (-not (Test-Path $requestPath) -or -not (Test-Path $patchPath)) {
+            throw 'Both audit-release-request.json and audit-release.patch are required.'
           }
 
-          [xml]$project = Get-Content -Raw 'src/SightAdapt/SightAdapt.csproj'
-          $projectVersion = [string]$project.Project.PropertyGroup.Version
-          $fileVersion = [string]$project.Project.PropertyGroup.FileVersion
-          $informationalVersion = [string]$project.Project.PropertyGroup.InformationalVersion
-          $version = $match.Groups['version'].Value
+          $request = Get-Content -Raw $requestPath | ConvertFrom-Json
+          $version = [string]$request.version
+          $issue = [int]$request.issue
+          $title = ([string]$request.title).Trim()
 
-          if ($projectVersion -ne $version -or
-              $fileVersion -ne $version -or
-              $informationalVersion -ne $version) {
-            throw "Commit version '$version' does not match project metadata: Version='$projectVersion', FileVersion='$fileVersion', InformationalVersion='$informationalVersion'."
+          if ($version -notmatch '^0\.5\.0\.(?:1[6-9]|2[0-9]|30)$') {
+            throw "Unsupported sequential version '$version'."
+          }
+
+          $versionIssue = [int]($version.Split('.')[-1])
+          if ($issue -ne $versionIssue) {
+            throw "Issue #$issue must map to version $version."
+          }
+
+          if ([string]::IsNullOrWhiteSpace($title)) {
+            throw 'Release title is required.'
+          }
+
+          git fetch --tags --force
+          git ls-remote --exit-code --tags origin "refs/tags/$version" *> $null
+          if ($LASTEXITCODE -eq 0) {
+            throw "Tag $version already exists."
           }
 
           "RELEASE_VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "RELEASE_ISSUE=$issue" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "RELEASE_TITLE=$title" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Verify and apply requested patch
+        shell: pwsh
+        run: |
+          git apply --check --whitespace=error .github/audit-release.patch
+          if ($LASTEXITCODE -ne 0) {
+            throw 'The release patch does not apply cleanly.'
+          }
+
+          git apply --whitespace=error .github/audit-release.patch
+          if ($LASTEXITCODE -ne 0) {
+            throw 'The release patch could not be applied.'
+          }
+
+      - name: Update project version metadata
+        shell: pwsh
+        run: |
+          $path = 'src/SightAdapt/SightAdapt.csproj'
+          $content = Get-Content -Raw $path
+          $content = [regex]::Replace($content, '<Version>[^<]+</Version>', "<Version>$env:RELEASE_VERSION</Version>", 1)
+          $content = [regex]::Replace($content, '<FileVersion>[^<]+</FileVersion>', "<FileVersion>$env:RELEASE_VERSION</FileVersion>", 1)
+          $content = [regex]::Replace($content, '<InformationalVersion>[^<]+</InformationalVersion>', "<InformationalVersion>$env:RELEASE_VERSION</InformationalVersion>", 1)
+          $utf8 = [System.Text.UTF8Encoding]::new($false)
+          [System.IO.File]::WriteAllText($path, $content, $utf8)
+
+          [xml]$project = Get-Content -Raw $path
+          if ([string]$project.Project.PropertyGroup.Version -ne $env:RELEASE_VERSION -or
+              [string]$project.Project.PropertyGroup.FileVersion -ne $env:RELEASE_VERSION -or
+              [string]$project.Project.PropertyGroup.InformationalVersion -ne $env:RELEASE_VERSION) {
+            throw 'Project version metadata was not updated consistently.'
+          }
+
+      - name: Remove consumed release request
+        shell: pwsh
+        run: |
+          Remove-Item .github/audit-release-request.json
+          Remove-Item .github/audit-release.patch
+          git diff --check
+          if ($LASTEXITCODE -ne 0) {
+            throw 'The resulting source diff contains whitespace errors.'
+          }
+
+          if ([string]::IsNullOrWhiteSpace((git status --porcelain))) {
+            throw 'The release request produced no repository changes.'
+          }
 
       - name: Restore application
         run: dotnet restore src/SightAdapt/SightAdapt.csproj
@@ -69,22 +130,29 @@ jobs:
           -p:PublishSingleFile=true
           --output artifacts/win-x64
 
-      - name: Create validated tag
+      - name: Commit and tag validated release
         shell: pwsh
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
-          git fetch --tags --force
-          $existing = git rev-parse -q --verify "refs/tags/$env:RELEASE_VERSION^{}" 2>$null
-          if ($LASTEXITCODE -eq 0) {
-            if ($existing -ne $env:GITHUB_SHA) {
-              throw "Tag $env:RELEASE_VERSION already exists at $existing, expected $env:GITHUB_SHA."
-            }
-
-            Write-Host "Tag $env:RELEASE_VERSION already points to this validated commit."
-            exit 0
+          git add -A
+          git commit -m "Release $env:RELEASE_VERSION`: Fix #$env:RELEASE_ISSUE - $env:RELEASE_TITLE"
+          if ($LASTEXITCODE -ne 0) {
+            throw 'Could not create the validated release commit.'
           }
 
-          git tag -a $env:RELEASE_VERSION -m "SightAdapt $env:RELEASE_VERSION" $env:GITHUB_SHA
+          $releaseSha = (git rev-parse HEAD).Trim()
+          git tag -a $env:RELEASE_VERSION -m "SightAdapt $env:RELEASE_VERSION" $releaseSha
+          if ($LASTEXITCODE -ne 0) {
+            throw "Could not create tag $env:RELEASE_VERSION."
+          }
+
+          git push origin "HEAD:release/audit-fixes"
+          if ($LASTEXITCODE -ne 0) {
+            throw 'Could not push the validated release commit.'
+          }
+
           git push origin "refs/tags/$env:RELEASE_VERSION"
+          if ($LASTEXITCODE -ne 0) {
+            throw "Could not push tag $env:RELEASE_VERSION."
+          }
