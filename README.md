@@ -1,200 +1,125 @@
 # SightAdapt
 
-SightAdapt is an open-source visual accessibility application for Windows 10 and Windows 11. It changes how selected application windows are displayed, even when those applications do not provide suitable accessibility or appearance settings.
+SightAdapt is an open-source visual-accessibility application for Windows 10 and Windows 11. It applies configurable visual correction to selected application windows through a separate input-transparent overlay.
 
-The project is developed in two stages:
+SightAdapt does not modify another application's files or process memory. The current alpha uses the Windows Magnification API as a compact implementation of the Light interaction model.
 
-1. **Light** — a fast and stable overlay that applies color inversion, color transforms, or LUTs to a selected application window.
-2. **Hard** — an extended accessibility shell built only after the Light version is proven stable.
+## Current development build
 
-## Project goal
+The current accepted development increment is **SightAdapt 0.4B.2 — Faster overlay switching**.
 
-SightAdapt is intended to help people with low vision use applications that:
+Build identity:
 
-- do not provide a high-contrast mode;
-- do not support accessibility themes;
-- use unreadable color combinations;
-- do not allow per-user image correction;
-- do not provide suitable magnification or focus-highlighting options.
-
-SightAdapt does not modify another application's files or process memory. It captures the target window, processes its image, and displays the result in a separate input-transparent overlay.
-
-## Current alpha
-
-The repository contains **SightAdapt 0.4 Alpha** in [`src/SightAdapt.Demo`](src/SightAdapt.Demo). It runs in the notification area and applies configurable visual profiles to application windows through an input-transparent overlay.
+```text
+Product version: 0.4.0-alpha.6+<commit>
+File version:    0.4.0.2
+Milestone:       Alpha 0.4B.2 · Faster overlay switching
+Settings schema: 4
+```
 
 The current alpha provides:
 
 - persistent per-application visual-profile assignments;
-- automatic correction when an enabled application assignment becomes active;
-- fixed `Exact invert` and editable `Soft invert` profiles;
-- output-black and output-white limits;
-- brightness, contrast, saturation, and hue adjustment;
+- automatic correction when an enabled application becomes active;
+- built-in `Exact invert` and editable `Soft invert` profiles;
+- independent user-defined Soft Invert profiles;
+- output-black, output-white, brightness, contrast, saturation, and hue controls;
 - a grayscale and hue-spectrum profile preview;
-- immediate active-overlay updates after profile changes;
-- `Ctrl+Alt+I` for a local visual-correction toggle;
-- `Ctrl+Alt+Shift+I` for a persistent application-assignment toggle;
-- a WinForms application and color-profile panel;
-- schema-versioned per-user JSON settings stored in `%LOCALAPPDATA%\SightAdapt\settings.json`;
-- migration of older Exact Invert settings without changing their assignments;
-- tray-menu emergency shutdown that disables the overlay and automatic mode;
-- automated state, persistence, assignment, and color-matrix tests.
+- per-application overlay scope: client area, full window, current screen, or all screens;
+- foreground-window detection with a 75 ms polling interval and duplicate suppression;
+- a bounded runtime application-identity cache;
+- reuse and retargeting of one overlay instance during normal application switching;
+- a short transition grace period that reduces visible white flashes;
+- immediate explicit and emergency overlay shutdown;
+- schema-versioned JSON settings stored in `%LOCALAPPDATA%\SightAdapt\settings.json`;
+- automated build, test, architecture, migration, and Windows publish validation.
 
-Newly configured applications use Soft Invert by default. Existing 0.3.1 assignments retain Exact Invert during migration.
+New application assignments use Soft Invert and client-area scope by default. Existing settings are normalized without discarding valid assignments.
 
-See [DEMO.md](DEMO.md) for controls, build instructions, profile behavior, architecture notes, and known limitations.
+## Quick start
 
-The current alpha uses the Windows Magnification API to validate the interaction model and affine color matrices with minimal code and no third-party runtime dependencies. The production Light implementation is still planned around Windows Graphics Capture and Direct3D 11.
+Requirements:
 
-## Documentation
+- Windows 10 version 2004 or newer, or Windows 11;
+- .NET 8 SDK or Visual Studio with the .NET desktop workload;
+- x64 runtime.
 
-- [docs/README.md](docs/README.md) — documentation index.
-- [docs/SOFT_COLOR_PROFILES_0.4.md](docs/SOFT_COLOR_PROFILES_0.4.md) — implemented Soft Invert model, matrix pipeline, editor, migration, and acceptance checks.
-- [docs/ROADMAP_0.4.md](docs/ROADMAP_0.4.md) — staged configurable color-profile roadmap.
-- [docs/ARCHITECTURE_0.3.1.md](docs/ARCHITECTURE_0.3.1.md) — architecture-hardening boundary used by 0.4.
-- [LIGHT.md](LIGHT.md) — scope, architecture, safety requirements, tests, and completion criteria for the Light version.
-- [HARD.md](HARD.md) — target architecture for the extended accessibility shell.
+From the repository root:
 
-## Core assumptions
+```powershell
+dotnet restore src/SightAdapt.Demo/SightAdapt.Demo.csproj
+dotnet build src/SightAdapt.Demo/SightAdapt.Demo.csproj -c Release
+dotnet test tests/SightAdapt.Tests/SightAdapt.Tests.csproj -c Release
+dotnet run --project src/SightAdapt.Demo/SightAdapt.Demo.csproj -c Release
+```
 
-- primary language: **C#**;
-- current alpha runtime: **.NET 8 x64**;
-- planned production migration target: **.NET 10 x64**;
-- current alpha settings UI: **WinForms**;
-- planned production settings UI: **WPF**;
-- system integration: **Win32**;
-- window capture: **Windows Graphics Capture**;
-- rendering: **Direct3D 11 + HLSL**;
-- overlay: native Win32 window backed by a GPU surface;
-- initial compatibility target: **Windows 10 22H2**;
-- parallel compatibility target: **Windows 11**;
-- no DLL injection;
-- no kernel drivers;
-- no screen-image storage;
-- no mandatory telemetry;
-- all source code published on GitHub.
+Create a self-contained build:
 
-## Priorities
+```powershell
+dotnet publish src/SightAdapt.Demo/SightAdapt.Demo.csproj `
+  -c Release `
+  -r win-x64 `
+  --self-contained true `
+  -p:PublishSingleFile=true `
+  -o artifacts/win-x64
+```
 
-The project priorities are, in order:
+Detailed controls and local verification steps are in [DEMO.md](DEMO.md).
 
-1. user safety;
-2. immediate emergency shutdown of all visual effects;
-3. overlay stability;
-4. no interference with the target application;
-5. low latency;
-6. low CPU and GPU overhead;
-7. predictable behavior;
-8. feature count only after the previous requirements are met.
-
-## Current keyboard controls
+## Keyboard controls
 
 SightAdapt registers exactly two global shortcuts:
 
 | Shortcut | Action |
 |---|---|
-| `Ctrl+Alt+I` | Locally enable or disable the assigned visual correction for the active window without changing saved settings |
+| `Ctrl+Alt+I` | Locally enable or disable visual correction for the active window without changing saved settings |
 | `Ctrl+Alt+Shift+I` | Add, disable, or re-enable the active application's persistent automatic assignment |
 
-No alternative `Ctrl+Win` shortcuts or emergency keyboard shortcut are registered. Emergency shutdown remains available from the notification-area menu.
+Emergency shutdown is available from the notification-area menu.
 
-## Development model
+## Documentation
 
-### Phase A — Light
+- [Documentation index](docs/README.md)
+- [Current 0.4 architecture](docs/ARCHITECTURE_0.4.md)
+- [0.4 Alpha roadmap](docs/ROADMAP_0.4.md)
+- [Current executable controls and build notes](DEMO.md)
+- [Soft color profiles](docs/SOFT_COLOR_PROFILES_0.4.md)
+- [Per-application overlay scope](docs/OVERLAY_SCOPE_0.4B.1.md)
+- [Faster overlay switching](docs/OVERLAY_SWITCHING_0.4B.2.md)
+- [Light scope and completion criteria](LIGHT.md)
+- [Hard target architecture](HARD.md)
 
-The Light version must provide:
+## Architecture summary
 
-- capture of a selected application window;
-- color inversion;
-- LUT support;
-- a global enable/disable shortcut;
-- automatic tracking of window position and size;
-- complete mouse and keyboard pass-through;
-- flicker-free operation;
-- multi-monitor support;
-- mixed-DPI support;
-- stable operation for many hours.
+The current implementation keeps one authority for each mutable concern:
 
-Development of Hard-only functionality must not begin before the stability criteria in [LIGHT.md](LIGHT.md) are met.
+- `SettingsCoordinator` — committed settings transaction;
+- domain services — application, profile, and automatic-mode mutations;
+- `ApplicationStateController` — runtime product state;
+- `ForegroundWindowTracker` — foreground detection and deduplication;
+- `ApplicationDiscovery` and `ApplicationIdentityCache` — derived runtime identity resolution;
+- `OverlayBoundsResolver` — overlay geometry;
+- `OverlayController` — overlay lifetime and retargeting;
+- `MagnifierOverlay` — native overlay rendering and target tracking;
+- `ApplicationProfilesGrid` — application-table presentation and edit mechanics;
+- `ConfigurationForm` — UI use-case orchestration.
 
-### Phase B — Hard
+The complete current map is maintained in [docs/ARCHITECTURE_0.4.md](docs/ARCHITECTURE_0.4.md). Historical audits remain available for traceability but are not the source of truth for the current architecture.
 
-The Hard version adds a semantic accessibility layer and additional assistive tools:
+## Current limitations
 
-- management of multiple active overlays;
-- focus highlighting;
-- magnification;
-- a large-text panel;
-- UI Automation integration;
-- extended per-application profile rules;
-- optional local OCR;
-- optional text-to-speech;
-- rules for dialogs, owned windows, and child windows.
+- only one foreground target is corrected at a time;
+- profile import and export are not implemented;
+- palette analysis, dominant-color extraction, targeted color rules, and LUT import are not implemented;
+- protected or DRM-controlled content may not be capturable;
+- elevated applications may require SightAdapt to run at a compatible integrity level;
+- remote-desktop sessions and some graphics drivers may not support the magnifier control correctly;
+- the current Magnification API renderer has not completed the endurance and compatibility requirements defined for a public Light release.
 
-## Proposed repository structure
+## Project direction
 
-```text
-SightAdapt/
-├── README.md
-├── LICENSE
-├── SECURITY.md
-├── CONTRIBUTING.md
-├── docs/
-│   ├── LIGHT.md
-│   ├── HARD.md
-│   ├── architecture/
-│   └── adr/
-├── src/
-│   ├── SightAdapt.App/
-│   ├── SightAdapt.Core/
-│   ├── SightAdapt.Platform.Win32/
-│   ├── SightAdapt.Capture.Wgc/
-│   ├── SightAdapt.Rendering.D3D11/
-│   ├── SightAdapt.Overlays/
-│   └── SightAdapt.Accessibility/
-├── tests/
-│   ├── SightAdapt.UnitTests/
-│   ├── SightAdapt.IntegrationTests/
-│   └── TestApplications/
-└── tools/
-```
+The current alpha validates application assignment, settings, safety, UI, overlay geometry, and switching behavior with minimal dependencies. Advanced palette analysis, LUT processing, and targeted color correction are expected to require Windows Graphics Capture, Direct3D 11, and HLSL rather than extending the current 5×5 color matrix beyond its representational limits.
 
 ## License
 
-Recommended license: **MIT**.
-
-It permits:
-
-- private and commercial use;
-- modification;
-- redistribution;
-- forks;
-- integration with other accessibility projects.
-
-The repository should also contain:
-
-- `SECURITY.md`;
-- a privacy policy;
-- a threat-model document;
-- a statement that protected or DRM-controlled content may not be capturable;
-- a statement describing limitations when the target application runs with elevated privileges.
-
-## Definition of done for Light
-
-The Light version is ready for public release only when:
-
-- normal operation does not require administrator privileges;
-- it runs on Windows 10 22H2 and supported Windows 11 versions;
-- the user can always disable overlays with the emergency tray command;
-- renderer failure does not block the desktop;
-- overlays never capture input;
-- the image pipeline does not copy every frame to CPU memory;
-- the application correctly handles window move, resize, minimize, restore, and close events;
-- an eight-hour endurance test shows no continuously increasing memory usage;
-- the overlay is not recursively captured;
-- a profile can be assigned to an application executable;
-- settings can be imported and exported.
-
-## Document status
-
-This documentation defines the initial engineering baseline. Significant architecture decisions should be recorded as Architecture Decision Records in `docs/adr`.
+SightAdapt is licensed under the MIT License. See [LICENSE](LICENSE).

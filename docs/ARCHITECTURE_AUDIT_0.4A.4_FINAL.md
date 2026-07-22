@@ -1,128 +1,106 @@
-# SightAdapt 0.4A.4 — final architecture audit
+# SightAdapt 0.4A.4 — historical final architecture audit
 
-## Scope
+## Document status
 
-This audit evaluates the completed `0.4A` implementation on `agent/fix-audit-v0.4` before work begins on `0.4B`.
+This file records the closing assessment of the 0.4A implementation. It is retained for engineering traceability and does **not** define the current 0.4B.2 architecture.
 
-The assessment covers:
+Current architecture: [ARCHITECTURE_0.4.md](ARCHITECTURE_0.4.md)
+
+Current roadmap: [ROADMAP_0.4.md](ROADMAP_0.4.md)
+
+Branch names, commit hashes, workflow identifiers, test counts, and proposed next work below describe the repository at the time of the audit.
+
+## Scope at the time
+
+The audit evaluated:
 
 - Clean Code;
 - KISS;
 - DRY;
-- Single Point of Authority (SPoA);
-- Single Point of Truth (SPoT);
-- transaction and failure boundaries;
+- Single Point of Authority;
+- Single Point of Truth;
+- settings transaction and rollback behavior;
 - runtime-state consistency;
-- architecture and behavioral regression evidence;
-- the UI changes completed through requirement `007`;
-- the post-acceptance profile-selector reentrancy fix tracked by issue `#9`.
+- UI acceptance through 0.4A.4;
+- architecture and behavioral regression evidence.
 
-The scores are engineering assessments for the current `0.4A` scope. They are not universal or permanent guarantees.
+The scores were engineering assessments for the completed 0.4A scope, not mathematical or permanent guarantees.
 
 ## Evidence standard
 
-The audit distinguishes four levels of evidence:
+The audit distinguished:
 
-1. **Named responsibility** — a component is documented as an owner.
-2. **Enforced product flow** — normal application paths use that owner.
-3. **Transactional behavior** — a failed mutation or write does not publish partial state.
-4. **Regression evidence** — behavioral tests and focused source guardrails protect the boundary.
+1. named responsibility;
+2. normal product flow through that responsibility;
+3. transactional failure behavior;
+4. behavioral regression evidence.
 
-Source-string and regex tests are treated as guardrails, not as complete proof by themselves.
+Source-string and regular-expression tests were treated as guardrails rather than complete proof.
 
-## Closing finding and remediation
+## Closing 0.4A authority map
 
-The review found one material SPoT duplication before scoring:
-
-- active visual-profile identity was present in both `ApplicationStateController.Current.VisualProfileId` and `OverlayController.VisualProfileId`.
-
-`OverlayController.VisualProfileId` was redundant and was not required by product behavior. It was removed. The resulting boundary is now explicit:
-
-- `ApplicationStateController.Current` owns product runtime identity and presentation state;
-- `OverlayController` owns only the actual overlay resource and its target handle.
-
-A regression test now rejects reintroduction of profile identity into `OverlayController`.
-
-## Authority map
-
-| Mutation or resource | Authority |
+| Concern | Authority at 0.4A closure |
 |---|---|
 | Committed settings transaction | `SettingsCoordinator` |
-| Settings migration, canonicalization, and recovery | `SettingsStore.Normalize` |
-| Application assignment add, toggle, enable, assignment, reassignment, and removal | `ApplicationProfileManagementService` |
-| Visual-profile creation, duplication, rename, tuning, deletion, and assignment count | `VisualProfileManagementService` |
-| Persisted automatic-mode mutation | `AutomaticModeManagementService` |
-| Runtime application state and suppression | `ApplicationStateController` |
-| Overlay resource creation, update, closure, and disposal | `OverlayController` |
-| Foreground-window polling and target resolution | `ForegroundWindowTracker` |
+| Settings migration and recovery | `SettingsStore.Normalize` |
+| Application-assignment mutations | `ApplicationProfileManagementService` |
+| Visual-profile lifecycle and tuning | `VisualProfileManagementService` |
+| Persisted automatic mode | `AutomaticModeManagementService` |
+| Runtime mode, target, profile, suppression, and message | `ApplicationStateController.Current` |
+| Overlay resource lifetime | `OverlayController` |
+| Foreground-window polling | `ForegroundWindowTracker` |
 | Notification-area presentation | `TrayPresenter` |
 
-`SettingsCoordinator` wraps domain authorities in a copy → mutate → save → publish transaction. Failed domain operations or persistence do not replace the committed in-memory snapshot and do not raise the settings-changed event.
+## Closing 0.4A assessment
 
-## Truth map
-
-| Data or rule | Source of truth |
-|---|---|
-| Persisted applications, profiles, assignments, and automatic-mode value | `SightAdaptSettings` |
-| Current runtime mode, target, profile ID, suppression, and message | `ApplicationStateController.Current` |
-| Actual overlay resource and target handle | `OverlayController` |
-| Built-in profile IDs, assignment fallbacks, user-ID format, and profile-name rules | `VisualProfilePolicy` |
-| Canonical Exact Invert and Soft Invert names and tuning defaults | `VisualProfileDefaults` |
-| Supported transform definitions and tuning capability | `VisualTransformCatalog` |
-| Profile parameter limits | `VisualProfileLimits` |
-| Product name, milestone, version, author, repository, and license | project/assembly metadata exposed through `ProductInfo` |
-| Accepted `0.4A.4` interface requirements | `UI_REQUIREMENTS_0.4A.4.md` |
-
-## Assessment
-
-| Principle | Score | Evidence and reasoning |
+| Principle | Score | Finding at closure |
 |---|---:|---|
-| KISS | **9/10** | No DI container, event bus, repository layer, command framework, or speculative rendering abstraction was added. Extracted components correspond to current product responsibilities. The remaining custom WinForms controls are substantial, but they implement concrete interaction requirements. |
-| DRY | **9/10** | Domain mutations, transform capabilities, defaults, limits, metadata, normalization, and runtime state each have a central implementation. Minor duplication remains in repository-link launch/error presentation across two forms. |
-| Clean Code | **9/10** | Names, failure contracts, transaction order, and component responsibilities are explicit. `SightAdaptContext` is now an orchestrator rather than the owner of tray and foreground mechanics. Some UI files remain large because they contain detailed WinForms composition and painting. |
-| SPoA | **9/10** | All normal product mutations pass through a named domain authority and the transactional coordinator. Architecture tests guard direct writes. The mutable settings model is internal rather than type-system-enforced as immutable, so authority still depends partly on review and regression checks. |
-| SPoT | **9/10** | The duplicate runtime profile identity was removed. Product metadata, runtime state, transform capability, defaults, limits, and requirements have explicit truths. The generic slider still contains a convenience heuristic for a neutral point; current editor values are deterministic, but future parameters should declare neutral semantics explicitly. |
+| KISS | 9/10 | No speculative DI, event-bus, repository, command, or renderer framework was introduced. |
+| DRY | 9/10 | Domain mutations, defaults, limits, metadata, normalization, and runtime state had named central implementations. |
+| Clean Code | 9/10 | Failure contracts and component responsibilities were explicit, with remaining complexity concentrated in concrete WinForms UI code. |
+| SPoA | 9/10 | Normal mutations passed through named domain authorities and the settings transaction boundary. |
+| SPoT | 9/10 | Redundant runtime profile identity was removed from `OverlayController`; product state remained in `ApplicationStateController.Current`. |
 
-## Non-blocking technical debt
+The audit intentionally did not claim permanent perfection.
 
-The following items do not block `0.4B`, but should remain visible:
+## Non-blocking debt recorded at closure
 
-1. `ConfigurationForm` and the custom visual-profile selector are large UI implementations. Split them only when a concrete second responsibility or reuse case appears; avoid abstraction solely to reduce line count.
-2. Repository-link launch and error handling are repeated in `AboutForm` and `ConfigurationForm`. A small shared launcher may remove this duplication during a future UI maintenance pass.
-3. `ModernProfileSlider` infers common neutral values from range and unit. New parameter types must define neutral semantics explicitly rather than relying on that convention.
-4. Source-level architecture tests are useful guardrails but must continue to be paired with behavioral tests for transaction rollback, state transitions, persistence, and lifecycle behavior.
+1. Large WinForms composition and painting files should be split only when a concrete second responsibility or reuse case appears.
+2. Repository-link launch/error handling was repeated in two forms.
+3. Generic slider neutral-value conventions needed care before supporting new parameter types.
+4. Source-level architecture guardrails needed continued behavioral-test support.
 
-## Post-audit regression fix — issue #9
+## Issue #9 supersession note
 
-Changing an application's visual profile could raise `InvalidOperationException` because `SettingsCoordinator.Changed` invoked `ConfigurationForm.SettingsChanged` synchronously while the custom `DataGridView` editing control was still committing its cell value. `RefreshProfiles()` then attempted `Rows.Clear()` inside the active grid commit stack.
+An intermediate post-audit attempt used deferred WinForms settings notification to avoid reentrant grid refresh. That approach was later removed and is **not** part of the current architecture.
 
-The correction keeps the transaction and runtime ordering intact while removing UI reentrancy:
+The accepted issue #9 correction is documented in [CONFIGURATION_GRID_REFACTOR_0.4.md](CONFIGURATION_GRID_REFACTOR_0.4.md):
 
-- non-Control observers, including `SightAdaptContext`, continue to receive `Changed` synchronously;
-- WinForms `Control` observers are dispatched with `BeginInvoke` after the current grid commit stack returns;
-- disposed-control races are ignored only when the observer handle has already been destroyed and are written to diagnostics;
-- `SettingsCoordinatorUiDispatchTests.WinFormsObserverRunsAfterCommitStackCompletes` verifies that a Control observer is not called inside `Commit`, then receives exactly one notification from the Windows message queue.
+- `SettingsCoordinator.Changed` remains synchronous;
+- `ModernSelectorEditingControl` follows the `IDataGridViewEditingControl` contract;
+- `ApplicationProfilesGrid` owns grid mechanics and stable executable-path row keys;
+- `ConfigurationForm` suppresses only its own full refresh during a grid-originated commit;
+- success updates one row and failure restores one cell;
+- global timers, delayed observer dispatch, `Application.Idle`, reflection, and modal-owner workarounds are absent.
 
-This preserves one settings transaction authority while making UI presentation explicitly non-reentrant.
+This note replaces the obsolete deferred-dispatch description that appeared in an earlier version of this audit.
 
-## Validation evidence
+## Historical validation record
 
-```text
-implementation head: 9d86a853f456f777d306d48bc8de77aedd045d32
-workflow run: 29746408418
-build: 0 warnings, 0 errors
-tests: 92 passed, 0 failed, 0 skipped
-publish: self-contained Windows x64 succeeded
-artifact: SightAdapt-0.4-Alpha-win-x64
-artifact SHA-256: d4cd27a734a5603ce8934ccd4f25008a42086d1de5e9ba29eb75a0f78bd0f69b
-```
+The final 0.4A audit was supported by a green Windows build, test, and self-contained publish at the audited source revision. Exact historical identifiers remain available in Git history and the corresponding workflow records.
 
-The 92-test suite includes transaction rollback, state transitions, emergency ordering, settings recovery, profile lifecycle, assignment authority, transform behavior, selector contracts, slider behavior, closing audit regressions, and deferred WinForms settings notification.
+Later increments added more tests and changed architecture in the following areas:
 
-## Decision
+- configuration-grid ownership;
+- generic selector reuse;
+- per-application overlay scope;
+- overlay geometry authority;
+- foreground deduplication;
+- application-identity caching;
+- overlay retargeting and transition grace.
 
-No known blocking Clean Code, KISS, DRY, SPoA, or SPoT violation remains in the current `0.4A` scope.
+## Decision at the time
 
-`0.4A.4 / 007` has been manually accepted, and issue `#9` has an automated regression fix. `0.4A` remains closed and `0.4B` may proceed after a local smoke test of profile switching.
+No known blocking Clean Code, KISS, DRY, SPoA, or SPoT violation remained in the accepted 0.4A scope, so 0.4B work could proceed.
 
-This decision does not mean that the code is permanently perfect. New `0.4B` work must define its authority, truth, persisted model, cleanup contract, failure behavior, and acceptance matrix before implementation.
+That decision is historical. Current integration readiness must be judged against the current source, [ARCHITECTURE_0.4.md](ARCHITECTURE_0.4.md), the current roadmap, fresh CI, and local acceptance.

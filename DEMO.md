@@ -1,50 +1,50 @@
-# SightAdapt 0.4 Alpha
+# SightAdapt 0.4B.2 Alpha
 
-SightAdapt 0.4 Alpha is the current executable Windows build. It applies configurable visual profiles to selected Windows application windows while preserving per-application assignments, automatic activation, settings migration, two global shortcuts, and an input-transparent overlay.
+SightAdapt 0.4B.2 is the current accepted Windows development build. It applies configurable visual profiles and overlay geometry to selected application windows while preserving per-application assignments, automatic activation, settings migration, fast foreground switching, and an input-transparent overlay.
+
+## Build identity
+
+```text
+Product version: 0.4.0-alpha.6+<commit>
+File version:    0.4.0.2
+Milestone:       Alpha 0.4B.2 · Faster overlay switching
+Settings schema: 4
+```
+
+The commit suffix in `ProductVersion` identifies the exact source revision used to build the executable.
 
 ## Implemented features
 
 - runs in the Windows notification area;
-- enforces a single running process per user session;
-- tracks the active top-level application window;
+- enforces one running process per user session;
+- detects the active supported top-level window every 75 ms;
+- suppresses duplicate foreground notifications for an unchanged handle;
+- reuses cached application identity data on the foreground hot path;
 - applies assigned profiles in local or automatic mode;
-- provides fixed `Exact invert` and editable `Soft invert` profiles;
-- supports independent user-defined Soft Invert profiles;
+- provides fixed `Exact invert`, editable `Soft invert`, and independent user-defined Soft Invert profiles;
 - creates, duplicates, renames, edits, assigns, and deletes user-defined profiles;
-- limits output black and output white levels;
-- adjusts brightness, contrast, saturation, and hue;
+- adjusts output black, output white, brightness, contrast, saturation, and hue;
 - previews grayscale and hue-spectrum conversion;
-- updates an active overlay without recreating it when only the profile changes;
-- stores persistent per-application assignments;
-- keeps the overlay aligned while the target moves or resizes;
+- stores a separate overlay scope for every application assignment;
+- reuses and retargets one native magnifier overlay during normal switching;
+- keeps the last rendered frame briefly while a new foreground target is resolved;
+- tracks target move, resize, minimize, restore, foreground, and close state;
 - passes mouse and keyboard input through to the original application;
-- hides the overlay when the target is minimized or inactive;
-- stores schema-versioned JSON settings in `%LOCALAPPDATA%\SightAdapt\settings.json`;
-- migrates older settings without changing existing Exact Invert assignments;
-- commits settings through a write-before-publish transaction boundary;
-- provides immediate emergency shutdown from the notification-area menu;
-- distinguishes an explicit emergency shutdown from a renderer fault;
+- stores settings atomically in `%LOCALAPPDATA%\SightAdapt\settings.json`;
+- migrates and normalizes older settings without discarding valid assignments;
+- provides immediate emergency shutdown before settings persistence;
+- distinguishes renderer fault from explicit emergency shutdown;
 - supports per-monitor DPI awareness;
-- targets Windows 10 version 2004 or newer and Windows 11.
+- targets x64 Windows 10 version 2004 or newer and Windows 11.
 
 ## Keyboard controls
-
-SightAdapt registers exactly two global shortcuts:
 
 | Shortcut | Action |
 |---|---|
 | `Ctrl+Alt+I` | Locally enable or disable visual correction for the active window without changing persistent settings |
 | `Ctrl+Alt+Shift+I` | Add, disable, or re-enable the active application's persistent automatic assignment |
 
-The local toggle uses the application's assigned profile when one exists. A disabled assignment remains available for local use but does not activate automatically.
-
-The persistent toggle behaves as follows:
-
-1. when no assignment exists, SightAdapt creates and enables one using Soft Invert;
-2. when the assignment is enabled, SightAdapt disables it;
-3. when the assignment is disabled, SightAdapt enables it again;
-4. enabling an assignment also enables automatic mode;
-5. disabling the assignment immediately stops an automatically activated overlay.
+A disabled assignment remains available for local use but does not activate automatically. Enabling an assignment also enables automatic mode.
 
 No alternative `Ctrl+Win` shortcuts or emergency keyboard shortcut are registered.
 
@@ -56,28 +56,46 @@ The tray menu provides:
 - persistent automatic-assignment toggle for the current application;
 - global automatic-mode switch;
 - application and color-profile configuration;
-- emergency shutdown of all overlays and automatic mode;
+- About dialog with product and commit-derived version information;
+- emergency shutdown of the active overlay and automatic mode;
 - application exit.
 
-Double-clicking the tray icon performs the local visual-correction toggle.
+Left and right tray-icon clicks open the same menu. Double-clicking performs the local visual-correction toggle.
 
-## Application and color profiles
+## Application configuration
 
-Use **Configure applications and colors...** from the notification-area menu.
+Open **Configure applications and colors...** from the notification-area menu.
 
-The configuration panel provides:
+The application table supports:
 
-- a global automatic-mode switch;
-- a dark, DPI-aware application table;
 - adding the currently active application;
 - selecting an executable manually;
-- enabling or disabling individual automatic assignments;
+- enabling or disabling automatic assignment;
 - assigning any available visual profile;
-- opening the editor for tunable profiles;
-- creating, duplicating, renaming, editing, and deleting user-defined profiles;
-- removing application assignments.
+- selecting an independent overlay scope;
+- editing a tunable profile;
+- managing user-defined profiles;
+- removing an application assignment.
 
-Newly configured applications use Soft Invert by default. Existing assignments migrated from 0.3.1 retain Exact Invert.
+The row stores only the executable path as its stable UI key. Committed settings remain the model source of truth.
+
+### Overlay scope per application
+
+| UI choice | Persisted ID | Result |
+|---|---|---|
+| Client area | `client-area` | Application content without title bar and frame; default |
+| Full window | `window` | Complete visible application window |
+| Current screen | `screen` | Complete monitor containing the target window |
+| All screens | `all-screens` | Complete Windows virtual desktop |
+
+Changing one row does not modify another application's scope. A scope change for the active application is applied through the existing committed-settings path.
+
+## Visual profiles
+
+### Built-in profiles
+
+- `Exact invert` — fixed and protected from rename or deletion;
+- `Soft invert` — editable shared default and protected from rename or deletion.
 
 ### Soft Invert defaults
 
@@ -90,9 +108,12 @@ Saturation: 100%
 Hue shift: 0°
 ```
 
-The built-in Soft Invert profile is shared. Editing it affects every application assigned to `default-soft-invert`. Create or duplicate a user-defined profile when applications need independent parameter sets.
+The built-in Soft Invert profile is shared. Create or duplicate a user-defined profile when applications require independent values.
 
-Detailed behavior is documented in [`docs/SOFT_COLOR_PROFILES_0.4.md`](docs/SOFT_COLOR_PROFILES_0.4.md) and [`docs/USER_DEFINED_PROFILES_0.4A.2.md`](docs/USER_DEFINED_PROFILES_0.4A.2.md).
+See:
+
+- [`docs/SOFT_COLOR_PROFILES_0.4.md`](docs/SOFT_COLOR_PROFILES_0.4.md)
+- [`docs/USER_DEFINED_PROFILES_0.4A.2.md`](docs/USER_DEFINED_PROFILES_0.4A.2.md)
 
 ## Settings consistency
 
@@ -102,15 +123,17 @@ Settings are stored at:
 %LOCALAPPDATA%\SightAdapt\settings.json
 ```
 
-Version 0.4 uses schema `3`. Mutations are applied to a working snapshot, normalized, written atomically, and published to the running application only after the write succeeds. A failed domain operation or failed write leaves the last committed in-memory settings unchanged.
+Schema `4` contains visual profiles, application assignments, automatic mode, and per-application `overlayScope` values. Mutations are applied to a working copy, normalized, saved atomically, and published only after the write succeeds. A failed domain operation or failed write leaves the last committed in-memory settings unchanged.
+
+Older schemas are normalized to the current schema. Legacy `effect: "invert"` values migrate to `default-invert`, and assignments without an overlay scope receive `client-area`.
 
 ## Build and tests
 
 Requirements:
 
 - Windows 10 or Windows 11;
-- Visual Studio 2022 with the .NET desktop development workload, or the .NET 8 SDK;
-- x64 build target.
+- Visual Studio with the .NET desktop workload, or the .NET 8 SDK;
+- x64 target.
 
 From the repository root:
 
@@ -118,11 +141,6 @@ From the repository root:
 dotnet restore src/SightAdapt.Demo/SightAdapt.Demo.csproj
 dotnet build src/SightAdapt.Demo/SightAdapt.Demo.csproj -c Release
 dotnet test tests/SightAdapt.Tests/SightAdapt.Tests.csproj -c Release
-```
-
-Run:
-
-```powershell
 dotnet run --project src/SightAdapt.Demo/SightAdapt.Demo.csproj -c Release
 ```
 
@@ -137,25 +155,31 @@ dotnet publish src/SightAdapt.Demo/SightAdapt.Demo.csproj `
   -o artifacts/win-x64
 ```
 
-## Technical scope
+## Verify the running build
 
-The current alpha uses the Windows Magnification API to validate overlay interaction and affine color matrices without third-party runtime dependencies. Soft Invert composes output limits, saturation, hue rotation, contrast, and brightness into one `MAGCOLOREFFECT` matrix.
+```powershell
+$process = Get-Process SightAdapt.Demo
+$process.Path
 
-The production Light architecture remains planned around Windows Graphics Capture, Direct3D 11, GPU shader and LUT processing, and native overlay composition.
+(Get-Item $process.Path).VersionInfo |
+    Format-List ProductVersion, FileVersion
+```
 
-## Known limitations
-
-- only one target window can be corrected at a time;
-- the effect is visible only while the selected target is the foreground window;
-- profile import and export are not implemented yet;
-- palette capture, dominant-color analysis, targeted source-to-output rules, and LUTs are not implemented yet;
-- owned dialogs and pop-up windows are not automatically included;
-- application identity is based on the executable path;
-- protected or DRM-controlled content may not be capturable;
-- elevated applications may not work from a non-elevated SightAdapt process;
-- some GPU drivers or remote-desktop sessions may not support the magnifier control correctly;
-- this alpha has not completed the endurance and compatibility testing required by `LIGHT.md`.
+For the current increment, `ProductVersion` begins with `0.4.0-alpha.6+` and `FileVersion` is `0.4.0.2`.
 
 ## Safety behavior
 
-The overlay never intentionally receives input. If the target becomes invalid, minimized, hidden, or inactive, the overlay is hidden or closed. Emergency shutdown disables the overlay before any settings I/O, enters a persistent runtime emergency state, and then attempts to save automatic mode as disabled. A renderer failure uses a separate fault state and does not falsely report that automatic mode was persisted as off.
+The overlay is created with input-transparent, non-activating window styles. Explicit disable and emergency shutdown remove it immediately. Emergency shutdown disables the overlay before attempting settings I/O and blocks automatic reactivation through the runtime emergency state.
+
+During normal foreground switching, one existing overlay is retargeted. A rendered frame may remain visible for at most 125 ms while the next target is resolved. After that period, an invalid target closes the overlay and an unavailable target hides it.
+
+## Known limitations
+
+- only one foreground target is corrected at a time;
+- profile import and export are not implemented;
+- palette capture, dominant-color analysis, targeted color rules, and LUT import are not implemented;
+- application identity is based on executable path, with a process-ID cache used only as a runtime optimization;
+- protected or DRM-controlled content may not be capturable;
+- elevated applications may not work from a lower-integrity SightAdapt process;
+- some graphics drivers and remote-desktop sessions may not support the magnifier control correctly;
+- the current alpha has not completed the endurance and compatibility requirements defined in `LIGHT.md`.

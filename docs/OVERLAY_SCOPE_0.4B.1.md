@@ -2,32 +2,62 @@
 
 ## Status
 
-Implementation complete on `agent/issue-8-overlay-scope-per-app-v0.4`. Automated validation is executed against the final source tree; local Windows acceptance determines final completion of issue #8.
+Complete and locally accepted. Issue #8 is closed as completed.
 
 ## Persisted model
 
-Every `ApplicationProfile` stores one normalized `overlayScope` identifier. Existing and invalid values recover to `client-area` during deserialization. Settings schema version 4 records the new model.
+Every `ApplicationProfile` stores one normalized `overlayScope` identifier. The current settings schema is `4`.
+
+Missing and invalid values recover to `client-area` without removing valid applications or visual-profile assignments.
 
 ## Scope choices
 
-- `client-area` — target client content without frame/title bar; default;
-- `window` — full visible target window;
-- `screen` — full monitor containing the target;
-- `all-screens` — full Windows virtual desktop.
+| UI choice | Persisted ID | Geometry |
+|---|---|---|
+| Client area | `client-area` | Target client content without title bar and frame; default |
+| Full window | `window` | Complete visible target window |
+| Current screen | `screen` | Complete monitor containing the target |
+| All screens | `all-screens` | Complete Windows virtual desktop |
 
 ## Ownership
 
-- `ApplicationProfile` — persisted source of truth;
-- `ApplicationProfileManagementService` — mutation authority;
+- `ApplicationProfile.OverlayScopeId` — persisted source of truth;
+- `OverlayScopePolicy` — identifiers, display names, supported values, and default;
+- `ApplicationProfileManagementService.SetOverlayScope` — mutation authority;
 - `ApplicationProfilesGrid` — per-row selector and typed edit event;
-- `ConfigurationForm` — settings transaction orchestration;
-- `OverlayBoundsResolver` — geometry authority;
-- `OverlayController` — active overlay resource and scope.
+- `ConfigurationForm` — committed settings transaction orchestration;
+- `OverlayBoundsResolver` — single geometry authority;
+- `OverlayController` — active overlay lifetime and selected scope;
+- `MagnifierOverlay` — application of resolved destination and source geometry.
 
-## Runtime
+## Runtime behavior
 
-Manual and automatic activation use the assigned application's scope. A settings change updates the active overlay through the existing settings-change path. The overlay remains input-transparent and remains tied to the target application's foreground lifecycle.
+Manual and automatic activation use the scope stored on the resolved application assignment.
+
+A scope change for the active application is committed through `SettingsCoordinator`. The existing overlay instance receives the updated scope and geometry through the normal settings-change path.
+
+The overlay remains input-transparent and non-activating. Target minimize, hide, close, and foreground transitions continue to follow the overlay lifecycle and transition-grace rules.
+
+## Compatibility
+
+Schema migration preserves:
+
+- application display name and executable identity;
+- enabled state;
+- visual-profile assignment;
+- automatic mode;
+- valid custom visual profiles.
+
+Assignments created before schema `4` receive `client-area`.
 
 ## Build identity
 
-The issue-8 build displays `Alpha 0.4B.1 · Overlay scope per app` and reports `0.4.0-alpha.5+<commit>`.
+The feature was introduced in:
+
+```text
+Product version: 0.4.0-alpha.5+<commit>
+File version:    0.4.0.1
+Milestone:       Alpha 0.4B.1 · Overlay scope per app
+```
+
+The current development stack includes this behavior in 0.4B.2.
