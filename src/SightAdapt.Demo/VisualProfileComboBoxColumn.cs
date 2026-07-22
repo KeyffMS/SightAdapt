@@ -297,7 +297,7 @@ internal sealed class ModernVisualProfileEditingControl :
 
     public object EditingControlFormattedValue
     {
-        get => _selected?.Id ?? string.Empty;
+        get => _selected?.Name ?? string.Empty;
         set => SelectByValue(value?.ToString());
     }
 
@@ -349,7 +349,7 @@ internal sealed class ModernVisualProfileEditingControl :
     public object GetEditingControlFormattedValue(
         DataGridViewDataErrorContexts context)
     {
-        return _selected?.Id ?? string.Empty;
+        return _selected?.Name ?? string.Empty;
     }
 
     public void PrepareEditingControlForEdit(bool selectAll)
