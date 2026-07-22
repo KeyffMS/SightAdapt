@@ -2,7 +2,7 @@
 
 ## Status
 
-Implementation complete on `agent/issue-8-overlay-scope-per-app-v0.4`. Automated validation and local Windows acceptance determine final completion of issue #8.
+Implementation complete on `agent/issue-8-overlay-scope-per-app-v0.4`. Automated validation is executed against the final source tree; local Windows acceptance determines final completion of issue #8.
 
 ## Persisted model
 
