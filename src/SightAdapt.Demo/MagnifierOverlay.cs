@@ -5,11 +5,15 @@ namespace SightAdapt.Demo;
 
 internal sealed class MagnifierOverlay : Form
 {
+    internal const int ForegroundTransitionGraceMilliseconds = 125;
+
     private readonly System.Windows.Forms.Timer _updateTimer;
     private MagColorEffect _colorEffect;
     private string _transformId;
     private OverlayScope _overlayScope;
     private nint _magnifierWindow;
+    private long _transitionStartedAt = -1;
+    private bool _hasRenderedFrame;
     private bool _initialized;
 
     public MagnifierOverlay(
@@ -18,22 +22,10 @@ internal sealed class MagnifierOverlay : Form
         string transformId,
         OverlayScope overlayScope)
     {
-        if (targetHandle == nint.Zero)
-        {
-            throw new ArgumentException("A target window is required.", nameof(targetHandle));
-        }
-
-        TargetHandle = targetHandle;
+        TargetHandle = ValidateTarget(targetHandle);
         _colorEffect = colorEffect;
-        _transformId = string.IsNullOrWhiteSpace(transformId)
-            ? throw new ArgumentException("A transform identifier is required.", nameof(transformId))
-            : transformId.Trim();
-        _overlayScope = OverlayScopePolicy.IsSupported(overlayScope)
-            ? overlayScope
-            : throw new ArgumentOutOfRangeException(
-                nameof(overlayScope),
-                overlayScope,
-                "The overlay scope is not supported.");
+        _transformId = NormalizeTransformId(transformId);
+        _overlayScope = ValidateOverlayScope(overlayScope);
 
         AutoScaleMode = AutoScaleMode.None;
         BackColor = Color.Black;
@@ -49,7 +41,7 @@ internal sealed class MagnifierOverlay : Form
         _updateTimer.Tick += (_, _) => UpdateOverlay();
     }
 
-    public nint TargetHandle { get; }
+    public nint TargetHandle { get; private set; }
 
     public OverlayScope OverlayScope => _overlayScope;
 
@@ -69,35 +61,25 @@ internal sealed class MagnifierOverlay : Form
         }
     }
 
-    public void ApplyColorEffect(MagColorEffect colorEffect, string transformId)
+    public void Retarget(
+        nint targetHandle,
+        MagColorEffect colorEffect,
+        string transformId,
+        OverlayScope overlayScope)
     {
+        TargetHandle = ValidateTarget(targetHandle);
         _colorEffect = colorEffect;
-        _transformId = string.IsNullOrWhiteSpace(transformId)
-            ? throw new ArgumentException("A transform identifier is required.", nameof(transformId))
-            : transformId.Trim();
+        _transformId = NormalizeTransformId(transformId);
+        _overlayScope = ValidateOverlayScope(overlayScope);
+        ResetTransitionGrace();
 
-        if (_initialized)
+        if (!_initialized)
         {
-            ApplyColorEffectToMagnifier();
-            NativeMethods.InvalidateRect(_magnifierWindow, nint.Zero, true);
-        }
-    }
-
-    public void ApplyOverlayScope(OverlayScope overlayScope)
-    {
-        if (!OverlayScopePolicy.IsSupported(overlayScope))
-        {
-            throw new ArgumentOutOfRangeException(
-                nameof(overlayScope),
-                overlayScope,
-                "The overlay scope is not supported.");
+            return;
         }
 
-        _overlayScope = overlayScope;
-        if (_initialized)
-        {
-            UpdateOverlay();
-        }
+        ApplyColorEffectToMagnifier();
+        UpdateOverlay();
     }
 
     protected override void OnShown(EventArgs eventArgs)
@@ -134,7 +116,8 @@ internal sealed class MagnifierOverlay : Form
         var transform = MagTransform.Identity;
         if (!NativeMethods.MagSetWindowTransform(_magnifierWindow, ref transform))
         {
-            throw new Win32Exception("Could not initialize the magnifier transform.");
+            throw new Win32Exception(
+                "Could not initialize the magnifier transform.");
         }
 
         ApplyColorEffectToMagnifier();
@@ -191,19 +174,37 @@ internal sealed class MagnifierOverlay : Form
 
     private void UpdateOverlay()
     {
-        if (!_initialized || !NativeMethods.IsWindow(TargetHandle))
+        if (!_initialized)
         {
-            Close();
             return;
         }
 
-        if (!NativeMethods.IsWindowVisible(TargetHandle) ||
-            NativeMethods.IsIconic(TargetHandle) ||
-            !IsTargetForeground())
+        var targetExists = NativeMethods.IsWindow(TargetHandle);
+        var targetAvailable = targetExists &&
+            NativeMethods.IsWindowVisible(TargetHandle) &&
+            !NativeMethods.IsIconic(TargetHandle) &&
+            IsTargetForeground();
+
+        if (!targetAvailable)
         {
-            NativeMethods.ShowWindow(Handle, NativeMethods.SwHide);
+            if (_hasRenderedFrame && IsWithinTransitionGrace())
+            {
+                return;
+            }
+
+            if (!targetExists)
+            {
+                Close();
+            }
+            else
+            {
+                NativeMethods.ShowWindow(Handle, NativeMethods.SwHide);
+            }
+
             return;
         }
+
+        ResetTransitionGrace();
 
         if (!OverlayBoundsResolver.TryResolve(
                 TargetHandle,
@@ -240,7 +241,26 @@ internal sealed class MagnifierOverlay : Form
             return;
         }
 
+        _hasRenderedFrame = true;
         NativeMethods.InvalidateRect(_magnifierWindow, nint.Zero, true);
+    }
+
+    private bool IsWithinTransitionGrace()
+    {
+        var now = Environment.TickCount64;
+        if (_transitionStartedAt < 0)
+        {
+            _transitionStartedAt = now;
+            return true;
+        }
+
+        return now - _transitionStartedAt <
+            ForegroundTransitionGraceMilliseconds;
+    }
+
+    private void ResetTransitionGrace()
+    {
+        _transitionStartedAt = -1;
     }
 
     private bool IsTargetForeground()
@@ -248,5 +268,34 @@ internal sealed class MagnifierOverlay : Form
         var foreground = NativeMethods.GetForegroundWindow();
         foreground = NativeMethods.GetAncestor(foreground, NativeMethods.GaRoot);
         return foreground == TargetHandle;
+    }
+
+    private static nint ValidateTarget(nint targetHandle)
+    {
+        return targetHandle != nint.Zero
+            ? targetHandle
+            : throw new ArgumentException(
+                "A target window is required.",
+                nameof(targetHandle));
+    }
+
+    private static string NormalizeTransformId(string transformId)
+    {
+        return !string.IsNullOrWhiteSpace(transformId)
+            ? transformId.Trim()
+            : throw new ArgumentException(
+                "A transform identifier is required.",
+                nameof(transformId));
+    }
+
+    private static OverlayScope ValidateOverlayScope(
+        OverlayScope overlayScope)
+    {
+        return OverlayScopePolicy.IsSupported(overlayScope)
+            ? overlayScope
+            : throw new ArgumentOutOfRangeException(
+                nameof(overlayScope),
+                overlayScope,
+                "The overlay scope is not supported.");
     }
 }
