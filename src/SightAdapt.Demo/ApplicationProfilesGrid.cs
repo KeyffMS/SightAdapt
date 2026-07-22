@@ -147,8 +147,6 @@ internal sealed class ApplicationProfilesGrid : UserControl
         }
     }
 
-    internal DataGridView Grid => _grid;
-
     private DataGridView CreateGrid()
     {
         var grid = new DataGridView
@@ -210,7 +208,12 @@ internal sealed class ApplicationProfilesGrid : UserControl
         grid.CellValueChanged += GridCellValueChanged;
         grid.CurrentCellDirtyStateChanged += GridCurrentCellDirtyStateChanged;
         grid.SelectionChanged += (_, _) =>
-            SelectedApplicationChanged?.Invoke(this, EventArgs.Empty);
+        {
+            if (!_binding)
+            {
+                SelectedApplicationChanged?.Invoke(this, EventArgs.Empty);
+            }
+        };
         grid.DataError += GridDataError;
         return grid;
     }

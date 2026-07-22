@@ -149,15 +149,21 @@ public sealed class ArchitectureComplianceTests
     }
 
     [TestMethod]
-    public void StableComboColumnOwnsModernSelectorAndStatusPainting()
+    public void ProfileGridOwnsStatusPaintingAndComboColumnOwnsSelector()
     {
-        var source = ReadSource("VisualProfileComboBoxColumn.cs");
-        StringAssert.Contains(source, "StableVisualProfileComboBoxColumn");
-        StringAssert.Contains(source, "public void SetProfiles");
-        StringAssert.Contains(source, "ModernVisualProfileComboBoxCell");
-        StringAssert.Contains(source, "GridCellPainting");
-        StringAssert.Contains(source, "AppTheme.Success");
-        Assert.IsFalse(source.Contains("new object? DataSource", StringComparison.Ordinal));
+        var selector = ReadSource("VisualProfileComboBoxColumn.cs");
+        var grid = ReadSource("ApplicationProfilesGrid.cs");
+
+        StringAssert.Contains(selector, "StableVisualProfileComboBoxColumn");
+        StringAssert.Contains(selector, "public void SetProfiles");
+        StringAssert.Contains(selector, "ModernVisualProfileComboBoxCell");
+        Assert.IsFalse(selector.Contains("GridCellPainting", StringComparison.Ordinal));
+        Assert.IsFalse(selector.Contains("new object? DataSource", StringComparison.Ordinal));
+
+        StringAssert.Contains(grid, "internal sealed class ApplicationProfilesGrid");
+        StringAssert.Contains(grid, "GridCellPainting");
+        StringAssert.Contains(grid, "EnabledColumnName");
+        StringAssert.Contains(grid, "AppTheme.Success");
     }
 
     [TestMethod]
@@ -319,12 +325,21 @@ public sealed class ArchitectureComplianceTests
     }
 
     [TestMethod]
-    public void ConfigurationFormOwnsItsGridRefreshBoundary()
+    public void ConfigurationFormOwnsTransactionsAndGridOwnsPresentation()
     {
-        var source = ReadSource("ConfigurationForm.cs");
-        StringAssert.Contains(source, "private bool _committingGridValue;");
-        StringAssert.Contains(source, "if (_committingGridValue)");
-        StringAssert.Contains(source, "row.Tag = FindAssignment(Settings, executablePath);");
+        var form = ReadSource("ConfigurationForm.cs");
+        var grid = ReadSource("ApplicationProfilesGrid.cs");
+
+        StringAssert.Contains(form, "private bool _committingGridValue;");
+        StringAssert.Contains(form, "if (_committingGridValue)");
+        StringAssert.Contains(form, "_profilesGrid.UpdateApplication");
+        StringAssert.Contains(form, "_profilesGrid.RestoreValue");
+        Assert.IsFalse(form.Contains("Rows.Clear()", StringComparison.Ordinal));
+
+        StringAssert.Contains(grid, "_grid.Rows.Clear();");
+        StringAssert.Contains(grid, "row.Tag = application.ExecutablePath;");
+        StringAssert.Contains(grid, "public string? SelectedExecutablePath");
+        Assert.IsFalse(grid.Contains("SettingsCoordinator", StringComparison.Ordinal));
     }
 
     private static void AssertPatternRestrictedTo(

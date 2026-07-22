@@ -67,7 +67,7 @@ public sealed class ConfigurationGridCommitRegressionTests
             Application.DoEvents();
 
             var profilesGrid = FindControl<ApplicationProfilesGrid>(form);
-            var grid = profilesGrid.Grid;
+            var grid = FindControl<DataGridView>(profilesGrid);
             Assert.AreEqual(1, grid.Rows.Count);
             Assert.AreEqual(identity.ExecutablePath, grid.Rows[0].Tag);
 
@@ -130,7 +130,8 @@ public sealed class ConfigurationGridCommitRegressionTests
             form.Show();
             Application.DoEvents();
 
-            var grid = FindControl<ApplicationProfilesGrid>(form).Grid;
+            var grid = FindControl<DataGridView>(
+                FindControl<ApplicationProfilesGrid>(form));
             Assert.AreEqual(1, grid.Rows.Count);
 
             Assert.IsTrue(coordinator.Commit(settings =>

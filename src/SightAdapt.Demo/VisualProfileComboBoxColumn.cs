@@ -430,7 +430,7 @@ internal sealed class ModernVisualProfileEditingControl :
     {
         if (_list.SelectedItem is VisualProfileOption option)
         {
-            SelectOption(option, notifyGrid: true);
+            SelectOptionFromInput(option);
         }
 
         _dropDown.Close();
@@ -466,7 +466,7 @@ internal sealed class ModernVisualProfileEditingControl :
             currentIndex + direction,
             0,
             _options.Length - 1);
-        SelectOption(_options[nextIndex], notifyGrid: true);
+        SelectOptionFromInput(_options[nextIndex]);
     }
 
     internal void SelectOptionFromInput(VisualProfileOption option)
