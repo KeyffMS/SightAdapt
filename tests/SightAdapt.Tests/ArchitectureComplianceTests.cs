@@ -342,6 +342,24 @@ public sealed class ArchitectureComplianceTests
         Assert.IsFalse(grid.Contains("SettingsCoordinator", StringComparison.Ordinal));
     }
 
+    [TestMethod]
+    public void OverlayScopeHasOneModelAndOneGeometryAuthority()
+    {
+        var model = ReadSource("ApplicationProfile.cs");
+        var grid = ReadSource("ApplicationProfilesGrid.cs");
+        var resolver = ReadSource("OverlayBoundsResolver.cs");
+        var form = ReadSource("ConfigurationForm.cs");
+
+        StringAssert.Contains(model, "OverlayScopeId");
+        StringAssert.Contains(model, "public OverlayScope OverlayScope");
+        StringAssert.Contains(grid, "OverlayScopeColumnName");
+        StringAssert.Contains(form, "SetOverlayScope");
+        StringAssert.Contains(resolver, "OverlayScope.ClientArea");
+        StringAssert.Contains(resolver, "OverlayScope.AllScreens");
+        Assert.IsFalse(grid.Contains("SettingsCoordinator", StringComparison.Ordinal));
+        Assert.IsFalse(resolver.Contains("SettingsCoordinator", StringComparison.Ordinal));
+    }
+
     private static void AssertPatternRestrictedTo(
         string pattern,
         params string[] allowedFiles)

@@ -542,6 +542,13 @@ internal sealed class ConfigurationForm : Form
                             settings,
                             FindAssignment(settings, eventArgs.ExecutablePath),
                             visualProfileId)),
+                ApplicationProfileGridColumn.OverlayScope
+                    when eventArgs.Value is string overlayScopeId =>
+                    _settingsCoordinator.Commit(settings =>
+                        ApplicationProfileManagementService.SetOverlayScope(
+                            settings,
+                            FindAssignment(settings, eventArgs.ExecutablePath),
+                            OverlayScopePolicy.ParseRequired(overlayScopeId))),
                 _ => SettingsCommitResult.Failure(
                     "The edited application-profile value is not supported."),
             };
@@ -557,9 +564,17 @@ internal sealed class ConfigurationForm : Form
             _profilesGrid.RestoreValue(
                 eventArgs.ExecutablePath,
                 eventArgs.Column,
-                eventArgs.Column == ApplicationProfileGridColumn.Enabled
-                    ? displayedProfile.Enabled
-                    : displayedProfile.VisualProfileId);
+                eventArgs.Column switch
+                {
+                    ApplicationProfileGridColumn.Enabled =>
+                        displayedProfile.Enabled,
+                    ApplicationProfileGridColumn.VisualProfile =>
+                        displayedProfile.VisualProfileId,
+                    ApplicationProfileGridColumn.OverlayScope =>
+                        displayedProfile.OverlayScopeId,
+                    _ => throw new ArgumentOutOfRangeException(
+                        nameof(eventArgs.Column)),
+                });
             return;
         }
 

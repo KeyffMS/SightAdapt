@@ -344,6 +344,16 @@ internal sealed class ApplicationProfilesGrid : UserControl
                     ApplicationProfileGridColumn.VisualProfile,
                     profileId));
         }
+        else if (columnName == OverlayScopeColumnName &&
+                 row.Cells[eventArgs.ColumnIndex].Value is string scopeId)
+        {
+            ValueChanged?.Invoke(
+                this,
+                new ApplicationProfileGridValueChangedEventArgs(
+                    executablePath,
+                    ApplicationProfileGridColumn.OverlayScope,
+                    scopeId));
+        }
     }
 
     private static void GridDataError(
@@ -459,6 +469,7 @@ internal sealed class ApplicationProfilesGrid : UserControl
         {
             ApplicationProfileGridColumn.Enabled => EnabledColumnName,
             ApplicationProfileGridColumn.VisualProfile => VisualProfileColumnName,
+            ApplicationProfileGridColumn.OverlayScope => OverlayScopeColumnName,
             _ => throw new ArgumentOutOfRangeException(nameof(column)),
         };
     }

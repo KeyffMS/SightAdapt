@@ -18,6 +18,12 @@ public sealed class ConfigurationGridCommitRegressionTests
         RunOnSta(RunExternalChangeScenario);
     }
 
+    [TestMethod]
+    public void OverlayScopeSelectionCommitsOnlySelectedApplication()
+    {
+        RunOnSta(RunOverlayScopeSelectionScenario);
+    }
+
     private static void RunOnSta(Action scenario)
     {
         Exception? failure = null;
@@ -156,6 +162,76 @@ public sealed class ConfigurationGridCommitRegressionTests
                     .Cast<DataGridViewRow>()
                     .Select(row => (string)row.Tag!)
                     .ToArray());
+            form.Close();
+        }
+        finally
+        {
+            DeleteTemporaryDirectory(directory);
+        }
+    }
+
+    private static void RunOverlayScopeSelectionScenario()
+    {
+        var directory = CreateTemporaryDirectory();
+        try
+        {
+            var coordinator = CreateCoordinator(directory);
+            var reader = new ApplicationIdentity(
+                "Reader",
+                "reader.exe",
+                @"C:\Appseader.exe");
+            var writer = new ApplicationIdentity(
+                "Writer",
+                "writer.exe",
+                @"C:\Apps\writer.exe");
+            Assert.IsTrue(coordinator.Commit(settings =>
+            {
+                ApplicationProfileManagementService.AddOrEnable(settings, reader);
+                ApplicationProfileManagementService.AddOrEnable(settings, writer);
+            }).Succeeded);
+
+            using var form = new ConfigurationForm(coordinator, () => null);
+            form.Show();
+            Application.DoEvents();
+
+            var grid = FindControl<DataGridView>(
+                FindControl<ApplicationProfilesGrid>(form));
+            var readerRow = grid.Rows
+                .Cast<DataGridViewRow>()
+                .Single(row => string.Equals(
+                    row.Tag as string,
+                    reader.ExecutablePath,
+                    StringComparison.OrdinalIgnoreCase));
+            var scopeCell = readerRow.Cells["OverlayScope"];
+            grid.CurrentCell = scopeCell;
+            grid.Focus();
+            Assert.IsTrue(grid.BeginEdit(true));
+            Assert.IsInstanceOfType<ModernSelectorEditingControl>(
+                grid.EditingControl);
+
+            var editor = (ModernSelectorEditingControl)grid.EditingControl;
+            var option = ((DataGridViewComboBoxCell)scopeCell)
+                .Items
+                .Cast<object>()
+                .OfType<ModernSelectorOption>()
+                .Single(candidate => candidate.Id == "screen");
+            editor.SelectOptionFromInput(option);
+
+            WaitFor(() => coordinator.Current.Applications
+                .Single(profile => profile.Matches(reader))
+                .OverlayScope == OverlayScope.Screen);
+
+            Assert.AreEqual(
+                OverlayScope.Screen,
+                coordinator.Current.Applications
+                    .Single(profile => profile.Matches(reader))
+                    .OverlayScope);
+            Assert.AreEqual(
+                OverlayScope.ClientArea,
+                coordinator.Current.Applications
+                    .Single(profile => profile.Matches(writer))
+                    .OverlayScope);
+            Assert.AreEqual("screen", scopeCell.Value);
             form.Close();
         }
         finally
