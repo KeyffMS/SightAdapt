@@ -104,6 +104,17 @@ Replace-Exact 'src/SightAdapt/VisualProfilePolicy.cs' `
 Replace-Exact 'src/SightAdapt/VisualProfileManagerForm.cs' `
     'VisualTransformCatalog.GetDisplayName(profile.TransformId)' `
     'VisualTransformCatalog.Default.GetDisplayName(profile.TransformId)'
+Replace-Exact 'tests/SightAdapt.Tests/VisualProfileTests.cs' `
+    'VisualTransformCatalog.IsSupported(' `
+    'VisualTransformCatalog.Default.IsSupported(' `
+    3
+Replace-Exact 'tests/SightAdapt.Tests/VisualProfileTests.cs' `
+    'VisualTransformCatalog.SupportsTuning(' `
+    'VisualTransformCatalog.Default.SupportsTuning(' `
+    2
+Replace-Exact 'tests/SightAdapt.Tests/VisualProfileTests.cs' `
+    'VisualTransformCatalog.GetDisplayName(' `
+    'VisualTransformCatalog.Default.GetDisplayName('
 Replace-Exact 'tests/SightAdapt.Tests/ArchitectureComplianceTests.cs' `
     'StringAssert.Contains(model, "VisualTransformCatalog.SupportsTuning");' `
     'StringAssert.Contains(model, "VisualTransformCatalog.Default.SupportsTuning");'
