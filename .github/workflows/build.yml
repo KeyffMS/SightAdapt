@@ -2,9 +2,9 @@ name: Build and test SightAdapt
 
 on:
   push:
-    branches: [main, "agent/**"]
+    branches: [main, "release/**"]
   pull_request:
-    branches: [main, "agent/**"]
+    branches: [main]
 
 permissions:
   contents: read
@@ -23,7 +23,7 @@ jobs:
           dotnet-version: 8.0.x
 
       - name: Restore application
-        run: dotnet restore src/SightAdapt.Demo/SightAdapt.Demo.csproj
+        run: dotnet restore src/SightAdapt/SightAdapt.csproj
 
       - name: Restore tests
         run: dotnet restore tests/SightAdapt.Tests/SightAdapt.Tests.csproj
@@ -31,7 +31,7 @@ jobs:
       - name: Build
         shell: pwsh
         run: |
-          $output = & dotnet build src/SightAdapt.Demo/SightAdapt.Demo.csproj --configuration Release --no-restore 2>&1
+          $output = & dotnet build src/SightAdapt/SightAdapt.csproj --configuration Release --no-restore 2>&1
           $exitCode = $LASTEXITCODE
           $output | Set-Content -Path build-output.txt -Encoding utf8
           $output | ForEach-Object { Write-Host $_ }
@@ -59,7 +59,7 @@ jobs:
 
       - name: Publish self-contained alpha
         run: >-
-          dotnet publish src/SightAdapt.Demo/SightAdapt.Demo.csproj
+          dotnet publish src/SightAdapt/SightAdapt.csproj
           --configuration Release
           --runtime win-x64
           --self-contained true
@@ -69,6 +69,6 @@ jobs:
       - name: Upload Windows alpha
         uses: actions/upload-artifact@v4
         with:
-          name: SightAdapt-0.4-Alpha-win-x64
+          name: SightAdapt-0.5-Alpha-win-x64
           path: artifacts/win-x64/
           if-no-files-found: error
