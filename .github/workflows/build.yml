@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   apply-issue-8:
-    if: ${{ github.actor != 'github-actions[bot]' && github.ref == 'refs/heads/agent/issue-8-overlay-scope-per-app-v0.4' }}
+    if: ${{ github.actor != 'github-actions[bot]' }}
     runs-on: ubuntu-latest
 
     steps:
