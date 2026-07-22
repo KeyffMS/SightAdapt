@@ -1,5 +1,9 @@
 # Overlay scope per application — 0.4B.1
 
+## Status
+
+Implementation complete on `agent/issue-8-overlay-scope-per-app-v0.4`. Automated validation and local Windows acceptance determine final completion of issue #8.
+
 ## Persisted model
 
 Every `ApplicationProfile` stores one normalized `overlayScope` identifier. Existing and invalid values recover to `client-area` during deserialization. Settings schema version 4 records the new model.
