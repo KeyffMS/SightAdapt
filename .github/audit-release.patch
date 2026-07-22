@@ -2,7 +2,7 @@ diff --git a/src/SightAdapt/VisualTransforms.cs b/src/SightAdapt/VisualTransform
 index e57bea8..0000000 100644
 --- a/src/SightAdapt/VisualTransforms.cs
 +++ b/src/SightAdapt/VisualTransforms.cs
-@@ -110,48 +110,28 @@ internal sealed class VisualTransformCatalog
+@@ -110,48 +110,30 @@ internal sealed class VisualTransformCatalog
              definition => definition.Id,
              StringComparer.OrdinalIgnoreCase);
  
@@ -99,7 +99,7 @@ diff --git a/src/SightAdapt/ApplicationProfile.cs b/src/SightAdapt/ApplicationPr
 index 4422413..0000000 100644
 --- a/src/SightAdapt/ApplicationProfile.cs
 +++ b/src/SightAdapt/ApplicationProfile.cs
-@@ -162,8 +162,8 @@ internal sealed class VisualProfile
+@@ -162,7 +162,7 @@ internal sealed class VisualProfile
  
      [JsonIgnore]
      public bool SupportsTuning =>
@@ -112,7 +112,7 @@ diff --git a/src/SightAdapt/VisualProfilePolicy.cs b/src/SightAdapt/VisualProfil
 index 858f65a..0000000 100644
 --- a/src/SightAdapt/VisualProfilePolicy.cs
 +++ b/src/SightAdapt/VisualProfilePolicy.cs
-@@ -31,8 +31,8 @@ internal static class VisualProfilePolicy
+@@ -31,6 +31,6 @@ internal static class VisualProfilePolicy
          string? transformId)
      {
 -        return VisualTransformCatalog.IsSupported(
@@ -124,7 +124,7 @@ diff --git a/src/SightAdapt/VisualProfileManagerForm.cs b/src/SightAdapt/VisualP
 index 27d33fc..0000000 100644
 --- a/src/SightAdapt/VisualProfileManagerForm.cs
 +++ b/src/SightAdapt/VisualProfileManagerForm.cs
-@@ -295,7 +295,7 @@ internal sealed class VisualProfileManagerForm : Form
+@@ -295,5 +295,5 @@ internal sealed class VisualProfileManagerForm : Form
                  profile.Name,
                  VisualProfileManagementService.IsBuiltIn(profile) ? "Built-in" : "User-defined",
 -                VisualTransformCatalog.GetDisplayName(profile.TransformId),
@@ -151,7 +151,7 @@ new file mode 100644
 index 0000000..9b6374b
 --- /dev/null
 +++ b/tests/SightAdapt.Tests/VisualTransformCatalogTests.cs
-@@ -0,0 +1,46 @@
+@@ -0,0 +1,45 @@
 +using Microsoft.VisualStudio.TestTools.UnitTesting;
 +
 +namespace SightAdapt.Tests;
