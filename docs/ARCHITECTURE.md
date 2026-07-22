@@ -106,7 +106,7 @@ The current backend uses the same rectangle for the magnifier source and overlay
 
 ## Configuration grid boundary
 
-`ApplicationProfilesGrid` owns columns, rows, selectors, status painting, selection, empty state, stable executable-path keys, typed value-change events, row updates, and failed-cell restoration. It does not know about persistence or dialogs.
+`ApplicationProfilesGrid` owns columns, rows, selectors, status painting, selection, empty state, stable executable-path keys, separate typed change events, row updates, and failed-cell restoration. It does not know about persistence or dialogs.
 
 `ConfigurationForm` resolves current committed assignments and translates typed grid events into domain-service mutations wrapped by `SettingsCoordinator.Commit`. It suppresses only its own synchronous full refresh during a grid-originated commit.
 

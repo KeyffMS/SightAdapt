@@ -3,31 +3,55 @@ using System.Drawing.Drawing2D;
 
 namespace SightAdapt;
 
-internal enum ApplicationProfileGridColumn
+internal sealed class ApplicationProfileEnabledChangedEventArgs(
+    string executablePath,
+    bool enabled) : EventArgs
 {
-    Enabled,
-    VisualProfile,
-    OverlayScope,
+    public string ExecutablePath { get; } =
+        !string.IsNullOrWhiteSpace(executablePath)
+            ? executablePath
+            : throw new ArgumentException(
+                "An executable path is required.",
+                nameof(executablePath));
+
+    public bool Enabled { get; } = enabled;
 }
 
-internal sealed class ApplicationProfileGridValueChangedEventArgs : EventArgs
+internal sealed class ApplicationProfileVisualProfileChangedEventArgs(
+    string executablePath,
+    string visualProfileId) : EventArgs
 {
-    public ApplicationProfileGridValueChangedEventArgs(
-        string executablePath,
-        ApplicationProfileGridColumn column,
-        object value)
-    {
-        ExecutablePath = executablePath ??
-            throw new ArgumentNullException(nameof(executablePath));
-        Column = column;
-        Value = value ?? throw new ArgumentNullException(nameof(value));
-    }
+    public string ExecutablePath { get; } =
+        !string.IsNullOrWhiteSpace(executablePath)
+            ? executablePath
+            : throw new ArgumentException(
+                "An executable path is required.",
+                nameof(executablePath));
 
-    public string ExecutablePath { get; }
+    public string VisualProfileId { get; } =
+        !string.IsNullOrWhiteSpace(visualProfileId)
+            ? visualProfileId
+            : throw new ArgumentException(
+                "A visual profile identifier is required.",
+                nameof(visualProfileId));
+}
 
-    public ApplicationProfileGridColumn Column { get; }
+internal sealed class ApplicationProfileOverlayScopeChangedEventArgs(
+    string executablePath,
+    OverlayScope overlayScope) : EventArgs
+{
+    public string ExecutablePath { get; } =
+        !string.IsNullOrWhiteSpace(executablePath)
+            ? executablePath
+            : throw new ArgumentException(
+                "An executable path is required.",
+                nameof(executablePath));
 
-    public object Value { get; }
+    public OverlayScope OverlayScope { get; } =
+        OverlayScopePolicy.IsSupported(overlayScope)
+            ? overlayScope
+            : throw new ArgumentOutOfRangeException(
+                nameof(overlayScope));
 }
 
 internal sealed class ApplicationProfilesGrid : UserControl
@@ -55,7 +79,11 @@ internal sealed class ApplicationProfilesGrid : UserControl
         Controls.Add(_emptyStateLabel);
     }
 
-    public event EventHandler<ApplicationProfileGridValueChangedEventArgs>? ValueChanged;
+    public event EventHandler<ApplicationProfileEnabledChangedEventArgs>? ApplicationEnabledChanged;
+
+    public event EventHandler<ApplicationProfileVisualProfileChangedEventArgs>? VisualProfileChanged;
+
+    public event EventHandler<ApplicationProfileOverlayScopeChangedEventArgs>? OverlayScopeChanged;
 
     public event EventHandler? SelectedApplicationChanged;
 
@@ -127,30 +155,6 @@ internal sealed class ApplicationProfilesGrid : UserControl
         }
     }
 
-    public void RestoreValue(
-        string executablePath,
-        ApplicationProfileGridColumn column,
-        object value)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(executablePath);
-        ArgumentNullException.ThrowIfNull(value);
-
-        var row = FindRow(executablePath);
-        if (row is null)
-        {
-            return;
-        }
-
-        _binding = true;
-        try
-        {
-            row.Cells[GetColumnName(column)].Value = value;
-        }
-        finally
-        {
-            _binding = false;
-        }
-    }
 
     private DataGridView CreateGrid()
     {
@@ -327,32 +331,29 @@ internal sealed class ApplicationProfilesGrid : UserControl
         if (columnName == EnabledColumnName &&
             row.Cells[eventArgs.ColumnIndex].Value is bool enabled)
         {
-            ValueChanged?.Invoke(
+            ApplicationEnabledChanged?.Invoke(
                 this,
-                new ApplicationProfileGridValueChangedEventArgs(
+                new ApplicationProfileEnabledChangedEventArgs(
                     executablePath,
-                    ApplicationProfileGridColumn.Enabled,
                     enabled));
         }
         else if (columnName == VisualProfileColumnName &&
                  row.Cells[eventArgs.ColumnIndex].Value is string profileId)
         {
-            ValueChanged?.Invoke(
+            VisualProfileChanged?.Invoke(
                 this,
-                new ApplicationProfileGridValueChangedEventArgs(
+                new ApplicationProfileVisualProfileChangedEventArgs(
                     executablePath,
-                    ApplicationProfileGridColumn.VisualProfile,
                     profileId));
         }
         else if (columnName == OverlayScopeColumnName &&
                  row.Cells[eventArgs.ColumnIndex].Value is string scopeId)
         {
-            ValueChanged?.Invoke(
+            OverlayScopeChanged?.Invoke(
                 this,
-                new ApplicationProfileGridValueChangedEventArgs(
+                new ApplicationProfileOverlayScopeChangedEventArgs(
                     executablePath,
-                    ApplicationProfileGridColumn.OverlayScope,
-                    scopeId));
+                    OverlayScopePolicy.ParseRequired(scopeId)));
         }
     }
 
@@ -463,14 +464,5 @@ internal sealed class ApplicationProfilesGrid : UserControl
         };
     }
 
-    private static string GetColumnName(ApplicationProfileGridColumn column)
-    {
-        return column switch
-        {
-            ApplicationProfileGridColumn.Enabled => EnabledColumnName,
-            ApplicationProfileGridColumn.VisualProfile => VisualProfileColumnName,
-            ApplicationProfileGridColumn.OverlayScope => OverlayScopeColumnName,
-            _ => throw new ArgumentOutOfRangeException(nameof(column)),
-        };
-    }
+
 }

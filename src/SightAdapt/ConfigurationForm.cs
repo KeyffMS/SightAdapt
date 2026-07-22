@@ -49,7 +49,9 @@ internal sealed class ConfigurationForm : Form
             EditSelectedVisualProfile);
         _editVisualProfileButton.Enabled = false;
         _profilesGrid = new ApplicationProfilesGrid();
-        _profilesGrid.ValueChanged += ProfilesGridValueChanged;
+        _profilesGrid.ApplicationEnabledChanged += ProfilesGridEnabledChanged;
+        _profilesGrid.VisualProfileChanged += ProfilesGridVisualProfileChanged;
+        _profilesGrid.OverlayScopeChanged += ProfilesGridOverlayScopeChanged;
         _profilesGrid.SelectedApplicationChanged += (_, _) =>
             UpdateSelectedProfileActions();
 
@@ -514,44 +516,64 @@ internal sealed class ConfigurationForm : Form
             : AppTheme.TextSecondary;
     }
 
-    private void ProfilesGridValueChanged(
+    private void ProfilesGridEnabledChanged(
         object? sender,
-        ApplicationProfileGridValueChangedEventArgs eventArgs)
+        ApplicationProfileEnabledChangedEventArgs eventArgs)
     {
+        CommitGridChange(
+            eventArgs.ExecutablePath,
+            (settings, profile) =>
+                ApplicationProfileManagementService.SetEnabled(
+                    settings,
+                    profile,
+                    eventArgs.Enabled));
+    }
+
+    private void ProfilesGridVisualProfileChanged(
+        object? sender,
+        ApplicationProfileVisualProfileChangedEventArgs eventArgs)
+    {
+        CommitGridChange(
+            eventArgs.ExecutablePath,
+            (settings, profile) =>
+                ApplicationProfileManagementService.AssignVisualProfile(
+                    settings,
+                    profile,
+                    eventArgs.VisualProfileId));
+    }
+
+    private void ProfilesGridOverlayScopeChanged(
+        object? sender,
+        ApplicationProfileOverlayScopeChangedEventArgs eventArgs)
+    {
+        CommitGridChange(
+            eventArgs.ExecutablePath,
+            (settings, profile) =>
+                ApplicationProfileManagementService.SetOverlayScope(
+                    settings,
+                    profile,
+                    eventArgs.OverlayScope));
+    }
+
+    private void CommitGridChange(
+        string executablePath,
+        Action<SightAdaptSettings, ApplicationProfile> mutation)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(executablePath);
+        ArgumentNullException.ThrowIfNull(mutation);
+
         var displayedProfile = FindAssignment(
             Settings,
-            eventArgs.ExecutablePath);
+            executablePath);
         SettingsCommitResult result;
 
         _committingGridValue = true;
         try
         {
-            result = eventArgs.Column switch
-            {
-                ApplicationProfileGridColumn.Enabled
-                    when eventArgs.Value is bool enabled =>
-                    _settingsCoordinator.Commit(settings =>
-                        ApplicationProfileManagementService.SetEnabled(
-                            settings,
-                            FindAssignment(settings, eventArgs.ExecutablePath),
-                            enabled)),
-                ApplicationProfileGridColumn.VisualProfile
-                    when eventArgs.Value is string visualProfileId =>
-                    _settingsCoordinator.Commit(settings =>
-                        ApplicationProfileManagementService.AssignVisualProfile(
-                            settings,
-                            FindAssignment(settings, eventArgs.ExecutablePath),
-                            visualProfileId)),
-                ApplicationProfileGridColumn.OverlayScope
-                    when eventArgs.Value is string overlayScopeId =>
-                    _settingsCoordinator.Commit(settings =>
-                        ApplicationProfileManagementService.SetOverlayScope(
-                            settings,
-                            FindAssignment(settings, eventArgs.ExecutablePath),
-                            OverlayScopePolicy.ParseRequired(overlayScopeId))),
-                _ => SettingsCommitResult.Failure(
-                    "The edited application-profile value is not supported."),
-            };
+            result = _settingsCoordinator.Commit(settings =>
+                mutation(
+                    settings,
+                    FindAssignment(settings, executablePath)));
         }
         finally
         {
@@ -561,26 +583,13 @@ internal sealed class ConfigurationForm : Form
         if (!result.Succeeded)
         {
             ShowCommitError(result.ErrorMessage);
-            _profilesGrid.RestoreValue(
-                eventArgs.ExecutablePath,
-                eventArgs.Column,
-                eventArgs.Column switch
-                {
-                    ApplicationProfileGridColumn.Enabled =>
-                        displayedProfile.Enabled,
-                    ApplicationProfileGridColumn.VisualProfile =>
-                        displayedProfile.VisualProfileId,
-                    ApplicationProfileGridColumn.OverlayScope =>
-                        displayedProfile.OverlayScopeId,
-                    _ => throw new ArgumentOutOfRangeException(
-                        nameof(eventArgs.Column)),
-                });
+            _profilesGrid.UpdateApplication(displayedProfile);
             return;
         }
 
         _profilesGrid.UpdateApplication(FindAssignment(
             Settings,
-            eventArgs.ExecutablePath));
+            executablePath));
         UpdateSelectedProfileActions();
     }
 

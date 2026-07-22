@@ -333,12 +333,16 @@ public sealed class ArchitectureComplianceTests
         StringAssert.Contains(form, "private bool _committingGridValue;");
         StringAssert.Contains(form, "if (_committingGridValue)");
         StringAssert.Contains(form, "_profilesGrid.UpdateApplication");
-        StringAssert.Contains(form, "_profilesGrid.RestoreValue");
+        Assert.IsFalse(form.Contains("_profilesGrid.RestoreValue", StringComparison.Ordinal));
         Assert.IsFalse(form.Contains("Rows.Clear()", StringComparison.Ordinal));
 
         StringAssert.Contains(grid, "_grid.Rows.Clear();");
         StringAssert.Contains(grid, "row.Tag = application.ExecutablePath;");
         StringAssert.Contains(grid, "public string? SelectedExecutablePath");
+        StringAssert.Contains(grid, "ApplicationProfileEnabledChangedEventArgs");
+        StringAssert.Contains(grid, "ApplicationProfileVisualProfileChangedEventArgs");
+        StringAssert.Contains(grid, "ApplicationProfileOverlayScopeChangedEventArgs");
+        Assert.IsFalse(grid.Contains("object Value", StringComparison.Ordinal));
         Assert.IsFalse(grid.Contains("SettingsCoordinator", StringComparison.Ordinal));
     }
 
