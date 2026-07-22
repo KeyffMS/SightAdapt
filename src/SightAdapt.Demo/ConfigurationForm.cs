@@ -436,7 +436,7 @@ internal sealed class ConfigurationForm : Form
         };
     }
 
-    private static Label CreateInfoLabel(    private static Label CreateInfoLabel(string text, FontStyle style)
+    private static Label CreateInfoLabel(string text, FontStyle style)
     {
         return new Label
         {
@@ -449,7 +449,6 @@ internal sealed class ConfigurationForm : Form
         };
     }
 
-    private static ModernButton CreateButton(
     private static ModernButton CreateButton(
         string text,
         ModernButtonStyle style,
@@ -571,7 +570,6 @@ internal sealed class ConfigurationForm : Form
     }
 
     private void UpdateSelectedProfileActions()
-    private void UpdateSelectedProfileActions()
     {
         var assignment = GetSelectedApplicationProfile();
         var visualProfile = assignment is null
@@ -644,7 +642,6 @@ internal sealed class ConfigurationForm : Form
                 StringComparison.OrdinalIgnoreCase));
     }
 
-    private void AddCurrentApplication()
     private void AddCurrentApplication()
     {
         var identity = _getCurrentApplication();

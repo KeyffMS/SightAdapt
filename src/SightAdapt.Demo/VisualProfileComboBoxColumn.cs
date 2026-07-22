@@ -56,7 +56,6 @@ internal sealed class StableVisualProfileComboBoxColumn :
             (StableVisualProfileComboBoxColumn)
             base.Clone();
         clone._options = _options.ToArray();
-        clone._attachedGrid = null;
         clone.DisplayMember = nameof(VisualProfileOption.Name);
         clone.ValueMember = nameof(VisualProfileOption.Id);
         clone.ValueType = typeof(string);
@@ -72,7 +71,7 @@ internal sealed class StableVisualProfileComboBoxColumn :
 
 }
 
-internal sealed class ModernVisualProfileComboBoxCellinternal sealed class ModernVisualProfileComboBoxCell :
+internal sealed class ModernVisualProfileComboBoxCell :
     DataGridViewComboBoxCell
 {
     public ModernVisualProfileComboBoxCell()
