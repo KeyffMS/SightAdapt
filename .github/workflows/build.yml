@@ -1,0 +1,74 @@
+name: Build and test SightAdapt
+
+on:
+  push:
+    branches: [main, "release/**"]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Restore application
+        run: dotnet restore src/SightAdapt/SightAdapt.csproj
+
+      - name: Restore tests
+        run: dotnet restore tests/SightAdapt.Tests/SightAdapt.Tests.csproj
+
+      - name: Build
+        shell: pwsh
+        run: |
+          $output = & dotnet build src/SightAdapt/SightAdapt.csproj --configuration Release --no-restore 2>&1
+          $exitCode = $LASTEXITCODE
+          $output | Set-Content -Path build-output.txt -Encoding utf8
+          $output | ForEach-Object { Write-Host $_ }
+          exit $exitCode
+
+      - name: Test
+        shell: pwsh
+        run: |
+          $output = & dotnet test tests/SightAdapt.Tests/SightAdapt.Tests.csproj --configuration Release --no-restore 2>&1
+          $exitCode = $LASTEXITCODE
+          $output | Set-Content -Path test-output.txt -Encoding utf8
+          $output | ForEach-Object { Write-Host $_ }
+          exit $exitCode
+
+      - name: Upload build diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: SightAdapt-build-diagnostics
+          path: |
+            build-output.txt
+            test-output.txt
+          if-no-files-found: warn
+          retention-days: 7
+
+      - name: Publish self-contained alpha
+        run: >-
+          dotnet publish src/SightAdapt/SightAdapt.csproj
+          --configuration Release
+          --runtime win-x64
+          --self-contained true
+          -p:PublishSingleFile=true
+          --output artifacts/win-x64
+
+      - name: Upload Windows alpha
+        uses: actions/upload-artifact@v4
+        with:
+          name: SightAdapt-0.5-Alpha-win-x64
+          path: artifacts/win-x64/
+          if-no-files-found: error
