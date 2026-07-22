@@ -136,7 +136,7 @@ jobs:
           }
 
           git fetch --tags --force
-          $existingTag = (git tag --list $version).Trim()
+          [string]$existingTag = git tag --list $version
           if (-not [string]::IsNullOrWhiteSpace($existingTag)) {
             throw "Tag $version already exists."
           }
