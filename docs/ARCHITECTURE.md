@@ -73,7 +73,7 @@ A failed mutation or failed write does not replace committed settings and does n
 | Runtime mode, target, active profile, suppression, and message | `ApplicationStateController.Current` |
 | Actual overlay resource and target | `OverlayController` and active `MagnifierOverlay` |
 | Per-application overlay scope | `ApplicationProfile.OverlayScopeId` |
-| Scope identifiers, default, and display names | `OverlayScopePolicy` |
+| Scope enum values, canonical identifiers, aliases, default, and display names | `OverlayScopePolicy` definition table |
 | Profile IDs, fallback, user-ID, and name rules | `VisualProfilePolicy` |
 | Canonical profile values | `VisualProfileDefaults` |
 | Supported transforms and tuning capability | `VisualTransformCatalog` |
