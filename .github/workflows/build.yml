@@ -25,7 +25,22 @@ jobs:
         run: python tools/issue8_model_runtime.py
 
       - name: Apply UI and regression changes
-        run: python tools/issue8_ui_tests.py
+        id: ui_transform
+        continue-on-error: true
+        run: python tools/issue8_ui_tests.py 2>&1 | tee issue8-transform.log
+
+      - name: Upload transform diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: SightAdapt-issue8-transform-diagnostics
+          path: issue8-transform.log
+          if-no-files-found: warn
+          retention-days: 7
+
+      - name: Stop after transform failure
+        if: steps.ui_transform.outcome == 'failure'
+        run: exit 1
 
       - name: Restore normal workflow and remove temporary automation
         run: |
