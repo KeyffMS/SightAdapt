@@ -1,5 +1,0 @@
-{
-  "version": "0.5.0.21",
-  "issue": 21,
-  "title": "Extract runtime orchestration from SightAdaptContext"
-}

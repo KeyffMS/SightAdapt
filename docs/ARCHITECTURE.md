@@ -16,6 +16,9 @@ ProfileResolver
 (committed assignment)
       ↓
 SightAdaptContext
+(lifecycle and composition)
+      ↓
+RuntimeCoordinator
 (use-case orchestration)
       ↓
 OverlayController
@@ -48,7 +51,7 @@ A failed mutation or failed write does not replace committed settings and does n
 
 | Concern | Authority |
 |---|---|
-| Settings transaction | `SettingsCoordinator` |
+| Settings transaction | `SettingsCoordinator` |`n| Runtime use-case orchestration | `RuntimeCoordinator` |
 | Migration, scope canonicalization, normalization, recovery, and reference repair | `SettingsStore.Normalize` |
 | Application assignment mutations and overlay scope | `ApplicationProfileManagementService` |
 | Visual-profile lifecycle and tuning | `VisualProfileManagementService` |

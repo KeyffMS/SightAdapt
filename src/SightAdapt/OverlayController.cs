@@ -1,6 +1,6 @@
 namespace SightAdapt;
 
-internal sealed class OverlayController : IDisposable
+internal sealed class OverlayController : IRuntimeOverlay, IDisposable
 {
     private readonly VisualTransformCatalog _transformCatalog;
     private MagnifierOverlay? _overlay;

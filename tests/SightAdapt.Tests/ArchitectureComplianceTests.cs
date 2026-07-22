@@ -37,6 +37,7 @@ public sealed class ArchitectureComplianceTests
                      "ConfigurationForm.cs",
                      "VisualProfileManagerForm.cs",
                      "SightAdaptContext.cs",
+                     "RuntimeCoordinator.cs",
                  })
         {
             var source = ReadSource(fileName);
@@ -65,12 +66,12 @@ public sealed class ArchitectureComplianceTests
     [TestMethod]
     public void EmergencyStopsOverlayBeforePersistence()
     {
-        var source = ReadSource("SightAdaptContext.cs");
+        var source = ReadSource("RuntimeCoordinator.cs");
         var methodIndex = source.IndexOf(
-            "private void EmergencyDisable()",
+            "public void EmergencyDisable()",
             StringComparison.Ordinal);
         var disableIndex = source.IndexOf(
-            "_overlayController.Disable();",
+            "_overlay.Disable();",
             methodIndex,
             StringComparison.Ordinal);
         var commitIndex = source.IndexOf(
@@ -97,11 +98,17 @@ public sealed class ArchitectureComplianceTests
     public void RuntimeCompositionIsSplitIntoFocusedComponents()
     {
         var context = ReadSource("SightAdaptContext.cs");
+        var runtime = ReadSource("RuntimeCoordinator.cs");
         StringAssert.Contains(context, "ForegroundWindowTracker");
         StringAssert.Contains(context, "TrayPresenter");
+        StringAssert.Contains(context, "RuntimeCoordinator");
         Assert.IsFalse(context.Contains("NotifyIcon", StringComparison.Ordinal));
+        Assert.IsFalse(context.Contains("EvaluateAutomaticForWindow", StringComparison.Ordinal));
+        StringAssert.Contains(runtime, "EvaluateAutomaticForWindow");
+        StringAssert.Contains(runtime, "RuntimeActivationMode");
         Assert.IsTrue(SourceExists("ForegroundWindowTracker.cs"));
         Assert.IsTrue(SourceExists("TrayPresenter.cs"));
+        Assert.IsTrue(SourceExists("RuntimeCoordinator.cs"));
     }
 
     [TestMethod]
