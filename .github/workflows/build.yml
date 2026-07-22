@@ -7,7 +7,8 @@ on:
     branches: [main]
 
 permissions:
-  contents: read
+  contents: write
+  pull-requests: read
 
 jobs:
   build:
@@ -72,3 +73,178 @@ jobs:
           name: SightAdapt-0.5-Alpha-win-x64
           path: artifacts/win-x64/
           if-no-files-found: error
+
+  audit-release:
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.head_ref == 'release/audit-fixes'
+    needs: build
+    runs-on: windows-latest
+
+    steps:
+      - name: Check out requested branch revision
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Detect queued release request
+        id: gate
+        shell: pwsh
+        run: |
+          $message = (git log -1 --pretty=%B).Trim()
+          $queued = $message.StartsWith('Queue ', [System.StringComparison]::Ordinal)
+          "queued=$($queued.ToString().ToLowerInvariant())" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          if (-not $queued) {
+            Write-Host 'The head commit is not a queued release request.'
+          }
+
+      - name: Set up .NET
+        if: steps.gate.outputs.queued == 'true'
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Resolve release request
+        if: steps.gate.outputs.queued == 'true'
+        shell: pwsh
+        run: |
+          $requestPath = '.github/audit-release-request.json'
+          $patchPath = '.github/audit-release.patch'
+          if (-not (Test-Path $requestPath) -or -not (Test-Path $patchPath)) {
+            throw 'Both audit-release-request.json and audit-release.patch are required.'
+          }
+
+          $request = Get-Content -Raw $requestPath | ConvertFrom-Json
+          $version = [string]$request.version
+          $issue = [int]$request.issue
+          $title = ([string]$request.title).Trim()
+
+          if ($version -notmatch '^0\.5\.0\.(?:1[6-9]|2[0-9]|30)$') {
+            throw "Unsupported sequential version '$version'."
+          }
+
+          $versionIssue = [int]($version.Split('.')[-1])
+          if ($issue -ne $versionIssue) {
+            throw "Issue #$issue must map to version $version."
+          }
+
+          if ([string]::IsNullOrWhiteSpace($title)) {
+            throw 'Release title is required.'
+          }
+
+          git fetch --tags --force
+          git ls-remote --exit-code --tags origin "refs/tags/$version" *> $null
+          if ($LASTEXITCODE -eq 0) {
+            throw "Tag $version already exists."
+          }
+
+          "RELEASE_VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "RELEASE_ISSUE=$issue" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          "RELEASE_TITLE=$title" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Verify and apply requested patch
+        if: steps.gate.outputs.queued == 'true'
+        shell: pwsh
+        run: |
+          git apply --check --whitespace=error .github/audit-release.patch
+          if ($LASTEXITCODE -ne 0) {
+            throw 'The release patch does not apply cleanly.'
+          }
+
+          git apply --whitespace=error .github/audit-release.patch
+          if ($LASTEXITCODE -ne 0) {
+            throw 'The release patch could not be applied.'
+          }
+
+      - name: Update project version metadata
+        if: steps.gate.outputs.queued == 'true'
+        shell: pwsh
+        run: |
+          $path = 'src/SightAdapt/SightAdapt.csproj'
+          $content = Get-Content -Raw $path
+          $content = [regex]::Replace($content, '<Version>[^<]+</Version>', "<Version>$env:RELEASE_VERSION</Version>", 1)
+          $content = [regex]::Replace($content, '<FileVersion>[^<]+</FileVersion>', "<FileVersion>$env:RELEASE_VERSION</FileVersion>", 1)
+          $content = [regex]::Replace($content, '<InformationalVersion>[^<]+</InformationalVersion>', "<InformationalVersion>$env:RELEASE_VERSION</InformationalVersion>", 1)
+          $utf8 = [System.Text.UTF8Encoding]::new($false)
+          [System.IO.File]::WriteAllText($path, $content, $utf8)
+
+          [xml]$project = Get-Content -Raw $path
+          if ([string]$project.Project.PropertyGroup.Version -ne $env:RELEASE_VERSION -or
+              [string]$project.Project.PropertyGroup.FileVersion -ne $env:RELEASE_VERSION -or
+              [string]$project.Project.PropertyGroup.InformationalVersion -ne $env:RELEASE_VERSION) {
+            throw 'Project version metadata was not updated consistently.'
+          }
+
+      - name: Remove consumed release request
+        if: steps.gate.outputs.queued == 'true'
+        shell: pwsh
+        run: |
+          Remove-Item .github/audit-release-request.json
+          Remove-Item .github/audit-release.patch
+          git diff --check
+          if ($LASTEXITCODE -ne 0) {
+            throw 'The resulting source diff contains whitespace errors.'
+          }
+
+          if ([string]::IsNullOrWhiteSpace((git status --porcelain))) {
+            throw 'The release request produced no repository changes.'
+          }
+
+      - name: Restore application
+        if: steps.gate.outputs.queued == 'true'
+        run: dotnet restore src/SightAdapt/SightAdapt.csproj
+
+      - name: Restore tests
+        if: steps.gate.outputs.queued == 'true'
+        run: dotnet restore tests/SightAdapt.Tests/SightAdapt.Tests.csproj
+
+      - name: Build application
+        if: steps.gate.outputs.queued == 'true'
+        run: dotnet build src/SightAdapt/SightAdapt.csproj --configuration Release --no-restore
+
+      - name: Run complete regression suite
+        if: steps.gate.outputs.queued == 'true'
+        run: dotnet test tests/SightAdapt.Tests/SightAdapt.Tests.csproj --configuration Release --no-restore
+
+      - name: Publish self-contained Windows executable
+        if: steps.gate.outputs.queued == 'true'
+        run: >-
+          dotnet publish src/SightAdapt/SightAdapt.csproj
+          --configuration Release
+          --runtime win-x64
+          --self-contained true
+          -p:PublishSingleFile=true
+          --output artifacts/win-x64
+
+      - name: Commit and tag validated release
+        if: steps.gate.outputs.queued == 'true'
+        shell: pwsh
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          $message = "Release $($env:RELEASE_VERSION): Fix #$($env:RELEASE_ISSUE) - $($env:RELEASE_TITLE)"
+          git commit -m $message
+          if ($LASTEXITCODE -ne 0) {
+            throw 'Could not create the validated release commit.'
+          }
+
+          $releaseSha = (git rev-parse HEAD).Trim()
+          git tag -a $env:RELEASE_VERSION -m "SightAdapt $env:RELEASE_VERSION" $releaseSha
+          if ($LASTEXITCODE -ne 0) {
+            throw "Could not create tag $env:RELEASE_VERSION."
+          }
+
+          git push origin "HEAD:release/audit-fixes"
+          if ($LASTEXITCODE -ne 0) {
+            throw 'Could not push the validated release commit.'
+          }
+
+          git push origin "refs/tags/$env:RELEASE_VERSION"
+          if ($LASTEXITCODE -ne 0) {
+            throw "Could not push tag $env:RELEASE_VERSION."
+          }
