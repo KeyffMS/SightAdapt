@@ -63,6 +63,28 @@ internal static class ApplicationProfileManagementService
         profile.LegacyEffect = null;
     }
 
+    public static void SetOverlayScope(
+        SightAdaptSettings settings,
+        ApplicationProfile profile,
+        OverlayScope overlayScope)
+    {
+        ArgumentNullException.ThrowIfNull(settings);
+        ArgumentNullException.ThrowIfNull(profile);
+        settings.EnsureCollections();
+        EnsureMember(settings, profile);
+
+        if (!OverlayScopePolicy.IsSupported(overlayScope))
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(overlayScope),
+                overlayScope,
+                "The overlay scope is not supported.");
+        }
+
+        profile.OverlayScopeId =
+            OverlayScopePolicy.ToId(overlayScope);
+    }
+
     public static void Remove(
         SightAdaptSettings settings,
         ApplicationProfile profile)

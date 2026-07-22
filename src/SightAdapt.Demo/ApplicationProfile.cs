@@ -4,7 +4,7 @@ namespace SightAdapt.Demo;
 
 internal sealed class SightAdaptSettings
 {
-    public const int CurrentSchemaVersion = 3;
+    public const int CurrentSchemaVersion = 4;
 
     public int SchemaVersion { get; set; } = CurrentSchemaVersion;
 
@@ -68,6 +68,24 @@ internal sealed class ApplicationProfile
     public string VisualProfileId { get; set; } =
         VisualProfilePolicy.NewAssignmentProfileId;
 
+    private string _overlayScopeId =
+        OverlayScopePolicy.ToId(OverlayScopePolicy.Default);
+
+    [JsonPropertyName("overlayScope")]
+    public string OverlayScopeId
+    {
+        get => _overlayScopeId;
+        set
+        {
+            OverlayScopePolicy.TryParseId(value, out var scope);
+            _overlayScopeId = OverlayScopePolicy.ToId(scope);
+        }
+    }
+
+    [JsonIgnore]
+    public OverlayScope OverlayScope =>
+        OverlayScopePolicy.ParseRequired(OverlayScopeId);
+
     [JsonPropertyName("effect")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? LegacyEffect { get; set; }
@@ -92,6 +110,7 @@ internal sealed class ApplicationProfile
             ExecutablePath = ExecutablePath,
             Enabled = Enabled,
             VisualProfileId = VisualProfileId,
+            OverlayScopeId = OverlayScopeId,
             LegacyEffect = LegacyEffect,
         };
     }

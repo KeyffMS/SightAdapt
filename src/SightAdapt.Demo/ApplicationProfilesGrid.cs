@@ -7,6 +7,7 @@ internal enum ApplicationProfileGridColumn
 {
     Enabled,
     VisualProfile,
+    OverlayScope,
 }
 
 internal sealed class ApplicationProfileGridValueChangedEventArgs : EventArgs
@@ -34,6 +35,7 @@ internal sealed class ApplicationProfilesGrid : UserControl
     private const string EnabledColumnName = "Enabled";
     private const string ApplicationColumnName = "Application";
     private const string VisualProfileColumnName = "VisualProfile";
+    private const string OverlayScopeColumnName = "OverlayScope";
     private const string ExecutableColumnName = "Executable";
     private const string PathColumnName = "Path";
 
@@ -80,6 +82,7 @@ internal sealed class ApplicationProfilesGrid : UserControl
         try
         {
             SetVisualProfiles(visualProfiles);
+            SetOverlayScopes();
             _grid.Rows.Clear();
 
             foreach (var application in applications)
@@ -112,6 +115,8 @@ internal sealed class ApplicationProfilesGrid : UserControl
             row.Cells[EnabledColumnName].Value = application.Enabled;
             row.Cells[ApplicationColumnName].Value = application.DisplayName;
             row.Cells[VisualProfileColumnName].Value = application.VisualProfileId;
+            row.Cells[OverlayScopeColumnName].Value =
+                OverlayScopePolicy.ToId(application.OverlayScope);
             row.Cells[ExecutableColumnName].Value = application.ExecutableName;
             row.Cells[PathColumnName].Value = application.ExecutablePath;
             row.Tag = application.ExecutablePath;
@@ -184,7 +189,7 @@ internal sealed class ApplicationProfilesGrid : UserControl
             ApplicationColumnName,
             "APPLICATION",
             205));
-        grid.Columns.Add(new StableVisualProfileComboBoxColumn
+        grid.Columns.Add(new StableModernSelectorComboBoxColumn
         {
             Name = VisualProfileColumnName,
             HeaderText = "VISUAL PROFILE",
@@ -192,6 +197,16 @@ internal sealed class ApplicationProfilesGrid : UserControl
             FlatStyle = FlatStyle.Flat,
             Width = 185,
             MinimumWidth = 160,
+            SortMode = DataGridViewColumnSortMode.NotSortable,
+        });
+        grid.Columns.Add(new StableModernSelectorComboBoxColumn
+        {
+            Name = OverlayScopeColumnName,
+            HeaderText = "OVERLAY SCOPE",
+            DisplayStyle = DataGridViewComboBoxDisplayStyle.ComboBox,
+            FlatStyle = FlatStyle.Flat,
+            Width = 170,
+            MinimumWidth = 150,
             SortMode = DataGridViewColumnSortMode.NotSortable,
         });
         grid.Columns.Add(CreateTextColumn(
@@ -224,6 +239,7 @@ internal sealed class ApplicationProfilesGrid : UserControl
             application.Enabled,
             application.DisplayName,
             application.VisualProfileId,
+            OverlayScopePolicy.ToId(application.OverlayScope),
             application.ExecutableName,
             application.ExecutablePath);
         var row = _grid.Rows[index];
@@ -244,10 +260,24 @@ internal sealed class ApplicationProfilesGrid : UserControl
     private void SetVisualProfiles(IReadOnlyList<VisualProfile> profiles)
     {
         if (_grid.Columns[VisualProfileColumnName] is
-            StableVisualProfileComboBoxColumn column)
+            StableModernSelectorComboBoxColumn column)
         {
             column.SetProfiles(profiles);
         }
+    }
+
+    private void SetOverlayScopes()
+    {
+        if (_grid.Columns[OverlayScopeColumnName] is not
+            StableModernSelectorComboBoxColumn column)
+        {
+            return;
+        }
+
+        column.SetOptions(OverlayScopePolicy.All.Select(scope =>
+            new ModernSelectorOption(
+                OverlayScopePolicy.ToId(scope),
+                OverlayScopePolicy.GetDisplayName(scope))));
     }
 
     private DataGridViewRow? FindRow(string executablePath)

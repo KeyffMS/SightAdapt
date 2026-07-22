@@ -252,7 +252,10 @@ internal sealed class SightAdaptContext : ApplicationContext
                 ProfileResolver.ResolveVisualProfile(
                     Settings,
                     assignment);
-            _overlayController.Activate(target, visualProfile);
+            _overlayController.Activate(
+                target,
+                visualProfile,
+                assignment?.OverlayScope ?? OverlayScopePolicy.Default);
 
             if (runState == ApplicationRunState.AutomaticActive)
             {

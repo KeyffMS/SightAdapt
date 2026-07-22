@@ -16,10 +16,10 @@
     <Copyright>Copyright © $(Company)</Copyright>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <RepositoryUrl>https://github.com/KeyffMS/SightAdapt</RepositoryUrl>
-    <Version>0.4.0-alpha.4</Version>
+    <Version>0.4.0-alpha.5</Version>
     <AssemblyVersion>0.4.0.0</AssemblyVersion>
-    <FileVersion>0.4.0.0</FileVersion>
-    <InformationalVersion>0.4.0-alpha.4</InformationalVersion>
+    <FileVersion>0.4.0.1</FileVersion>
+    <InformationalVersion>0.4.0-alpha.5</InformationalVersion>
     <PlatformTarget>x64</PlatformTarget>
     <Platforms>x64</Platforms>
     <SupportedOSPlatformVersion>10.0.19041.0</SupportedOSPlatformVersion>
@@ -29,6 +29,6 @@
   <ItemGroup>
     <AssemblyMetadata Include="License" Value="MIT License" />
     <AssemblyMetadata Include="RepositoryUrl" Value="$(RepositoryUrl)" />
-    <AssemblyMetadata Include="Milestone" Value="Alpha 0.4A.4" />
+    <AssemblyMetadata Include="Milestone" Value="Alpha 0.4B.1 · Overlay scope per app" />
   </ItemGroup>
 </Project>

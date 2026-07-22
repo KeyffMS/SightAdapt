@@ -16,9 +16,16 @@ internal sealed class OverlayController : IDisposable
 
     public nint TargetWindow => IsActive ? _overlay!.TargetHandle : nint.Zero;
 
+    public OverlayScope ActiveScope => IsActive
+        ? _overlay!.OverlayScope
+        : OverlayScopePolicy.Default;
+
     public event EventHandler? OverlayClosed;
 
-    public void Activate(nint targetWindow, VisualProfile visualProfile)
+    public void Activate(
+        nint targetWindow,
+        VisualProfile visualProfile,
+        OverlayScope overlayScope)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         ArgumentNullException.ThrowIfNull(visualProfile);
@@ -30,18 +37,22 @@ internal sealed class OverlayController : IDisposable
                 nameof(targetWindow));
         }
 
-        var transform =
-            _transformCatalog.GetRequired(
-                visualProfile.TransformId);
-        var colorEffect =
-            transform.CreateColorEffect(
-                visualProfile);
+        if (!OverlayScopePolicy.IsSupported(overlayScope))
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(overlayScope),
+                overlayScope,
+                "The overlay scope is not supported.");
+        }
+
+        var transform = _transformCatalog.GetRequired(
+            visualProfile.TransformId);
+        var colorEffect = transform.CreateColorEffect(visualProfile);
 
         if (IsActive && TargetWindow == targetWindow)
         {
-            _overlay!.ApplyColorEffect(
-                colorEffect,
-                transform.Id);
+            _overlay!.ApplyColorEffect(colorEffect, transform.Id);
+            _overlay.ApplyOverlayScope(overlayScope);
             return;
         }
 
@@ -50,7 +61,8 @@ internal sealed class OverlayController : IDisposable
         var overlay = new MagnifierOverlay(
             targetWindow,
             colorEffect,
-            transform.Id);
+            transform.Id,
+            overlayScope);
         overlay.FormClosed += HandleOverlayClosed;
 
         try

@@ -151,12 +151,12 @@ public sealed class ArchitectureComplianceTests
     [TestMethod]
     public void ProfileGridOwnsStatusPaintingAndComboColumnOwnsSelector()
     {
-        var selector = ReadSource("VisualProfileComboBoxColumn.cs");
+        var selector = ReadSource("ModernSelectorComboBoxColumn.cs");
         var grid = ReadSource("ApplicationProfilesGrid.cs");
 
-        StringAssert.Contains(selector, "StableVisualProfileComboBoxColumn");
+        StringAssert.Contains(selector, "StableModernSelectorComboBoxColumn");
         StringAssert.Contains(selector, "public void SetProfiles");
-        StringAssert.Contains(selector, "ModernVisualProfileComboBoxCell");
+        StringAssert.Contains(selector, "ModernSelectorComboBoxCell");
         Assert.IsFalse(selector.Contains("GridCellPainting", StringComparison.Ordinal));
         Assert.IsFalse(selector.Contains("new object? DataSource", StringComparison.Ordinal));
 
@@ -169,8 +169,8 @@ public sealed class ArchitectureComplianceTests
     [TestMethod]
     public void ProfileSelectorUsesCustomDarkEditingControl()
     {
-        var source = ReadSource("VisualProfileComboBoxColumn.cs");
-        StringAssert.Contains(source, "ModernVisualProfileEditingControl");
+        var source = ReadSource("ModernSelectorComboBoxColumn.cs");
+        StringAssert.Contains(source, "ModernSelectorEditingControl");
         StringAssert.Contains(source, "IDataGridViewEditingControl");
         StringAssert.Contains(source, "ToolStripDropDown");
         StringAssert.Contains(source, "ListBox");
@@ -317,7 +317,7 @@ public sealed class ArchitectureComplianceTests
     [TestMethod]
     public void ProfileSelectorUsesEditingControlContract()
     {
-        var source = ReadSource("VisualProfileComboBoxColumn.cs");
+        var source = ReadSource("ModernSelectorComboBoxColumn.cs");
         StringAssert.Contains(source, "EditingControlValueChanged = true;");
         StringAssert.Contains(source, "NotifyCurrentCellDirty(true);");
         Assert.IsFalse(source.Contains("cell.Value = _selected?.Id", StringComparison.Ordinal));

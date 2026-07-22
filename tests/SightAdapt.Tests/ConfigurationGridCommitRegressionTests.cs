@@ -75,15 +75,15 @@ public sealed class ConfigurationGridCommitRegressionTests
             grid.CurrentCell = profileCell;
             grid.Focus();
             Assert.IsTrue(grid.BeginEdit(true));
-            Assert.IsInstanceOfType<ModernVisualProfileEditingControl>(
+            Assert.IsInstanceOfType<ModernSelectorEditingControl>(
                 grid.EditingControl);
 
             var editor =
-                (ModernVisualProfileEditingControl)grid.EditingControl;
+                (ModernSelectorEditingControl)grid.EditingControl;
             var option = ((DataGridViewComboBoxCell)profileCell)
                 .Items
                 .Cast<object>()
-                .OfType<VisualProfileOption>()
+                .OfType<ModernSelectorOption>()
                 .Single(candidate =>
                     candidate.Id == VisualProfile.DefaultInvertId);
 

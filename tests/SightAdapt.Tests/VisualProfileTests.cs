@@ -46,7 +46,7 @@ public sealed class VisualProfileTests
     public void ProfileComboColumnKeepsStableUnboundOptions()
     {
         using var column =
-            new StableVisualProfileComboBoxColumn();
+            new StableModernSelectorComboBoxColumn();
         var profiles = new[]
         {
             VisualProfile.CreateDefaultInvert(),
@@ -58,10 +58,10 @@ public sealed class VisualProfileTests
 
         Assert.IsNull(column.DataSource);
         Assert.AreEqual(
-            nameof(VisualProfileOption.Name),
+            nameof(ModernSelectorOption.Name),
             column.DisplayMember);
         Assert.AreEqual(
-            nameof(VisualProfileOption.Id),
+            nameof(ModernSelectorOption.Id),
             column.ValueMember);
         Assert.AreEqual(2, column.Items.Count);
         Assert.AreEqual(

@@ -2,7 +2,7 @@ using System.Drawing.Drawing2D;
 
 namespace SightAdapt.Demo;
 
-internal sealed record VisualProfileOption(
+internal sealed record ModernSelectorOption(
     string Id,
     string Name)
 {
@@ -12,16 +12,16 @@ internal sealed record VisualProfileOption(
     }
 }
 
-internal sealed class StableVisualProfileComboBoxColumn :
+internal sealed class StableModernSelectorComboBoxColumn :
     DataGridViewComboBoxColumn
 {
-    private VisualProfileOption[] _options = [];
+    private ModernSelectorOption[] _options = [];
 
-    public StableVisualProfileComboBoxColumn()
+    public StableModernSelectorComboBoxColumn()
     {
-        CellTemplate = new ModernVisualProfileComboBoxCell();
-        DisplayMember = nameof(VisualProfileOption.Name);
-        ValueMember = nameof(VisualProfileOption.Id);
+        CellTemplate = new ModernSelectorComboBoxCell();
+        DisplayMember = nameof(ModernSelectorOption.Name);
+        ValueMember = nameof(ModernSelectorOption.Id);
         ValueType = typeof(string);
         DisplayStyle = DataGridViewComboBoxDisplayStyle.Nothing;
         FlatStyle = FlatStyle.Flat;
@@ -32,14 +32,20 @@ internal sealed class StableVisualProfileComboBoxColumn :
     {
         ArgumentNullException.ThrowIfNull(profiles);
 
-        var nextOptions = profiles
+        SetOptions(profiles
             .Where(profile => profile is not null)
             .Select(profile =>
-                new VisualProfileOption(
+                new ModernSelectorOption(
                     profile.Id,
-                    profile.Name))
-            .ToArray();
+                    profile.Name)));
+    }
 
+    public void SetOptions(
+        IEnumerable<ModernSelectorOption> options)
+    {
+        ArgumentNullException.ThrowIfNull(options);
+
+        var nextOptions = options.ToArray();
         if (_options.SequenceEqual(nextOptions))
         {
             return;
@@ -53,11 +59,11 @@ internal sealed class StableVisualProfileComboBoxColumn :
     public override object Clone()
     {
         var clone =
-            (StableVisualProfileComboBoxColumn)
+            (StableModernSelectorComboBoxColumn)
             base.Clone();
         clone._options = _options.ToArray();
-        clone.DisplayMember = nameof(VisualProfileOption.Name);
-        clone.ValueMember = nameof(VisualProfileOption.Id);
+        clone.DisplayMember = nameof(ModernSelectorOption.Name);
+        clone.ValueMember = nameof(ModernSelectorOption.Id);
         clone.ValueType = typeof(string);
         clone.DisplayStyle = DataGridViewComboBoxDisplayStyle.Nothing;
         clone.FlatStyle = FlatStyle.Flat;
@@ -71,21 +77,21 @@ internal sealed class StableVisualProfileComboBoxColumn :
 
 }
 
-internal sealed class ModernVisualProfileComboBoxCell :
+internal sealed class ModernSelectorComboBoxCell :
     DataGridViewComboBoxCell
 {
-    public ModernVisualProfileComboBoxCell()
+    public ModernSelectorComboBoxCell()
     {
         DisplayStyle = DataGridViewComboBoxDisplayStyle.Nothing;
         FlatStyle = FlatStyle.Flat;
     }
 
     public override Type EditType =>
-        typeof(ModernVisualProfileEditingControl);
+        typeof(ModernSelectorEditingControl);
 
     public override object Clone()
     {
-        var clone = (ModernVisualProfileComboBoxCell)base.Clone();
+        var clone = (ModernSelectorComboBoxCell)base.Clone();
         clone.DisplayStyle = DataGridViewComboBoxDisplayStyle.Nothing;
         clone.FlatStyle = FlatStyle.Flat;
         return clone;
@@ -102,19 +108,20 @@ internal sealed class ModernVisualProfileComboBoxCell :
             dataGridViewCellStyle);
 
         if (DataGridView?.EditingControl is not
-            ModernVisualProfileEditingControl editingControl)
+            ModernSelectorEditingControl editingControl)
         {
             return;
         }
 
         var options = Items
             .Cast<object>()
-            .OfType<VisualProfileOption>()
+            .OfType<ModernSelectorOption>()
             .ToArray();
         editingControl.Configure(
             options,
             Value?.ToString(),
-            dataGridViewCellStyle);
+            dataGridViewCellStyle,
+            OwningColumn?.HeaderText ?? "Selection");
     }
 
     protected override void Paint(
@@ -158,17 +165,17 @@ internal sealed class ModernVisualProfileComboBoxCell :
     }
 }
 
-internal sealed class ModernVisualProfileEditingControl :
+internal sealed class ModernSelectorEditingControl :
     Control,
     IDataGridViewEditingControl
 {
     private readonly ListBox _list;
     private readonly ToolStripDropDown _dropDown;
-    private VisualProfileOption[] _options = [];
-    private VisualProfileOption? _selected;
+    private ModernSelectorOption[] _options = [];
+    private ModernSelectorOption? _selected;
     private bool _hovered;
 
-    public ModernVisualProfileEditingControl()
+    public ModernSelectorEditingControl()
     {
         AccessibleRole = AccessibleRole.ComboBox;
         BackColor = AppTheme.SurfaceRaised;
@@ -234,9 +241,10 @@ internal sealed class ModernVisualProfileEditingControl :
     public bool RepositionEditingControlOnValueChange => false;
 
     public void Configure(
-        IEnumerable<VisualProfileOption> options,
+        IEnumerable<ModernSelectorOption> options,
         string? selectedId,
-        DataGridViewCellStyle style)
+        DataGridViewCellStyle style,
+        string accessibleName)
     {
         _options = options.ToArray();
         EditingControlValueChanged = false;
@@ -244,9 +252,9 @@ internal sealed class ModernVisualProfileEditingControl :
         ForeColor = AppTheme.TextPrimary;
         BackColor = AppTheme.SurfaceRaised;
         SelectByValue(selectedId);
-        AccessibleName = "Visual profile";
+        AccessibleName = accessibleName;
         AccessibleDescription =
-            $"Selected profile: {_selected?.Name ?? "none"}.";
+            $"Selected option: {_selected?.Name ?? "none"}.";
         Invalidate();
     }
 
@@ -428,7 +436,7 @@ internal sealed class ModernVisualProfileEditingControl :
 
     private void CommitListSelection()
     {
-        if (_list.SelectedItem is VisualProfileOption option)
+        if (_list.SelectedItem is ModernSelectorOption option)
         {
             SelectOptionFromInput(option);
         }
@@ -469,7 +477,7 @@ internal sealed class ModernVisualProfileEditingControl :
         SelectOptionFromInput(_options[nextIndex]);
     }
 
-    internal void SelectOptionFromInput(VisualProfileOption option)
+    internal void SelectOptionFromInput(ModernSelectorOption option)
     {
         ArgumentNullException.ThrowIfNull(option);
         SelectOption(option, notifyGrid: true);
@@ -484,7 +492,7 @@ internal sealed class ModernVisualProfileEditingControl :
     }
 
     private void SelectOption(
-        VisualProfileOption? option,
+        ModernSelectorOption? option,
         bool notifyGrid)
     {
         if (Equals(_selected, option))
@@ -494,7 +502,7 @@ internal sealed class ModernVisualProfileEditingControl :
 
         _selected = option;
         AccessibleDescription =
-            $"Selected profile: {_selected?.Name ?? "none"}.";
+            $"Selected option: {_selected?.Name ?? "none"}.";
         Invalidate();
 
         if (!notifyGrid)

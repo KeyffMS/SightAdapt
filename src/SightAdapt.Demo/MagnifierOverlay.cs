@@ -8,13 +8,15 @@ internal sealed class MagnifierOverlay : Form
     private readonly System.Windows.Forms.Timer _updateTimer;
     private MagColorEffect _colorEffect;
     private string _transformId;
+    private OverlayScope _overlayScope;
     private nint _magnifierWindow;
     private bool _initialized;
 
     public MagnifierOverlay(
         nint targetHandle,
         MagColorEffect colorEffect,
-        string transformId)
+        string transformId,
+        OverlayScope overlayScope)
     {
         if (targetHandle == nint.Zero)
         {
@@ -26,6 +28,12 @@ internal sealed class MagnifierOverlay : Form
         _transformId = string.IsNullOrWhiteSpace(transformId)
             ? throw new ArgumentException("A transform identifier is required.", nameof(transformId))
             : transformId.Trim();
+        _overlayScope = OverlayScopePolicy.IsSupported(overlayScope)
+            ? overlayScope
+            : throw new ArgumentOutOfRangeException(
+                nameof(overlayScope),
+                overlayScope,
+                "The overlay scope is not supported.");
 
         AutoScaleMode = AutoScaleMode.None;
         BackColor = Color.Black;
@@ -42,6 +50,8 @@ internal sealed class MagnifierOverlay : Form
     }
 
     public nint TargetHandle { get; }
+
+    public OverlayScope OverlayScope => _overlayScope;
 
     protected override bool ShowWithoutActivation => true;
 
@@ -70,6 +80,23 @@ internal sealed class MagnifierOverlay : Form
         {
             ApplyColorEffectToMagnifier();
             NativeMethods.InvalidateRect(_magnifierWindow, nint.Zero, true);
+        }
+    }
+
+    public void ApplyOverlayScope(OverlayScope overlayScope)
+    {
+        if (!OverlayScopePolicy.IsSupported(overlayScope))
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(overlayScope),
+                overlayScope,
+                "The overlay scope is not supported.");
+        }
+
+        _overlayScope = overlayScope;
+        if (_initialized)
+        {
+            UpdateOverlay();
         }
     }
 
@@ -178,21 +205,23 @@ internal sealed class MagnifierOverlay : Form
             return;
         }
 
-        if (!NativeMethods.TryGetVisibleWindowBounds(TargetHandle, out var targetBounds) ||
-            targetBounds.Width <= 0 ||
-            targetBounds.Height <= 0)
+        if (!OverlayBoundsResolver.TryResolve(
+                TargetHandle,
+                _overlayScope,
+                out var geometry))
         {
             NativeMethods.ShowWindow(Handle, NativeMethods.SwHide);
             return;
         }
 
+        var destination = geometry.Destination;
         NativeMethods.SetWindowPos(
             Handle,
             NativeMethods.HwndTopMost,
-            targetBounds.Left,
-            targetBounds.Top,
-            targetBounds.Width,
-            targetBounds.Height,
+            destination.Left,
+            destination.Top,
+            destination.Width,
+            destination.Height,
             NativeMethods.SwpNoActivate | NativeMethods.SwpShowWindow);
 
         NativeMethods.SetWindowPos(
@@ -200,11 +229,11 @@ internal sealed class MagnifierOverlay : Form
             nint.Zero,
             0,
             0,
-            targetBounds.Width,
-            targetBounds.Height,
+            destination.Width,
+            destination.Height,
             NativeMethods.SwpNoActivate | NativeMethods.SwpNoZOrder);
 
-        var source = targetBounds;
+        var source = geometry.Source;
         if (!NativeMethods.MagSetWindowSource(_magnifierWindow, source))
         {
             NativeMethods.ShowWindow(Handle, NativeMethods.SwHide);
