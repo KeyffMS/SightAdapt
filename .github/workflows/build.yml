@@ -205,11 +205,34 @@ jobs:
 
       - name: Build application
         if: steps.gate.outputs.queued == 'true'
-        run: dotnet build src/SightAdapt/SightAdapt.csproj --configuration Release --no-restore
+        shell: pwsh
+        run: |
+          $output = & dotnet build src/SightAdapt/SightAdapt.csproj --configuration Release --no-restore 2>&1
+          $exitCode = $LASTEXITCODE
+          $output | Set-Content -Path audit-build-output.txt -Encoding utf8
+          $output | ForEach-Object { Write-Host $_ }
+          exit $exitCode
 
       - name: Run complete regression suite
         if: steps.gate.outputs.queued == 'true'
-        run: dotnet test tests/SightAdapt.Tests/SightAdapt.Tests.csproj --configuration Release --no-restore
+        shell: pwsh
+        run: |
+          $output = & dotnet test tests/SightAdapt.Tests/SightAdapt.Tests.csproj --configuration Release --no-restore 2>&1
+          $exitCode = $LASTEXITCODE
+          $output | Set-Content -Path audit-test-output.txt -Encoding utf8
+          $output | ForEach-Object { Write-Host $_ }
+          exit $exitCode
+
+      - name: Upload audit release diagnostics
+        if: always() && steps.gate.outputs.queued == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: SightAdapt-audit-release-diagnostics-${{ github.run_id }}
+          path: |
+            audit-build-output.txt
+            audit-test-output.txt
+          if-no-files-found: warn
+          retention-days: 7
 
       - name: Publish self-contained Windows executable
         if: steps.gate.outputs.queued == 'true'
