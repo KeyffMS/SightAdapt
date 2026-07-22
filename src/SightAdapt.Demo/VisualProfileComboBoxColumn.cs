@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using System.Drawing.Drawing2D;
 
 namespace SightAdapt.Demo;
@@ -244,7 +243,6 @@ internal sealed class ModernVisualProfileEditingControl :
     private VisualProfileOption[] _options = [];
     private VisualProfileOption? _selected;
     private bool _hovered;
-    private bool _editCompletionQueued;
 
     public ModernVisualProfileEditingControl()
     {
@@ -292,11 +290,7 @@ internal sealed class ModernVisualProfileEditingControl :
             Renderer = new DarkMenuRenderer(),
         };
         _dropDown.Items.Add(host);
-        _dropDown.Closed += (_, _) =>
-        {
-            Invalidate();
-            QueueGridEditCompletion();
-        };
+        _dropDown.Closed += (_, _) => Invalidate();
     }
 
     public DataGridView? EditingControlDataGridView { get; set; }
@@ -321,6 +315,7 @@ internal sealed class ModernVisualProfileEditingControl :
         DataGridViewCellStyle style)
     {
         _options = options.ToArray();
+        EditingControlValueChanged = false;
         Font = style.Font ?? AppTheme.CreateUiFont(9.5f);
         ForeColor = AppTheme.TextPrimary;
         BackColor = AppTheme.SurfaceRaised;
@@ -548,54 +543,6 @@ internal sealed class ModernVisualProfileEditingControl :
             0,
             _options.Length - 1);
         SelectOption(_options[nextIndex], notifyGrid: true);
-        QueueGridEditCompletion();
-    }
-
-    private void QueueGridEditCompletion()
-    {
-        var grid = EditingControlDataGridView;
-        if (_editCompletionQueued ||
-            grid is null ||
-            grid.IsDisposed ||
-            grid.Disposing ||
-            !grid.IsHandleCreated)
-        {
-            return;
-        }
-
-        _editCompletionQueued = true;
-        try
-        {
-            grid.BeginInvoke((Action)(() =>
-            {
-                _editCompletionQueued = false;
-                if (grid.IsDisposed ||
-                    grid.Disposing ||
-                    !ReferenceEquals(grid.EditingControl, this))
-                {
-                    return;
-                }
-
-                grid.CommitEdit(DataGridViewDataErrorContexts.Commit);
-                if (!grid.EndEdit())
-                {
-                    Debug.WriteLine(
-                        "SightAdapt could not finish the visual-profile cell edit.");
-                    return;
-                }
-
-                grid.Focus();
-            }));
-        }
-        catch (InvalidOperationException exception) when (
-            grid.IsDisposed ||
-            grid.Disposing ||
-            !grid.IsHandleCreated)
-        {
-            _editCompletionQueued = false;
-            Debug.WriteLine(
-                $"SightAdapt skipped profile edit completion for a disposed grid: {exception}");
-        }
     }
 
     private void SelectByValue(string? value)
@@ -626,11 +573,7 @@ internal sealed class ModernVisualProfileEditingControl :
         }
 
         EditingControlValueChanged = true;
-        if (EditingControlDataGridView?.CurrentCell is { } cell)
-        {
-            cell.Value = _selected?.Id;
-            EditingControlDataGridView.NotifyCurrentCellDirty(true);
-        }
+        EditingControlDataGridView?.NotifyCurrentCellDirty(true);
     }
 
     private static void DrawListItem(

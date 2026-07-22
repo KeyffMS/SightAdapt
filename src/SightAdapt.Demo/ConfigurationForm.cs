@@ -19,6 +19,7 @@ internal sealed class ConfigurationForm : Form
     private readonly DataGridView _profilesGrid;
     private readonly ModernButton _editVisualProfileButton;
     private bool _refreshing;
+    private bool _committingGridValue;
 
     public ConfigurationForm(
         SettingsCoordinator settingsCoordinator,
@@ -644,42 +645,66 @@ internal sealed class ConfigurationForm : Form
         }
 
         var row = _profilesGrid.Rows[eventArgs.RowIndex];
-        if (row.Tag is not ApplicationProfile profile)
+        if (row.Tag is not ApplicationProfile displayedProfile)
         {
             return;
         }
 
-        var executablePath = profile.ExecutablePath;
+        var executablePath = displayedProfile.ExecutablePath;
         var columnName = _profilesGrid.Columns[eventArgs.ColumnIndex].Name;
         SettingsCommitResult result;
-        if (columnName == EnabledColumnName)
+
+        _committingGridValue = true;
+        try
         {
-            var enabled = row.Cells[eventArgs.ColumnIndex].Value is true;
-            result = _settingsCoordinator.Commit(settings =>
-                ApplicationProfileManagementService.SetEnabled(
-                    settings,
-                    FindAssignment(settings, executablePath),
-                    enabled));
+            if (columnName == EnabledColumnName)
+            {
+                var enabled = row.Cells[eventArgs.ColumnIndex].Value is true;
+                result = _settingsCoordinator.Commit(settings =>
+                    ApplicationProfileManagementService.SetEnabled(
+                        settings,
+                        FindAssignment(settings, executablePath),
+                        enabled));
+            }
+            else if (columnName == VisualProfileColumnName &&
+                     row.Cells[eventArgs.ColumnIndex].Value is string visualProfileId)
+            {
+                result = _settingsCoordinator.Commit(settings =>
+                    ApplicationProfileManagementService.AssignVisualProfile(
+                        settings,
+                        FindAssignment(settings, executablePath),
+                        visualProfileId));
+            }
+            else
+            {
+                return;
+            }
         }
-        else if (columnName == VisualProfileColumnName &&
-                 row.Cells[eventArgs.ColumnIndex].Value is string visualProfileId)
+        finally
         {
-            result = _settingsCoordinator.Commit(settings =>
-                ApplicationProfileManagementService.AssignVisualProfile(
-                    settings,
-                    FindAssignment(settings, executablePath),
-                    visualProfileId));
-        }
-        else
-        {
-            return;
+            _committingGridValue = false;
         }
 
         if (!result.Succeeded)
         {
             ShowCommitError(result.ErrorMessage);
-            RefreshProfiles();
+            _refreshing = true;
+            try
+            {
+                row.Cells[eventArgs.ColumnIndex].Value =
+                    columnName == EnabledColumnName
+                        ? displayedProfile.Enabled
+                        : displayedProfile.VisualProfileId;
+            }
+            finally
+            {
+                _refreshing = false;
+            }
+            return;
         }
+
+        row.Tag = FindAssignment(Settings, executablePath);
+        UpdateSelectedProfileActions();
     }
 
     private void ProfilesGridDataError(object? sender, DataGridViewDataErrorEventArgs eventArgs)
@@ -855,6 +880,11 @@ internal sealed class ConfigurationForm : Form
 
     private void SettingsChanged(object? sender, EventArgs eventArgs)
     {
+        if (_committingGridValue)
+        {
+            return;
+        }
+
         RefreshProfiles();
     }
 

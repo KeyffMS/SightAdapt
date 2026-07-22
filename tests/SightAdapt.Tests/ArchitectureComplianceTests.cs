@@ -298,6 +298,35 @@ public sealed class ArchitectureComplianceTests
         Assert.IsFalse(SourceExists("ApplicationProfileToggleService.cs"));
     }
 
+    [TestMethod]
+    public void SettingsCoordinatorDoesNotOwnWinFormsLifecycle()
+    {
+        var source = ReadSource("SettingsCoordinator.cs");
+        StringAssert.Contains(source, "Changed?.Invoke(this, EventArgs.Empty);");
+        Assert.IsFalse(source.Contains("DataGridView", StringComparison.Ordinal));
+        Assert.IsFalse(source.Contains("Control control", StringComparison.Ordinal));
+        Assert.IsFalse(source.Contains("System.Windows.Forms.Timer", StringComparison.Ordinal));
+    }
+
+    [TestMethod]
+    public void ProfileSelectorUsesEditingControlContract()
+    {
+        var source = ReadSource("VisualProfileComboBoxColumn.cs");
+        StringAssert.Contains(source, "EditingControlValueChanged = true;");
+        StringAssert.Contains(source, "NotifyCurrentCellDirty(true);");
+        Assert.IsFalse(source.Contains("cell.Value = _selected?.Id", StringComparison.Ordinal));
+        Assert.IsFalse(source.Contains("QueueGridEditCompletion", StringComparison.Ordinal));
+    }
+
+    [TestMethod]
+    public void ConfigurationFormOwnsItsGridRefreshBoundary()
+    {
+        var source = ReadSource("ConfigurationForm.cs");
+        StringAssert.Contains(source, "private bool _committingGridValue;");
+        StringAssert.Contains(source, "if (_committingGridValue)");
+        StringAssert.Contains(source, "row.Tag = FindAssignment(Settings, executablePath);");
+    }
+
     private static void AssertPatternRestrictedTo(
         string pattern,
         params string[] allowedFiles)
