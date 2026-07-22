@@ -110,7 +110,7 @@ Replace-Exact 'src/SightAdapt/ApplicationProfilesGrid.cs' @'
 
     public event EventHandler? SelectedApplicationChanged;
 '@ @'
-    public event EventHandler<ApplicationProfileEnabledChangedEventArgs>? EnabledChanged;
+    public event EventHandler<ApplicationProfileEnabledChangedEventArgs>? ApplicationEnabledChanged;
 
     public event EventHandler<ApplicationProfileVisualProfileChangedEventArgs>? VisualProfileChanged;
 
@@ -215,7 +215,7 @@ Replace-Exact 'src/SightAdapt/ApplicationProfilesGrid.cs' @'
         if (columnName == EnabledColumnName &&
             row.Cells[eventArgs.ColumnIndex].Value is bool enabled)
         {
-            EnabledChanged?.Invoke(
+            ApplicationEnabledChanged?.Invoke(
                 this,
                 new ApplicationProfileEnabledChangedEventArgs(
                     executablePath,
@@ -262,7 +262,7 @@ Replace-Exact 'src/SightAdapt/ConfigurationForm.cs' @'
         _profilesGrid.SelectedApplicationChanged += (_, _) =>
 '@ @'
         _profilesGrid = new ApplicationProfilesGrid();
-        _profilesGrid.EnabledChanged += ProfilesGridEnabledChanged;
+        _profilesGrid.ApplicationEnabledChanged += ProfilesGridEnabledChanged;
         _profilesGrid.VisualProfileChanged += ProfilesGridVisualProfileChanged;
         _profilesGrid.OverlayScopeChanged += ProfilesGridOverlayScopeChanged;
         _profilesGrid.SelectedApplicationChanged += (_, _) =>
