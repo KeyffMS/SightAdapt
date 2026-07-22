@@ -7,11 +7,15 @@ internal sealed class ForegroundWindowChangedEventArgs(nint window) : EventArgs
 
 internal sealed class ForegroundWindowTracker : IDisposable
 {
+    internal const int DefaultIntervalMilliseconds = 75;
+
     private readonly System.Windows.Forms.Timer _timer;
     private nint _lastExternalWindow;
+    private nint _lastPublishedWindow;
     private bool _disposed;
 
-    public ForegroundWindowTracker(int intervalMilliseconds = 250)
+    public ForegroundWindowTracker(
+        int intervalMilliseconds = DefaultIntervalMilliseconds)
     {
         if (intervalMilliseconds <= 0)
         {
@@ -37,7 +41,8 @@ internal sealed class ForegroundWindowTracker : IDisposable
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
 
-        var foreground = NormalizeTopLevelWindow(NativeMethods.GetForegroundWindow());
+        var foreground = NormalizeTopLevelWindow(
+            NativeMethods.GetForegroundWindow());
         if (IsSupportedTarget(foreground))
         {
             _lastExternalWindow = foreground;
@@ -83,6 +88,17 @@ internal sealed class ForegroundWindowTracker : IDisposable
             "NotifyIconOverflowWindow");
     }
 
+    internal bool ShouldPublish(nint candidate)
+    {
+        if (candidate == _lastPublishedWindow)
+        {
+            return false;
+        }
+
+        _lastPublishedWindow = candidate;
+        return true;
+    }
+
     public void Dispose()
     {
         if (_disposed)
@@ -98,14 +114,22 @@ internal sealed class ForegroundWindowTracker : IDisposable
 
     private void TimerTick(object? sender, EventArgs eventArgs)
     {
-        var candidate = NormalizeTopLevelWindow(NativeMethods.GetForegroundWindow());
+        var candidate = NormalizeTopLevelWindow(
+            NativeMethods.GetForegroundWindow());
         if (!IsSupportedTarget(candidate))
         {
             return;
         }
 
         _lastExternalWindow = candidate;
-        Changed?.Invoke(this, new ForegroundWindowChangedEventArgs(candidate));
+        if (!ShouldPublish(candidate))
+        {
+            return;
+        }
+
+        Changed?.Invoke(
+            this,
+            new ForegroundWindowChangedEventArgs(candidate));
     }
 
     private static nint NormalizeTopLevelWindow(nint window)
