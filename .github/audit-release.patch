@@ -1,0 +1,199 @@
+diff --git a/src/SightAdapt/VisualTransforms.cs b/src/SightAdapt/VisualTransforms.cs
+index e57bea8..0000000 100644
+--- a/src/SightAdapt/VisualTransforms.cs
++++ b/src/SightAdapt/VisualTransforms.cs
+@@ -110,48 +110,28 @@ internal sealed class VisualTransformCatalog
+             definition => definition.Id,
+             StringComparer.OrdinalIgnoreCase);
+ 
+-    private readonly IReadOnlyDictionary<
+-        string,
+-        VisualTransformDefinition> _definitions;
+-
+-    public VisualTransformCatalog(
+-        IEnumerable<VisualTransformDefinition>? definitions = null)
+-    {
+-        var available =
+-            definitions?.ToArray() ?? CanonicalDefinitions;
+-
+-        _definitions = available.ToDictionary(
+-            definition => definition.Id,
+-            StringComparer.OrdinalIgnoreCase);
+-    }
+-
+-    public VisualTransformCatalog(
+-        IEnumerable<IVisualTransform> transforms)
+-        : this(transforms?.Select(CreateDefinition) ??
+-               throw new ArgumentNullException(nameof(transforms)))
++    private VisualTransformCatalog()
+     {
+     }
+ 
+     public static VisualTransformCatalog Default { get; } = new();
+ 
+-    public static bool IsSupported(string? transformId)
++    public bool IsSupported(string? transformId)
+     {
+-        return TryGetCanonicalDefinition(
++        return TryGetDefinition(
+             transformId,
+             out _);
+     }
+ 
+-    public static bool SupportsTuning(string? transformId)
++    public bool SupportsTuning(string? transformId)
+     {
+-        return TryGetCanonicalDefinition(
++        return TryGetDefinition(
+                 transformId,
+                 out var definition) &&
+             definition.SupportsTuning;
+     }
+ 
+-    public static string GetDisplayName(string? transformId)
++    public string GetDisplayName(string? transformId)
+     {
+-        return TryGetCanonicalDefinition(
++        return TryGetDefinition(
+                 transformId,
+                 out var definition)
+             ? definition.DisplayName
+@@ -161,7 +141,7 @@ internal sealed class VisualTransformCatalog
+     public IVisualTransform GetRequired(string transformId)
+     {
+         if (string.IsNullOrWhiteSpace(transformId) ||
+-            !_definitions.TryGetValue(
++            !DefinitionsById.TryGetValue(
+                 transformId.Trim(),
+                 out var definition))
+         {
+@@ -172,7 +152,7 @@ internal sealed class VisualTransformCatalog
+         return definition.Transform;
+     }
+ 
+-    private static bool TryGetCanonicalDefinition(
++    private static bool TryGetDefinition(
+         string? transformId,
+         out VisualTransformDefinition definition)
+     {
+@@ -188,18 +168,6 @@ internal sealed class VisualTransformCatalog
+         definition = null!;
+         return false;
+     }
+-
+-    private static VisualTransformDefinition CreateDefinition(
+-        IVisualTransform transform)
+-    {
+-        ArgumentNullException.ThrowIfNull(transform);
+-
+-        return new VisualTransformDefinition(
+-            transform.Id,
+-            GetDisplayName(transform.Id),
+-            SupportsTuning(transform.Id),
+-            transform);
+-    }
+ }
+ 
+ internal sealed class ColorAffineMatrix
+diff --git a/src/SightAdapt/ApplicationProfile.cs b/src/SightAdapt/ApplicationProfile.cs
+index 4422413..0000000 100644
+--- a/src/SightAdapt/ApplicationProfile.cs
++++ b/src/SightAdapt/ApplicationProfile.cs
+@@ -162,8 +162,8 @@ internal sealed class VisualProfile
+ 
+     [JsonIgnore]
+     public bool SupportsTuning =>
+-        VisualTransformCatalog.SupportsTuning(TransformId);
++        VisualTransformCatalog.Default.SupportsTuning(TransformId);
+ 
+     public VisualProfile CreateWorkingCopy()
+     {
+diff --git a/src/SightAdapt/VisualProfilePolicy.cs b/src/SightAdapt/VisualProfilePolicy.cs
+index 858f65a..0000000 100644
+--- a/src/SightAdapt/VisualProfilePolicy.cs
++++ b/src/SightAdapt/VisualProfilePolicy.cs
+@@ -31,8 +31,8 @@ internal static class VisualProfilePolicy
+         string? transformId)
+     {
+-        return VisualTransformCatalog.IsSupported(
++        return VisualTransformCatalog.Default.IsSupported(
+             transformId);
+     }
+ 
+diff --git a/src/SightAdapt/VisualProfileManagerForm.cs b/src/SightAdapt/VisualProfileManagerForm.cs
+index 27d33fc..0000000 100644
+--- a/src/SightAdapt/VisualProfileManagerForm.cs
++++ b/src/SightAdapt/VisualProfileManagerForm.cs
+@@ -295,7 +295,7 @@ internal sealed class VisualProfileManagerForm : Form
+                 profile.Name,
+                 VisualProfileManagementService.IsBuiltIn(profile) ? "Built-in" : "User-defined",
+-                VisualTransformCatalog.GetDisplayName(profile.TransformId),
++                VisualTransformCatalog.Default.GetDisplayName(profile.TransformId),
+                 VisualProfileManagementService.CountAssignments(Settings, profile));
+             var row = _profilesGrid.Rows[index];
+diff --git a/tests/SightAdapt.Tests/ArchitectureComplianceTests.cs b/tests/SightAdapt.Tests/ArchitectureComplianceTests.cs
+index b9d6251..0000000 100644
+--- a/tests/SightAdapt.Tests/ArchitectureComplianceTests.cs
++++ b/tests/SightAdapt.Tests/ArchitectureComplianceTests.cs
+@@ -114,8 +114,8 @@ public sealed class ArchitectureComplianceTests
+         var editor = ReadSource("VisualProfileEditorForm.cs");
+         var manager = ReadSource("VisualProfileManagerForm.cs");
+ 
+-        StringAssert.Contains(model, "VisualTransformCatalog.SupportsTuning");
+-        StringAssert.Contains(policy, "VisualTransformCatalog.IsSupported");
++        StringAssert.Contains(model, "VisualTransformCatalog.Default.SupportsTuning");
++        StringAssert.Contains(policy, "VisualTransformCatalog.Default.IsSupported");
+         StringAssert.Contains(editor, "VisualTransformCatalog.Default");
+         StringAssert.Contains(manager, "VisualTransformCatalog");
+         Assert.IsFalse(
+diff --git a/tests/SightAdapt.Tests/VisualTransformCatalogTests.cs b/tests/SightAdapt.Tests/VisualTransformCatalogTests.cs
+new file mode 100644
+index 0000000..9b6374b
+--- /dev/null
++++ b/tests/SightAdapt.Tests/VisualTransformCatalogTests.cs
+@@ -0,0 +1,46 @@
++using Microsoft.VisualStudio.TestTools.UnitTesting;
++
++namespace SightAdapt.Tests;
++
++[TestClass]
++public sealed class VisualTransformCatalogTests
++{
++    [TestMethod]
++    public void BuiltInMetadataAndResolutionUseTheSameRegistry()
++    {
++        var catalog = VisualTransformCatalog.Default;
++
++        Assert.IsTrue(catalog.IsSupported(InvertVisualTransform.TransformId));
++        Assert.IsFalse(catalog.SupportsTuning(InvertVisualTransform.TransformId));
++        Assert.AreEqual(
++            VisualProfileDefaults.ExactInvertName,
++            catalog.GetDisplayName(InvertVisualTransform.TransformId));
++        Assert.AreEqual(
++            InvertVisualTransform.TransformId,
++            catalog.GetRequired(InvertVisualTransform.TransformId).Id);
++
++        Assert.IsTrue(catalog.IsSupported(SoftInvertVisualTransform.TransformId));
++        Assert.IsTrue(catalog.SupportsTuning(SoftInvertVisualTransform.TransformId));
++        Assert.AreEqual(
++            VisualProfileDefaults.SoftInvertName,
++            catalog.GetDisplayName(SoftInvertVisualTransform.TransformId));
++        Assert.AreEqual(
++            SoftInvertVisualTransform.TransformId,
++            catalog.GetRequired(SoftInvertVisualTransform.TransformId).Id);
++    }
++
++    [TestMethod]
++    public void UnknownTransformIsRejectedConsistently()
++    {
++        var catalog = VisualTransformCatalog.Default;
++
++        Assert.IsFalse(catalog.IsSupported("custom-transform"));
++        Assert.IsFalse(catalog.SupportsTuning("custom-transform"));
++        Assert.AreEqual(
++            "custom-transform",
++            catalog.GetDisplayName(" custom-transform "));
++        Assert.ThrowsException<InvalidOperationException>(() =>
++            catalog.GetRequired("custom-transform"));
++    }
++}
