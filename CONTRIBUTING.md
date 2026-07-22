@@ -1,18 +1,20 @@
 # Contributing to SightAdapt
 
-SightAdapt is in an early proof-of-concept stage. Contributions should prioritize user safety, predictable behavior, and Windows 10/11 compatibility.
+SightAdapt is in an alpha stage. Contributions should prioritize user safety, predictable behavior, and Windows 10/11 compatibility.
 
 ## Development setup
 
 - Windows 10 or Windows 11
-- Visual Studio 2022 with .NET desktop development, or the .NET 8 SDK
+- Visual Studio with .NET desktop development, or the .NET 8 SDK
 - x64 target
 
-Build the demo with:
+Build the application with:
 
 ```powershell
 dotnet build src/SightAdapt/SightAdapt.csproj -c Release
 ```
+
+Create a self-contained executable with the steps in [docs/BUILD.md](docs/BUILD.md).
 
 ## Pull requests
 
@@ -32,6 +34,6 @@ Include:
 - target application and framework, when known;
 - whether the target application was elevated;
 - exact steps to reproduce;
-- whether the emergency shortcut still worked.
+- whether the emergency tray command still worked.
 
 Do not attach screenshots containing private information.
