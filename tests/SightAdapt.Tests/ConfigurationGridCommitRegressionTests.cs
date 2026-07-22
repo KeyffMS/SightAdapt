@@ -1,4 +1,3 @@
-using System.Reflection;
 using System.Windows.Forms;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
@@ -10,12 +9,23 @@ public sealed class ConfigurationGridCommitRegressionTests
     [TestMethod]
     public void ProfileSelectionCommitsWithoutRebuildingActiveGrid()
     {
+        RunOnSta(RunProfileSelectionScenario);
+    }
+
+    [TestMethod]
+    public void ExternalSettingsChangeRebindsGridFromCurrentSettings()
+    {
+        RunOnSta(RunExternalChangeScenario);
+    }
+
+    private static void RunOnSta(Action scenario)
+    {
         Exception? failure = null;
         var thread = new Thread(() =>
         {
             try
             {
-                RunScenario();
+                scenario();
             }
             catch (Exception exception)
             {
@@ -35,36 +45,33 @@ public sealed class ConfigurationGridCommitRegressionTests
         }
     }
 
-    private static void RunScenario()
+    private static void RunProfileSelectionScenario()
     {
-        var directory = Path.Combine(
-            Path.GetTempPath(),
-            "SightAdapt.Tests",
-            Guid.NewGuid().ToString("N"));
-        Directory.CreateDirectory(directory);
-
+        var directory = CreateTemporaryDirectory();
         try
         {
-            var coordinator = new SettingsCoordinator(
-                new SettingsStore(Path.Combine(directory, "settings.json")));
+            var coordinator = CreateCoordinator(directory);
             var identity = new ApplicationIdentity(
                 "Reader",
                 "reader.exe",
                 @"C:\Apps\reader.exe");
-            var seed = coordinator.Commit(settings =>
+            Assert.IsTrue(coordinator.Commit(settings =>
             {
-                ApplicationProfileManagementService.AddOrEnable(settings, identity);
-            });
-            Assert.IsTrue(seed.Succeeded);
+                ApplicationProfileManagementService.AddOrEnable(
+                    settings,
+                    identity);
+            }).Succeeded);
 
             using var form = new ConfigurationForm(coordinator, () => null);
             form.Show();
             Application.DoEvents();
 
-            var grid = GetPrivateField<DataGridView>(form, "_profilesGrid");
+            var profilesGrid = FindControl<ApplicationProfilesGrid>(form);
+            var grid = profilesGrid.Grid;
             Assert.AreEqual(1, grid.Rows.Count);
-            var row = grid.Rows[0];
-            var profileCell = row.Cells["VisualProfile"];
+            Assert.AreEqual(identity.ExecutablePath, grid.Rows[0].Tag);
+
+            var profileCell = grid.Rows[0].Cells["VisualProfile"];
             grid.CurrentCell = profileCell;
             grid.Focus();
             Assert.IsTrue(grid.BeginEdit(true));
@@ -80,7 +87,7 @@ public sealed class ConfigurationGridCommitRegressionTests
                 .Single(candidate =>
                     candidate.Id == VisualProfile.DefaultInvertId);
 
-            InvokeSelectOption(editor, option);
+            editor.SelectOptionFromInput(option);
             WaitFor(() =>
                 coordinator.Current.Applications.Single().VisualProfileId ==
                 VisualProfile.DefaultInvertId);
@@ -89,53 +96,117 @@ public sealed class ConfigurationGridCommitRegressionTests
             Assert.AreEqual(
                 VisualProfile.DefaultInvertId,
                 grid.Rows[0].Cells["VisualProfile"].Value);
-            Assert.IsInstanceOfType<ApplicationProfile>(grid.Rows[0].Tag);
-            var committedRowProfile =
-                (ApplicationProfile)grid.Rows[0].Tag!;
-            Assert.AreEqual(
-                VisualProfile.DefaultInvertId,
-                committedRowProfile.VisualProfileId);
+            Assert.AreEqual(identity.ExecutablePath, grid.Rows[0].Tag);
 
-            Assert.IsTrue(grid.EndEdit());
             grid.CurrentCell = grid.Rows[0].Cells["Application"];
             Application.DoEvents();
+            Assert.IsFalse(grid.IsCurrentCellInEditMode);
             Assert.AreEqual(1, grid.Rows.Count);
             form.Close();
         }
         finally
         {
-            if (Directory.Exists(directory))
-            {
-                Directory.Delete(directory, true);
-            }
+            DeleteTemporaryDirectory(directory);
         }
     }
 
-    private static T GetPrivateField<T>(object instance, string name)
-        where T : class
+    private static void RunExternalChangeScenario()
     {
-        return (T)(instance.GetType().GetField(
-            name,
-            BindingFlags.Instance | BindingFlags.NonPublic)?.GetValue(instance) ??
-            throw new MissingFieldException(instance.GetType().FullName, name));
-    }
-
-    private static void InvokeSelectOption(
-        ModernVisualProfileEditingControl editor,
-        VisualProfileOption option)
-    {
+        var directory = CreateTemporaryDirectory();
         try
         {
-            editor.GetType().GetMethod(
-                "SelectOption",
-                BindingFlags.Instance | BindingFlags.NonPublic)?.Invoke(
-                    editor,
-                    [option, true]);
+            var coordinator = CreateCoordinator(directory);
+            Assert.IsTrue(coordinator.Commit(settings =>
+            {
+                ApplicationProfileManagementService.AddOrEnable(
+                    settings,
+                    new ApplicationIdentity(
+                        "Reader",
+                        "reader.exe",
+                        @"C:\Apps\reader.exe"));
+            }).Succeeded);
+
+            using var form = new ConfigurationForm(coordinator, () => null);
+            form.Show();
+            Application.DoEvents();
+
+            var grid = FindControl<ApplicationProfilesGrid>(form).Grid;
+            Assert.AreEqual(1, grid.Rows.Count);
+
+            Assert.IsTrue(coordinator.Commit(settings =>
+            {
+                ApplicationProfileManagementService.AddOrEnable(
+                    settings,
+                    new ApplicationIdentity(
+                        "Writer",
+                        "writer.exe",
+                        @"C:\Apps\writer.exe"));
+            }).Succeeded);
+            Application.DoEvents();
+
+            Assert.AreEqual(2, grid.Rows.Count);
+            CollectionAssert.AreEquivalent(
+                new[]
+                {
+                    @"C:\Apps\reader.exe",
+                    @"C:\Apps\writer.exe",
+                },
+                grid.Rows
+                    .Cast<DataGridViewRow>()
+                    .Select(row => (string)row.Tag!)
+                    .ToArray());
+            form.Close();
         }
-        catch (TargetInvocationException exception)
-            when (exception.InnerException is not null)
+        finally
         {
-            throw exception.InnerException;
+            DeleteTemporaryDirectory(directory);
+        }
+    }
+
+    private static SettingsCoordinator CreateCoordinator(string directory)
+    {
+        return new SettingsCoordinator(
+            new SettingsStore(Path.Combine(directory, "settings.json")));
+    }
+
+    private static T FindControl<T>(Control root)
+        where T : Control
+    {
+        if (root is T match)
+        {
+            return match;
+        }
+
+        foreach (Control child in root.Controls)
+        {
+            try
+            {
+                return FindControl<T>(child);
+            }
+            catch (InvalidOperationException)
+            {
+            }
+        }
+
+        throw new InvalidOperationException(
+            $"Control {typeof(T).Name} was not found.");
+    }
+
+    private static string CreateTemporaryDirectory()
+    {
+        var directory = Path.Combine(
+            Path.GetTempPath(),
+            "SightAdapt.Tests",
+            Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        return directory;
+    }
+
+    private static void DeleteTemporaryDirectory(string directory)
+    {
+        if (Directory.Exists(directory))
+        {
+            Directory.Delete(directory, true);
         }
     }
 

@@ -6,17 +6,12 @@ namespace SightAdapt.Demo;
 
 internal sealed class ConfigurationForm : Form
 {
-    private const string EnabledColumnName = "Enabled";
-    private const string VisualProfileColumnName = "VisualProfile";
-    private const string ApplicationColumnName = "Application";
-
     private readonly SettingsCoordinator _settingsCoordinator;
     private readonly Func<ApplicationIdentity?> _getCurrentApplication;
     private readonly ToggleSwitch _automaticModeSwitch;
     private readonly Label _automaticModeStateLabel;
     private readonly Label _profileCountLabel;
-    private readonly Label _emptyStateLabel;
-    private readonly DataGridView _profilesGrid;
+    private readonly ApplicationProfilesGrid _profilesGrid;
     private readonly ModernButton _editVisualProfileButton;
     private bool _refreshing;
     private bool _committingGridValue;
@@ -53,8 +48,10 @@ internal sealed class ConfigurationForm : Form
             160,
             EditSelectedVisualProfile);
         _editVisualProfileButton.Enabled = false;
-        _profilesGrid = CreateProfilesGrid();
-        _emptyStateLabel = CreateEmptyStateLabel();
+        _profilesGrid = new ApplicationProfilesGrid();
+        _profilesGrid.ValueChanged += ProfilesGridValueChanged;
+        _profilesGrid.SelectedApplicationChanged += (_, _) =>
+            UpdateSelectedProfileActions();
 
         Controls.Add(CreateRootLayout());
         _settingsCoordinator.Changed += SettingsChanged;
@@ -74,33 +71,16 @@ internal sealed class ConfigurationForm : Form
         _refreshing = true;
         try
         {
-            var selectedPath = GetSelectedApplicationProfile()?.ExecutablePath;
             _automaticModeSwitch.Checked = Settings.AutomaticMode;
             UpdateAutomaticModeState();
-            RefreshVisualProfileColumn();
-            _profilesGrid.Rows.Clear();
-
-            foreach (var profile in Settings.Applications)
-            {
-                var index = _profilesGrid.Rows.Add(
-                    profile.Enabled,
-                    profile.DisplayName,
-                    profile.VisualProfileId,
-                    profile.ExecutableName,
-                    profile.ExecutablePath);
-                var row = _profilesGrid.Rows[index];
-                row.Tag = profile;
-                if (string.Equals(selectedPath, profile.ExecutablePath, StringComparison.OrdinalIgnoreCase))
-                {
-                    row.Selected = true;
-                    _profilesGrid.CurrentCell = row.Cells[ApplicationColumnName];
-                }
-            }
+            _profilesGrid.Bind(
+                Settings.Applications,
+                Settings.VisualProfiles);
 
             var count = Settings.Applications.Count;
-            _profileCountLabel.Text = count == 1 ? "1 PROFILE" : $"{count} PROFILES";
-            _emptyStateLabel.Visible = count == 0;
-            _profilesGrid.Visible = count > 0;
+            _profileCountLabel.Text = count == 1
+                ? "1 PROFILE"
+                : $"{count} PROFILES";
             UpdateSelectedProfileActions();
         }
         finally
@@ -247,57 +227,6 @@ internal sealed class ConfigurationForm : Form
         return card;
     }
 
-    private DataGridView CreateProfilesGrid()
-    {
-        var grid = new DataGridView
-        {
-            AllowUserToAddRows = false,
-            AllowUserToDeleteRows = false,
-            AllowUserToResizeRows = false,
-            AutoGenerateColumns = false,
-            Dock = DockStyle.Fill,
-            EditMode = DataGridViewEditMode.EditOnEnter,
-            MultiSelect = false,
-            ReadOnly = false,
-            SelectionMode = DataGridViewSelectionMode.FullRowSelect,
-        };
-        AppTheme.StyleGrid(grid);
-
-        var enabled = new DataGridViewCheckBoxColumn
-        {
-            Name = EnabledColumnName,
-            HeaderText = "ACTIVE",
-            Width = 92,
-            MinimumWidth = 92,
-            Resizable = DataGridViewTriState.False,
-            FlatStyle = FlatStyle.Flat,
-            SortMode = DataGridViewColumnSortMode.NotSortable,
-        };
-        enabled.HeaderCell.Style.Alignment = DataGridViewContentAlignment.MiddleCenter;
-        enabled.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
-        enabled.DefaultCellStyle.Padding = Padding.Empty;
-        grid.Columns.Add(enabled);
-        grid.Columns.Add(CreateTextColumn(ApplicationColumnName, "APPLICATION", 205));
-        grid.Columns.Add(new StableVisualProfileComboBoxColumn
-        {
-            Name = VisualProfileColumnName,
-            HeaderText = "VISUAL PROFILE",
-            DisplayStyle = DataGridViewComboBoxDisplayStyle.ComboBox,
-            FlatStyle = FlatStyle.Flat,
-            Width = 185,
-            MinimumWidth = 160,
-            SortMode = DataGridViewColumnSortMode.NotSortable,
-        });
-        grid.Columns.Add(CreateTextColumn("Executable", "EXECUTABLE", 155));
-        grid.Columns.Add(CreateTextColumn("Path", "FULL PATH", 220, fill: true));
-
-        grid.CellValueChanged += ProfilesGridCellValueChanged;
-        grid.CurrentCellDirtyStateChanged += ProfilesGridCurrentCellDirtyStateChanged;
-        grid.SelectionChanged += (_, _) => UpdateSelectedProfileActions();
-        grid.DataError += ProfilesGridDataError;
-        return grid;
-    }
-
     private Control CreateProfilesCard()
     {
         var header = new TableLayoutPanel
@@ -329,7 +258,6 @@ internal sealed class ConfigurationForm : Form
             Margin = Padding.Empty,
         };
         host.Controls.Add(_profilesGrid);
-        host.Controls.Add(_emptyStateLabel);
 
         var card = new RoundedPanel
         {
@@ -508,22 +436,7 @@ internal sealed class ConfigurationForm : Form
         };
     }
 
-    private static Label CreateEmptyStateLabel()
-    {
-        return new Label
-        {
-            BackColor = AppTheme.Surface,
-            Dock = DockStyle.Fill,
-            ForeColor = AppTheme.TextSecondary,
-            Font = AppTheme.CreateUiFont(10.5f),
-            Padding = new Padding(32),
-            Text = "No application profiles yet.\n\nAdd the currently active application or select an executable file.",
-            TextAlign = ContentAlignment.MiddleCenter,
-            Visible = false,
-        };
-    }
-
-    private static Label CreateInfoLabel(string text, FontStyle style)
+    private static Label CreateInfoLabel(    private static Label CreateInfoLabel(string text, FontStyle style)
     {
         return new Label
         {
@@ -536,26 +449,7 @@ internal sealed class ConfigurationForm : Form
         };
     }
 
-    private static DataGridViewTextBoxColumn CreateTextColumn(
-        string name,
-        string header,
-        int width,
-        bool fill = false)
-    {
-        return new DataGridViewTextBoxColumn
-        {
-            Name = name,
-            HeaderText = header,
-            AutoSizeMode = fill
-                ? DataGridViewAutoSizeColumnMode.Fill
-                : DataGridViewAutoSizeColumnMode.None,
-            MinimumWidth = width,
-            ReadOnly = true,
-            Width = width,
-            SortMode = DataGridViewColumnSortMode.NotSortable,
-        };
-    }
-
+    private static ModernButton CreateButton(
     private static ModernButton CreateButton(
         string text,
         ModernButtonStyle style,
@@ -621,64 +515,37 @@ internal sealed class ConfigurationForm : Form
             : AppTheme.TextSecondary;
     }
 
-    private void RefreshVisualProfileColumn()
+    private void ProfilesGridValueChanged(
+        object? sender,
+        ApplicationProfileGridValueChangedEventArgs eventArgs)
     {
-        if (_profilesGrid.Columns[VisualProfileColumnName] is StableVisualProfileComboBoxColumn column)
-        {
-            column.SetProfiles(Settings.VisualProfiles);
-        }
-    }
-
-    private void ProfilesGridCurrentCellDirtyStateChanged(object? sender, EventArgs eventArgs)
-    {
-        if (_profilesGrid.IsCurrentCellDirty)
-        {
-            _profilesGrid.CommitEdit(DataGridViewDataErrorContexts.Commit);
-        }
-    }
-
-    private void ProfilesGridCellValueChanged(object? sender, DataGridViewCellEventArgs eventArgs)
-    {
-        if (_refreshing || eventArgs.RowIndex < 0 || eventArgs.ColumnIndex < 0)
-        {
-            return;
-        }
-
-        var row = _profilesGrid.Rows[eventArgs.RowIndex];
-        if (row.Tag is not ApplicationProfile displayedProfile)
-        {
-            return;
-        }
-
-        var executablePath = displayedProfile.ExecutablePath;
-        var columnName = _profilesGrid.Columns[eventArgs.ColumnIndex].Name;
+        var displayedProfile = FindAssignment(
+            Settings,
+            eventArgs.ExecutablePath);
         SettingsCommitResult result;
 
         _committingGridValue = true;
         try
         {
-            if (columnName == EnabledColumnName)
+            result = eventArgs.Column switch
             {
-                var enabled = row.Cells[eventArgs.ColumnIndex].Value is true;
-                result = _settingsCoordinator.Commit(settings =>
-                    ApplicationProfileManagementService.SetEnabled(
-                        settings,
-                        FindAssignment(settings, executablePath),
-                        enabled));
-            }
-            else if (columnName == VisualProfileColumnName &&
-                     row.Cells[eventArgs.ColumnIndex].Value is string visualProfileId)
-            {
-                result = _settingsCoordinator.Commit(settings =>
-                    ApplicationProfileManagementService.AssignVisualProfile(
-                        settings,
-                        FindAssignment(settings, executablePath),
-                        visualProfileId));
-            }
-            else
-            {
-                return;
-            }
+                ApplicationProfileGridColumn.Enabled
+                    when eventArgs.Value is bool enabled =>
+                    _settingsCoordinator.Commit(settings =>
+                        ApplicationProfileManagementService.SetEnabled(
+                            settings,
+                            FindAssignment(settings, eventArgs.ExecutablePath),
+                            enabled)),
+                ApplicationProfileGridColumn.VisualProfile
+                    when eventArgs.Value is string visualProfileId =>
+                    _settingsCoordinator.Commit(settings =>
+                        ApplicationProfileManagementService.AssignVisualProfile(
+                            settings,
+                            FindAssignment(settings, eventArgs.ExecutablePath),
+                            visualProfileId)),
+                _ => SettingsCommitResult.Failure(
+                    "The edited application-profile value is not supported."),
+            };
         }
         finally
         {
@@ -688,34 +555,22 @@ internal sealed class ConfigurationForm : Form
         if (!result.Succeeded)
         {
             ShowCommitError(result.ErrorMessage);
-            _refreshing = true;
-            try
-            {
-                row.Cells[eventArgs.ColumnIndex].Value =
-                    columnName == EnabledColumnName
-                        ? displayedProfile.Enabled
-                        : displayedProfile.VisualProfileId;
-            }
-            finally
-            {
-                _refreshing = false;
-            }
+            _profilesGrid.RestoreValue(
+                eventArgs.ExecutablePath,
+                eventArgs.Column,
+                eventArgs.Column == ApplicationProfileGridColumn.Enabled
+                    ? displayedProfile.Enabled
+                    : displayedProfile.VisualProfileId);
             return;
         }
 
-        row.Tag = FindAssignment(Settings, executablePath);
+        _profilesGrid.UpdateApplication(FindAssignment(
+            Settings,
+            eventArgs.ExecutablePath));
         UpdateSelectedProfileActions();
     }
 
-    private void ProfilesGridDataError(object? sender, DataGridViewDataErrorEventArgs eventArgs)
-    {
-        if (eventArgs.Exception is ArgumentException or InvalidOperationException)
-        {
-            Debug.WriteLine($"SightAdapt ignored an expected grid binding race: {eventArgs.Exception}");
-            eventArgs.ThrowException = false;
-        }
-    }
-
+    private void UpdateSelectedProfileActions()
     private void UpdateSelectedProfileActions()
     {
         var assignment = GetSelectedApplicationProfile();
@@ -776,11 +631,20 @@ internal sealed class ConfigurationForm : Form
 
     private ApplicationProfile? GetSelectedApplicationProfile()
     {
-        return _profilesGrid.SelectedRows.Count > 0
-            ? _profilesGrid.SelectedRows[0].Tag as ApplicationProfile
-            : _profilesGrid.CurrentRow?.Tag as ApplicationProfile;
+        var executablePath = _profilesGrid.SelectedExecutablePath;
+        if (string.IsNullOrWhiteSpace(executablePath))
+        {
+            return null;
+        }
+
+        return Settings.Applications.FirstOrDefault(profile =>
+            string.Equals(
+                profile.ExecutablePath,
+                executablePath,
+                StringComparison.OrdinalIgnoreCase));
     }
 
+    private void AddCurrentApplication()
     private void AddCurrentApplication()
     {
         var identity = _getCurrentApplication();

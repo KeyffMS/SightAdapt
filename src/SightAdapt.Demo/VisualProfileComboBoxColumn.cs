@@ -16,7 +16,6 @@ internal sealed class StableVisualProfileComboBoxColumn :
     DataGridViewComboBoxColumn
 {
     private VisualProfileOption[] _options = [];
-    private DataGridView? _attachedGrid;
 
     public StableVisualProfileComboBoxColumn()
     {
@@ -71,83 +70,9 @@ internal sealed class StableVisualProfileComboBoxColumn :
         return clone;
     }
 
-    protected override void OnDataGridViewChanged()
-    {
-        if (_attachedGrid is not null)
-        {
-            _attachedGrid.CellPainting -= GridCellPainting;
-        }
-
-        base.OnDataGridViewChanged();
-        _attachedGrid = DataGridView;
-
-        if (_attachedGrid is not null)
-        {
-            _attachedGrid.CellPainting += GridCellPainting;
-        }
-    }
-
-    private static void GridCellPainting(
-        object? sender,
-        DataGridViewCellPaintingEventArgs eventArgs)
-    {
-        if (sender is not DataGridView grid ||
-            eventArgs.RowIndex < 0 ||
-            eventArgs.ColumnIndex < 0 ||
-            !string.Equals(
-                grid.Columns[eventArgs.ColumnIndex].Name,
-                "Enabled",
-                StringComparison.Ordinal))
-        {
-            return;
-        }
-
-        var graphics = eventArgs.Graphics;
-        if (graphics is null)
-        {
-            return;
-        }
-
-        eventArgs.PaintBackground(
-            eventArgs.CellBounds,
-            (eventArgs.State & DataGridViewElementStates.Selected) != 0);
-
-        var enabled = eventArgs.FormattedValue is true;
-        const int diameter = 15;
-        var bounds = new Rectangle(
-            eventArgs.CellBounds.Left +
-                (eventArgs.CellBounds.Width - diameter) / 2,
-            eventArgs.CellBounds.Top +
-                (eventArgs.CellBounds.Height - diameter) / 2,
-            diameter,
-            diameter);
-
-        graphics.SmoothingMode = SmoothingMode.AntiAlias;
-        using var fill = new SolidBrush(
-            enabled ? AppTheme.Success : AppTheme.Surface);
-        using var border = new Pen(
-            enabled ? AppTheme.Success : AppTheme.TextMuted,
-            enabled ? 1.5f : 1.2f);
-        graphics.FillEllipse(fill, bounds);
-        graphics.DrawEllipse(border, bounds);
-
-        if ((eventArgs.State & DataGridViewElementStates.Selected) != 0 &&
-            grid.CurrentCellAddress.X == eventArgs.ColumnIndex &&
-            grid.CurrentCellAddress.Y == eventArgs.RowIndex)
-        {
-            var focusBounds = Rectangle.Inflate(bounds, 5, 5);
-            ControlPaint.DrawFocusRectangle(
-                graphics,
-                focusBounds,
-                AppTheme.TextPrimary,
-                AppTheme.Selection);
-        }
-
-        eventArgs.Handled = true;
-    }
 }
 
-internal sealed class ModernVisualProfileComboBoxCell :
+internal sealed class ModernVisualProfileComboBoxCellinternal sealed class ModernVisualProfileComboBoxCell :
     DataGridViewComboBoxCell
 {
     public ModernVisualProfileComboBoxCell()
@@ -543,6 +468,12 @@ internal sealed class ModernVisualProfileEditingControl :
             0,
             _options.Length - 1);
         SelectOption(_options[nextIndex], notifyGrid: true);
+    }
+
+    internal void SelectOptionFromInput(VisualProfileOption option)
+    {
+        ArgumentNullException.ThrowIfNull(option);
+        SelectOption(option, notifyGrid: true);
     }
 
     private void SelectByValue(string? value)
