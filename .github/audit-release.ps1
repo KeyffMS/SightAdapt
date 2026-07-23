@@ -115,9 +115,16 @@ Replace-Exact 'src/SightAdapt/ConfigurationForm.cs' @'
             executablePath);
 '@
 
-Replace-Exact 'src/SightAdapt/ConfigurationForm.cs' `
-    'FindAssignment(Settings, executablePath)' `
-    'ProfileResolver.RequireAssignmentByExecutablePath(Settings, executablePath)'
+Replace-Exact 'src/SightAdapt/ConfigurationForm.cs' @'
+        var displayedProfile = FindAssignment(
+            Settings,
+            executablePath);
+'@ @'
+        var displayedProfile =
+            ProfileResolver.RequireAssignmentByExecutablePath(
+                Settings,
+                executablePath);
+'@
 Replace-Exact 'src/SightAdapt/ConfigurationForm.cs' `
     'FindAssignment(settings, executablePath)' `
     'ProfileResolver.RequireAssignmentByExecutablePath(settings, executablePath)' `
