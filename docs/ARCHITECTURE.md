@@ -66,6 +66,7 @@ A failed mutation or failed write does not replace committed settings and does n
 | Bounded process identity cache | `ApplicationIdentityCache` |
 | Overlay geometry | `OverlayBoundsResolver` |
 | Overlay resource lifetime and retargeting | `OverlayController` |
+| Native call failure classification and diagnostics | `NativeCall` |
 | Native target, rendering, geometry refresh, and transition grace | `MagnifierOverlay` |
 | Notification-area presentation | `TrayPresenter` |
 | Application-table presentation and edit mechanics | `ApplicationProfilesGrid` |
@@ -111,6 +112,16 @@ A rendered frame may remain visible for at most 125 ms during target transition.
 
 The current backend uses the same rectangle for the magnifier source and overlay destination.
 
+## Native call failure policy
+
+`NativeCall` classifies fallible Win32 and Magnification API operations explicitly:
+
+- **critical** initialization and effect calls throw a `Win32Exception` containing the operation name and native error code;
+- **transient** geometry, positioning, and source-update failures are diagnosed, hide the overlay, and allow a later timer tick to recover;
+- **best effort** cleanup failures are diagnosed without replacing the primary application failure.
+
+`ShowWindow` and `InvalidateRect` are handled explicitly at their call sites because their Boolean return values do not represent a standard extended-error success contract.
+
 ## Configuration grid boundary
 
 `ApplicationProfilesGrid` owns columns, rows, selectors, status painting, selection, empty state, stable executable-path keys, separate typed change events, row updates, and failed-cell restoration. It does not know about persistence or dialogs.
@@ -130,7 +141,7 @@ The current backend uses the same rectangle for the magnifier source and overlay
 
 ## Architecture test strategy
 
-Architecture checks are behavior-first. Transaction publication, defensive settings snapshots, failed persistence, expected and unexpected transaction failures, emergency ordering, runtime state transitions, transform catalog consistency, overlay-scope recovery, grid commits, menu roles, preview caching, and profile-manager refresh behavior are exercised through executable tests.
+Architecture checks are behavior-first. Transaction publication, defensive settings snapshots, failed persistence, expected and unexpected transaction failures, emergency ordering, runtime state transitions, native call classification, transform catalog consistency, overlay-scope recovery, grid commits, menu roles, preview caching, and profile-manager refresh behavior are exercised through executable tests.
 
 Source inspection is retained only for exhaustive negative rules that cannot be proven by a finite runtime scenario:
 
