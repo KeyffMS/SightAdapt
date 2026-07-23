@@ -1,0 +1,5 @@
+{
+  "version": "0.5.0.28",
+  "issue": 28,
+  "title": "Deduplicate repository URL opening logic"
+}
