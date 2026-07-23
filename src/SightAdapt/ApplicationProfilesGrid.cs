@@ -58,8 +58,15 @@ internal sealed class ApplicationProfilesGrid : UserControl
 {
     private const string EnabledColumnName = "Enabled";
     private const string ApplicationColumnName = "Application";
-    private const string VisualProfileColumnName = "VisualProfile";
-    private const string OverlayScopeColumnName = "OverlayScope";
+    internal const string VisualProfileColumnName = "VisualProfile";
+    internal const string OverlayScopeColumnName = "OverlayScope";
+
+    private const DataGridViewDataErrorContexts
+        RecoverableSelectorContexts =
+            DataGridViewDataErrorContexts.Formatting |
+            DataGridViewDataErrorContexts.Display |
+            DataGridViewDataErrorContexts.PreferredSize |
+            DataGridViewDataErrorContexts.InitialValueRestoration;
     private const string ExecutableColumnName = "Executable";
     private const string PathColumnName = "Path";
 
@@ -361,12 +368,100 @@ internal sealed class ApplicationProfilesGrid : UserControl
         object? sender,
         DataGridViewDataErrorEventArgs eventArgs)
     {
-        if (eventArgs.Exception is ArgumentException or InvalidOperationException)
+        var grid = sender as DataGridView;
+        var columnName = GetColumnName(
+            grid,
+            eventArgs.ColumnIndex);
+        var executablePath = GetExecutablePath(
+            grid,
+            eventArgs.RowIndex);
+        var recovered = IsExpectedSelectorDataError(
+            eventArgs.Exception,
+            eventArgs.Context,
+            columnName);
+
+        Debug.WriteLine(CreateDataErrorDiagnostic(
+            eventArgs.Exception,
+            eventArgs.Context,
+            eventArgs.RowIndex,
+            eventArgs.ColumnIndex,
+            columnName,
+            executablePath,
+            recovered));
+        eventArgs.ThrowException = !recovered;
+    }
+
+    internal static bool IsExpectedSelectorDataError(
+        Exception? exception,
+        DataGridViewDataErrorContexts context,
+        string? columnName)
+    {
+        if (exception is not ArgumentException ||
+            !IsSelectorColumn(columnName))
         {
-            Debug.WriteLine(
-                $"SightAdapt ignored an expected grid binding race: {eventArgs.Exception}");
-            eventArgs.ThrowException = false;
+            return false;
         }
+
+        var recoverableContext =
+            context & RecoverableSelectorContexts;
+        var unexpectedContext =
+            context & ~RecoverableSelectorContexts;
+        return recoverableContext != 0 &&
+            unexpectedContext == 0;
+    }
+
+    internal static string CreateDataErrorDiagnostic(
+        Exception? exception,
+        DataGridViewDataErrorContexts context,
+        int rowIndex,
+        int columnIndex,
+        string? columnName,
+        string? executablePath,
+        bool recovered)
+    {
+        return
+            $"SightAdapt grid data error; recovered={recovered}; " +
+            $"row={rowIndex}; column={columnIndex}; " +
+            $"columnName={columnName ?? "<unknown>"}; " +
+            $"executablePath={executablePath ?? "<unknown>"}; " +
+            $"context={context}; " +
+            $"exception={exception?.ToString() ?? "<none>"}";
+    }
+
+    private static bool IsSelectorColumn(
+        string? columnName)
+    {
+        return string.Equals(
+                columnName,
+                VisualProfileColumnName,
+                StringComparison.Ordinal) ||
+            string.Equals(
+                columnName,
+                OverlayScopeColumnName,
+                StringComparison.Ordinal);
+    }
+
+    private static string? GetColumnName(
+        DataGridView? grid,
+        int columnIndex)
+    {
+        return grid is not null &&
+            columnIndex >= 0 &&
+            columnIndex < grid.Columns.Count
+                ? grid.Columns[columnIndex].Name
+                : null;
+    }
+
+    private static string? GetExecutablePath(
+        DataGridView? grid,
+        int rowIndex)
+    {
+        return grid is not null &&
+            rowIndex >= 0 &&
+            rowIndex < grid.Rows.Count &&
+            grid.Rows[rowIndex].Tag is string path
+                ? path
+                : null;
     }
 
     private static void GridCellPainting(
