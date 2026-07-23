@@ -1,28 +1,363 @@
-name: Temporary source snapshot
+name: Temporary final UI patch
 
 on:
   pull_request:
     branches: [main]
 
 permissions:
-  contents: read
+  contents: write
+  pull-requests: read
 
 jobs:
-  snapshot:
+  patch:
+    if: >-
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.head_ref == 'agent/final-ui-cleanup'
     runs-on: ubuntu-latest
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
 
-      - name: Upload UI source files
-        uses: actions/upload-artifact@v4
+    steps:
+      - name: Check out pull-request branch
+        uses: actions/checkout@v4
         with:
-          name: SightAdapt-ui-source-snapshot
-          path: |
-            src/SightAdapt/ConfigurationForm.cs
-            src/SightAdapt/ModernTheme.cs
-            src/SightAdapt/ModernSelectorComboBoxColumn.cs
-            src/SightAdapt/SightAdapt.csproj
-            tests/SightAdapt.Tests/ArchitectureComplianceTests.cs
-          if-no-files-found: error
-          retention-days: 1
+          ref: ${{ github.head_ref }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Apply final UI cleanup
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace_required(text: str, old: str, new: str, label: str) -> str:
+              if old not in text:
+                  if new in text:
+                      return text
+                  raise RuntimeError(f"Required source block not found: {label}")
+              return text.replace(old, new, 1)
+
+          path = Path('src/SightAdapt/ConfigurationForm.cs')
+          source = path.read_text(encoding='utf-8')
+          source = replace_required(
+              source,
+              '''    private readonly Func<ApplicationIdentity?> _getCurrentApplication;\n    private readonly ToggleSwitch _automaticModeSwitch;''',
+              '''    private readonly Func<ApplicationIdentity?> _getCurrentApplication;\n    private readonly Action<IWin32Window, SettingsCoordinator>\n        _showVisualProfileManager;\n    private readonly ToggleSwitch _automaticModeSwitch;''',
+              'configuration manager field')
+          source = replace_required(
+              source,
+              '''    public ConfigurationForm(\n        SettingsCoordinator settingsCoordinator,\n        Func<ApplicationIdentity?> getCurrentApplication)\n    {\n        _settingsCoordinator = settingsCoordinator ??\n            throw new ArgumentNullException(nameof(settingsCoordinator));\n        _getCurrentApplication = getCurrentApplication ??\n            throw new ArgumentNullException(nameof(getCurrentApplication));''',
+              '''    public ConfigurationForm(\n        SettingsCoordinator settingsCoordinator,\n        Func<ApplicationIdentity?> getCurrentApplication,\n        Action<IWin32Window, SettingsCoordinator>?\n            showVisualProfileManager = null)\n    {\n        _settingsCoordinator = settingsCoordinator ??\n            throw new ArgumentNullException(nameof(settingsCoordinator));\n        _getCurrentApplication = getCurrentApplication ??\n            throw new ArgumentNullException(nameof(getCurrentApplication));\n        _showVisualProfileManager = showVisualProfileManager ??\n            VisualProfileManagerForm.ShowManager;''',
+              'configuration constructor')
+          source = replace_required(
+              source,
+              '''    private SightAdaptSettings Settings => _settingsCoordinator.Current;\n\n    public void RefreshProfiles()''',
+              '''    private SightAdaptSettings Settings => _settingsCoordinator.Current;\n\n    internal int RefreshGeneration { get; private set; }\n\n    public void RefreshProfiles()''',
+              'configuration refresh counter')
+          source = replace_required(
+              source,
+              '''        finally\n        {\n            _refreshing = false;\n        }\n    }\n\n    private Control CreateRootLayout()''',
+              '''        finally\n        {\n            _refreshing = false;\n        }\n\n        RefreshGeneration++;\n    }\n\n    private Control CreateRootLayout()''',
+              'configuration refresh generation')
+          source = replace_required(
+              source,
+              '''    private void ManageVisualProfiles()\n    {\n        VisualProfileManagerForm.ShowManager(this, _settingsCoordinator);\n        RefreshProfiles();\n    }''',
+              '''    internal void ManageVisualProfiles()\n    {\n        _showVisualProfileManager(this, _settingsCoordinator);\n    }''',
+              'configuration manager refresh')
+          path.write_text(source, encoding='utf-8', newline='\n')
+
+          path = Path('src/SightAdapt/ModernTheme.cs')
+          source = path.read_text(encoding='utf-8')
+          source = replace_required(
+              source,
+              '''    public static readonly Color Surface = Color.FromArgb(29, 34, 45);\n    public static readonly Color SurfaceRaised = Color.FromArgb(36, 42, 55);''',
+              '''    public static readonly Color Surface = Color.FromArgb(29, 34, 45);\n    public static readonly Color SurfaceAlternate = Color.FromArgb(32, 38, 50);\n    public static readonly Color SurfaceRaised = Color.FromArgb(36, 42, 55);''',
+              'alternate surface token')
+          source = replace_required(
+              source,
+              '''    public static readonly Color Danger = Color.FromArgb(255, 111, 128);\n    public static readonly Color DangerSoft = Color.FromArgb(84, 43, 54);\n    public static readonly Color Selection = Color.FromArgb(52, 67, 105);''',
+              '''    public static readonly Color Danger = Color.FromArgb(255, 111, 128);\n    public static readonly Color DangerSoft = Color.FromArgb(84, 43, 54);\n    public static readonly Color DangerHover = Color.FromArgb(96, 47, 59);\n    public static readonly Color DangerPressed = Color.FromArgb(105, 47, 60);\n    public static readonly Color DangerBorder = Color.FromArgb(120, 58, 70);\n    public static readonly Color Selection = Color.FromArgb(52, 67, 105);''',
+              'danger theme tokens')
+          source = source.replace(
+              '            BackColor = Color.FromArgb(32, 38, 50),',
+              '            BackColor = SurfaceAlternate,')
+          source = replace_required(
+              source,
+              '''    private (Color Background, Color Border, Color Foreground) ResolveColors()\n    {\n        if (!Enabled)\n        {\n            return (AppTheme.Surface, AppTheme.Border, AppTheme.TextMuted);\n        }\n\n        return VisualStyle switch\n        {\n            ModernButtonStyle.Primary => (\n                _pressed ? AppTheme.AccentPressed : _hovered ? AppTheme.AccentHover : AppTheme.Accent,\n                _pressed ? AppTheme.AccentPressed : AppTheme.AccentHover,\n                Color.White),\n            ModernButtonStyle.Danger => (\n                _pressed ? Color.FromArgb(105, 47, 60) : _hovered ? Color.FromArgb(96, 47, 59) : AppTheme.DangerSoft,\n                _hovered ? AppTheme.Danger : Color.FromArgb(120, 58, 70),\n                _hovered ? Color.White : AppTheme.Danger),\n            ModernButtonStyle.Ghost => (\n                _pressed ? AppTheme.SurfaceRaised : _hovered ? AppTheme.SurfaceHover : AppTheme.WindowBackground,\n                _hovered ? AppTheme.Border : AppTheme.WindowBackground,\n                AppTheme.TextSecondary),\n            _ => (\n                _pressed ? AppTheme.SurfaceHover : _hovered ? AppTheme.SurfaceHover : AppTheme.SurfaceRaised,\n                _hovered ? AppTheme.Accent : AppTheme.Border,\n                AppTheme.TextPrimary),\n        };\n    }''',
+              '''    private (Color Background, Color Border, Color Foreground) ResolveColors()\n    {\n        return ResolveColors(\n            VisualStyle,\n            Enabled,\n            _hovered,\n            _pressed);\n    }\n\n    internal static (\n        Color Background,\n        Color Border,\n        Color Foreground) ResolveColors(\n            ModernButtonStyle visualStyle,\n            bool enabled,\n            bool hovered,\n            bool pressed)\n    {\n        if (!enabled)\n        {\n            return (\n                AppTheme.Surface,\n                AppTheme.Border,\n                AppTheme.TextMuted);\n        }\n\n        return visualStyle switch\n        {\n            ModernButtonStyle.Primary => (\n                pressed\n                    ? AppTheme.AccentPressed\n                    : hovered\n                        ? AppTheme.AccentHover\n                        : AppTheme.Accent,\n                pressed\n                    ? AppTheme.AccentPressed\n                    : AppTheme.AccentHover,\n                Color.White),\n            ModernButtonStyle.Danger => (\n                pressed\n                    ? AppTheme.DangerPressed\n                    : hovered\n                        ? AppTheme.DangerHover\n                        : AppTheme.DangerSoft,\n                hovered\n                    ? AppTheme.Danger\n                    : AppTheme.DangerBorder,\n                hovered\n                    ? Color.White\n                    : AppTheme.Danger),\n            ModernButtonStyle.Ghost => (\n                pressed\n                    ? AppTheme.SurfaceRaised\n                    : hovered\n                        ? AppTheme.SurfaceHover\n                        : AppTheme.WindowBackground,\n                hovered\n                    ? AppTheme.Border\n                    : AppTheme.WindowBackground,\n                AppTheme.TextSecondary),\n            _ => (\n                pressed || hovered\n                    ? AppTheme.SurfaceHover\n                    : AppTheme.SurfaceRaised,\n                hovered\n                    ? AppTheme.Accent\n                    : AppTheme.Border,\n                AppTheme.TextPrimary),\n        };\n    }''',
+              'button color resolution')
+          path.write_text(source, encoding='utf-8', newline='\n')
+
+          path = Path('src/SightAdapt/ModernSelectorComboBoxColumn.cs')
+          source = path.read_text(encoding='utf-8')
+          source = replace_required(
+              source,
+              '            cellStyle.Font ?? AppTheme.CreateUiFont(9.5f),',
+              '''            ResolvePaintFont(\n                cellStyle.Font,\n                DataGridView?.Font),''',
+              'selector paint font')
+          source = replace_required(
+              source,
+              '''    }\n}\n\ninternal sealed class ModernSelectorEditingControl :''',
+              '''    }\n\n    internal static Font ResolvePaintFont(\n        Font? cellStyleFont,\n        Font? gridFont)\n    {\n        return cellStyleFont ??\n            gridFont ??\n            Control.DefaultFont;\n    }\n}\n\ninternal sealed class ModernSelectorEditingControl :''',
+              'selector font helper')
+          source = replace_required(
+              source,
+              '''    private readonly ListBox _list;\n    private readonly ToolStripDropDown _dropDown;''',
+              '''    private readonly Font _defaultFont;\n    private readonly ListBox _list;\n    private readonly ToolStripDropDown _dropDown;''',
+              'selector owned font field')
+          source = replace_required(
+              source,
+              '''    public ModernSelectorEditingControl()\n    {\n        AccessibleRole = AccessibleRole.ComboBox;''',
+              '''    public ModernSelectorEditingControl()\n    {\n        _defaultFont = AppTheme.CreateUiFont(9.5f);\n\n        AccessibleRole = AccessibleRole.ComboBox;''',
+              'selector owned font initialization')
+          source = source.replace(
+              '        Font = AppTheme.CreateUiFont(9.5f);',
+              '        Font = _defaultFont;',
+              1)
+          source = source.replace(
+              '            Font = AppTheme.CreateUiFont(9.5f),',
+              '            Font = _defaultFont,',
+              1)
+          source = source.replace(
+              '        Font = style.Font ?? AppTheme.CreateUiFont(9.5f);',
+              '        Font = style.Font ?? _defaultFont;')
+          source = source.replace(
+              '        Font = dataGridViewCellStyle.Font ?? AppTheme.CreateUiFont(9.5f);',
+              '        Font = dataGridViewCellStyle.Font ?? _defaultFont;')
+          source = replace_required(
+              source,
+              '''        if (disposing)\n        {\n            _dropDown.Dispose();\n            _list.Dispose();\n        }''',
+              '''        if (disposing)\n        {\n            _dropDown.Dispose();\n            _list.Dispose();\n            _defaultFont.Dispose();\n        }''',
+              'selector owned font disposal')
+          path.write_text(source, encoding='utf-8', newline='\n')
+
+          project = Path('src/SightAdapt/SightAdapt.csproj')
+          source = project.read_text(encoding='utf-8')
+          source = source.replace('0.5.0.33', '0.5.0.34')
+          project.write_text(source, encoding='utf-8', newline='\n')
+
+          Path('tests/SightAdapt.Tests/ConfigurationProfileManagerRefreshTests.cs').write_text(r'''using System.Windows.Forms;
+          using Microsoft.VisualStudio.TestTools.UnitTesting;
+
+          namespace SightAdapt.Tests;
+
+          [TestClass]
+          public sealed class ConfigurationProfileManagerRefreshTests
+          {
+              [TestMethod]
+              public void ClosingManagerWithoutChangesDoesNotRefreshConfiguration()
+              {
+                  RunOnSta(() =>
+                  {
+                      using var temporaryDirectory = new TemporaryDirectory();
+                      var coordinator = CreateCoordinator(temporaryDirectory.Path);
+                      var managerCalls = 0;
+                      using var form = new ConfigurationForm(
+                          coordinator,
+                          () => null,
+                          (_, receivedCoordinator) =>
+                          {
+                              Assert.AreSame(coordinator, receivedCoordinator);
+                              managerCalls++;
+                          });
+                      var generation = form.RefreshGeneration;
+
+                      form.ManageVisualProfiles();
+
+                      Assert.AreEqual(1, managerCalls);
+                      Assert.AreEqual(generation, form.RefreshGeneration);
+                  });
+              }
+
+              [TestMethod]
+              public void ManagerMutationRefreshesConfigurationExactlyOnce()
+              {
+                  RunOnSta(() =>
+                  {
+                      using var temporaryDirectory = new TemporaryDirectory();
+                      var coordinator = CreateCoordinator(temporaryDirectory.Path);
+                      using var form = new ConfigurationForm(
+                          coordinator,
+                          () => null,
+                          (_, receivedCoordinator) =>
+                          {
+                              var result = receivedCoordinator.Commit(settings =>
+                                  VisualProfileManagementService.Create(
+                                      settings,
+                                      "Reader").Id);
+                              Assert.IsTrue(result.Succeeded);
+                          });
+                      var generation = form.RefreshGeneration;
+
+                      form.ManageVisualProfiles();
+
+                      Assert.AreEqual(generation + 1, form.RefreshGeneration);
+                      Assert.IsTrue(coordinator.Current.VisualProfiles.Any(
+                          profile => profile.Name == "Reader"));
+                  });
+              }
+
+              private static SettingsCoordinator CreateCoordinator(string directory)
+              {
+                  return new SettingsCoordinator(
+                      new SettingsStore(Path.Combine(directory, "settings.json")));
+              }
+
+              private static void RunOnSta(Action action)
+              {
+                  Exception? failure = null;
+                  var thread = new Thread(() =>
+                  {
+                      try
+                      {
+                          action();
+                      }
+                      catch (Exception exception)
+                      {
+                          failure = exception;
+                      }
+                  });
+                  thread.SetApartmentState(ApartmentState.STA);
+                  thread.Start();
+
+                  Assert.IsTrue(
+                      thread.Join(TimeSpan.FromSeconds(10)),
+                      "The configuration refresh test did not finish in time.");
+                  if (failure is not null)
+                  {
+                      Assert.Fail(failure.ToString());
+                  }
+              }
+
+              private sealed class TemporaryDirectory : IDisposable
+              {
+                  public TemporaryDirectory()
+                  {
+                      Path = System.IO.Path.Combine(
+                          System.IO.Path.GetTempPath(),
+                          "SightAdapt.Tests",
+                          Guid.NewGuid().ToString("N"));
+                      Directory.CreateDirectory(Path);
+                  }
+
+                  public string Path { get; }
+
+                  public void Dispose()
+                  {
+                      if (Directory.Exists(Path))
+                      {
+                          Directory.Delete(Path, recursive: true);
+                      }
+                  }
+              }
+          }
+          '''.replace('          ', ''), encoding='utf-8', newline='\n')
+
+          Path('tests/SightAdapt.Tests/ThemeTokenTests.cs').write_text(r'''using System.Windows.Forms;
+          using Microsoft.VisualStudio.TestTools.UnitTesting;
+
+          namespace SightAdapt.Tests;
+
+          [TestClass]
+          public sealed class ThemeTokenTests
+          {
+              [TestMethod]
+              public void DangerButtonStatesUseSemanticThemeTokens()
+              {
+                  var resting = ModernButton.ResolveColors(
+                      ModernButtonStyle.Danger,
+                      enabled: true,
+                      hovered: false,
+                      pressed: false);
+                  var hovered = ModernButton.ResolveColors(
+                      ModernButtonStyle.Danger,
+                      enabled: true,
+                      hovered: true,
+                      pressed: false);
+                  var pressed = ModernButton.ResolveColors(
+                      ModernButtonStyle.Danger,
+                      enabled: true,
+                      hovered: false,
+                      pressed: true);
+
+                  Assert.AreEqual(AppTheme.DangerSoft, resting.Background);
+                  Assert.AreEqual(AppTheme.DangerBorder, resting.Border);
+                  Assert.AreEqual(AppTheme.DangerHover, hovered.Background);
+                  Assert.AreEqual(AppTheme.Danger, hovered.Border);
+                  Assert.AreEqual(AppTheme.DangerPressed, pressed.Background);
+              }
+
+              [TestMethod]
+              public void GridUsesAlternateSurfaceThemeToken()
+              {
+                  RunOnSta(() =>
+                  {
+                      using var grid = new DataGridView();
+                      AppTheme.StyleGrid(grid);
+                      Assert.AreEqual(
+                          AppTheme.SurfaceAlternate,
+                          grid.AlternatingRowsDefaultCellStyle.BackColor);
+                  });
+              }
+
+              [TestMethod]
+              public void SelectorPaintFontResolutionReusesExistingFonts()
+              {
+                  using var cellStyleFont = AppTheme.CreateUiFont(9.5f);
+                  using var gridFont = AppTheme.CreateUiFont(10f);
+
+                  Assert.AreSame(
+                      cellStyleFont,
+                      ModernSelectorComboBoxCell.ResolvePaintFont(
+                          cellStyleFont,
+                          gridFont));
+                  Assert.AreSame(
+                      gridFont,
+                      ModernSelectorComboBoxCell.ResolvePaintFont(null, gridFont));
+                  Assert.AreSame(
+                      Control.DefaultFont,
+                      ModernSelectorComboBoxCell.ResolvePaintFont(null, null));
+              }
+
+              private static void RunOnSta(Action action)
+              {
+                  Exception? failure = null;
+                  var thread = new Thread(() =>
+                  {
+                      try
+                      {
+                          action();
+                      }
+                      catch (Exception exception)
+                      {
+                          failure = exception;
+                      }
+                  });
+                  thread.SetApartmentState(ApartmentState.STA);
+                  thread.Start();
+
+                  Assert.IsTrue(
+                      thread.Join(TimeSpan.FromSeconds(10)),
+                      "The theme test did not finish in time.");
+                  if (failure is not null)
+                  {
+                      Assert.Fail(failure.ToString());
+                  }
+              }
+          }
+          '''.replace('          ', ''), encoding='utf-8', newline='\n')
+          PY
+
+          git diff --check
+
+      - name: Commit UI cleanup
+        shell: bash
+        run: |
+          if git diff --quiet; then
+            echo "UI cleanup is already applied."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/SightAdapt tests/SightAdapt.Tests
+          git commit -m "Apply final UI cleanup"
+          git push origin "HEAD:${{ github.head_ref }}"
