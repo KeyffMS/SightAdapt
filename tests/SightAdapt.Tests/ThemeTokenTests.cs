@@ -10,26 +10,36 @@ public sealed class ThemeTokenTests
     public void DangerButtonStatesUseSemanticThemeTokens()
     {
         var resting = ModernButton.ResolveColors(
-  ModernButtonStyle.Danger,
-  enabled: true,
-  hovered: false,
-  pressed: false);
+            ModernButtonStyle.Danger,
+            enabled: true,
+            hovered: false,
+            pressed: false);
         var hovered = ModernButton.ResolveColors(
-  ModernButtonStyle.Danger,
-  enabled: true,
-  hovered: true,
-  pressed: false);
+            ModernButtonStyle.Danger,
+            enabled: true,
+            hovered: true,
+            pressed: false);
         var pressed = ModernButton.ResolveColors(
-  ModernButtonStyle.Danger,
-  enabled: true,
-  hovered: false,
-  pressed: true);
+            ModernButtonStyle.Danger,
+            enabled: true,
+            hovered: false,
+            pressed: true);
 
-        Assert.AreEqual(AppTheme.DangerSoft, resting.Background);
-        Assert.AreEqual(AppTheme.DangerBorder, resting.Border);
-        Assert.AreEqual(AppTheme.DangerHover, hovered.Background);
-        Assert.AreEqual(AppTheme.Danger, hovered.Border);
-        Assert.AreEqual(AppTheme.DangerPressed, pressed.Background);
+        Assert.AreEqual(
+            AppTheme.DangerSoft,
+            resting.Background);
+        Assert.AreEqual(
+            AppTheme.DangerBorder,
+            resting.Border);
+        Assert.AreEqual(
+            AppTheme.DangerHover,
+            hovered.Background);
+        Assert.AreEqual(
+            AppTheme.Danger,
+            hovered.Border);
+        Assert.AreEqual(
+            AppTheme.DangerPressed,
+            pressed.Background);
     }
 
     [TestMethod]
@@ -37,31 +47,38 @@ public sealed class ThemeTokenTests
     {
         RunOnSta(() =>
         {
-  using var grid = new DataGridView();
-  AppTheme.StyleGrid(grid);
-  Assert.AreEqual(
-      AppTheme.SurfaceAlternate,
-      grid.AlternatingRowsDefaultCellStyle.BackColor);
+            using var grid = new DataGridView();
+            AppTheme.StyleGrid(grid);
+
+            Assert.AreEqual(
+                AppTheme.SurfaceAlternate,
+                grid.AlternatingRowsDefaultCellStyle.BackColor);
         });
     }
 
     [TestMethod]
     public void SelectorPaintFontResolutionReusesExistingFonts()
     {
-        using var cellStyleFont = AppTheme.CreateUiFont(9.5f);
-        using var gridFont = AppTheme.CreateUiFont(10f);
+        using var cellStyleFont =
+            AppTheme.CreateUiFont(9.5f);
+        using var gridFont =
+            AppTheme.CreateUiFont(10f);
 
         Assert.AreSame(
-  cellStyleFont,
-  ModernSelectorComboBoxCell.ResolvePaintFont(
-      cellStyleFont,
-      gridFont));
+            cellStyleFont,
+            ModernSelectorComboBoxCell.ResolvePaintFont(
+                cellStyleFont,
+                gridFont));
         Assert.AreSame(
-  gridFont,
-  ModernSelectorComboBoxCell.ResolvePaintFont(null, gridFont));
+            gridFont,
+            ModernSelectorComboBoxCell.ResolvePaintFont(
+                null,
+                gridFont));
         Assert.AreSame(
-  Control.DefaultFont,
-  ModernSelectorComboBoxCell.ResolvePaintFont(null, null));
+            Control.DefaultFont,
+            ModernSelectorComboBoxCell.ResolvePaintFont(
+                null,
+                null));
     }
 
     private static void RunOnSta(Action action)
@@ -69,24 +86,24 @@ public sealed class ThemeTokenTests
         Exception? failure = null;
         var thread = new Thread(() =>
         {
-  try
-  {
-      action();
-  }
-  catch (Exception exception)
-  {
-      failure = exception;
-  }
+            try
+            {
+                action();
+            }
+            catch (Exception exception)
+            {
+                failure = exception;
+            }
         });
         thread.SetApartmentState(ApartmentState.STA);
         thread.Start();
 
         Assert.IsTrue(
-  thread.Join(TimeSpan.FromSeconds(10)),
-  "The theme test did not finish in time.");
+            thread.Join(TimeSpan.FromSeconds(10)),
+            "The theme test did not finish in time.");
         if (failure is not null)
         {
-  Assert.Fail(failure.ToString());
+            Assert.Fail(failure.ToString());
         }
     }
 }
