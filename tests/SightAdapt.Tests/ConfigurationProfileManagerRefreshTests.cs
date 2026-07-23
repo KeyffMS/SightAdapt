@@ -11,23 +11,29 @@ public sealed class ConfigurationProfileManagerRefreshTests
     {
         RunOnSta(() =>
         {
-  using var temporaryDirectory = new TemporaryDirectory();
-  var coordinator = CreateCoordinator(temporaryDirectory.Path);
-  var managerCalls = 0;
-  using var form = new ConfigurationForm(
-      coordinator,
-      () => null,
-      (_, receivedCoordinator) =>
-      {
-Assert.AreSame(coordinator, receivedCoordinator);
-managerCalls++;
-      });
-  var generation = form.RefreshGeneration;
+            using var temporaryDirectory =
+                new TemporaryDirectory();
+            var coordinator = CreateCoordinator(
+                temporaryDirectory.Path);
+            var managerCalls = 0;
+            using var form = new ConfigurationForm(
+                coordinator,
+                () => null,
+                (_, receivedCoordinator) =>
+                {
+                    Assert.AreSame(
+                        coordinator,
+                        receivedCoordinator);
+                    managerCalls++;
+                });
+            var generation = form.RefreshGeneration;
 
-  form.ManageVisualProfiles();
+            form.ManageVisualProfiles();
 
-  Assert.AreEqual(1, managerCalls);
-  Assert.AreEqual(generation, form.RefreshGeneration);
+            Assert.AreEqual(1, managerCalls);
+            Assert.AreEqual(
+                generation,
+                form.RefreshGeneration);
         });
     }
 
@@ -36,33 +42,43 @@ managerCalls++;
     {
         RunOnSta(() =>
         {
-  using var temporaryDirectory = new TemporaryDirectory();
-  var coordinator = CreateCoordinator(temporaryDirectory.Path);
-  using var form = new ConfigurationForm(
-      coordinator,
-      () => null,
-      (_, receivedCoordinator) =>
-      {
-var result = receivedCoordinator.Commit(settings =>
-    VisualProfileManagementService.Create(
-        settings,
-        "Reader").Id);
-Assert.IsTrue(result.Succeeded);
-      });
-  var generation = form.RefreshGeneration;
+            using var temporaryDirectory =
+                new TemporaryDirectory();
+            var coordinator = CreateCoordinator(
+                temporaryDirectory.Path);
+            using var form = new ConfigurationForm(
+                coordinator,
+                () => null,
+                (_, receivedCoordinator) =>
+                {
+                    var result =
+                        receivedCoordinator.Commit(settings =>
+                            VisualProfileManagementService.Create(
+                                settings,
+                                "Reader").Id);
+                    Assert.IsTrue(result.Succeeded);
+                });
+            var generation = form.RefreshGeneration;
 
-  form.ManageVisualProfiles();
+            form.ManageVisualProfiles();
 
-  Assert.AreEqual(generation + 1, form.RefreshGeneration);
-  Assert.IsTrue(coordinator.Current.VisualProfiles.Any(
-      profile => profile.Name == "Reader"));
+            Assert.AreEqual(
+                generation + 1,
+                form.RefreshGeneration);
+            Assert.IsTrue(
+                coordinator.Current.VisualProfiles.Any(
+                    profile => profile.Name == "Reader"));
         });
     }
 
-    private static SettingsCoordinator CreateCoordinator(string directory)
+    private static SettingsCoordinator CreateCoordinator(
+        string directory)
     {
         return new SettingsCoordinator(
-  new SettingsStore(Path.Combine(directory, "settings.json")));
+            new SettingsStore(
+                Path.Combine(
+                    directory,
+                    "settings.json")));
     }
 
     private static void RunOnSta(Action action)
@@ -70,24 +86,24 @@ Assert.IsTrue(result.Succeeded);
         Exception? failure = null;
         var thread = new Thread(() =>
         {
-  try
-  {
-      action();
-  }
-  catch (Exception exception)
-  {
-      failure = exception;
-  }
+            try
+            {
+                action();
+            }
+            catch (Exception exception)
+            {
+                failure = exception;
+            }
         });
         thread.SetApartmentState(ApartmentState.STA);
         thread.Start();
 
         Assert.IsTrue(
-  thread.Join(TimeSpan.FromSeconds(10)),
-  "The configuration refresh test did not finish in time.");
+            thread.Join(TimeSpan.FromSeconds(10)),
+            "The configuration refresh test did not finish in time.");
         if (failure is not null)
         {
-  Assert.Fail(failure.ToString());
+            Assert.Fail(failure.ToString());
         }
     }
 
@@ -95,21 +111,23 @@ Assert.IsTrue(result.Succeeded);
     {
         public TemporaryDirectory()
         {
-  Path = System.IO.Path.Combine(
-      System.IO.Path.GetTempPath(),
-      "SightAdapt.Tests",
-      Guid.NewGuid().ToString("N"));
-  Directory.CreateDirectory(Path);
+            Path = System.IO.Path.Combine(
+                System.IO.Path.GetTempPath(),
+                "SightAdapt.Tests",
+                Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(Path);
         }
 
         public string Path { get; }
 
         public void Dispose()
         {
-  if (Directory.Exists(Path))
-  {
-      Directory.Delete(Path, recursive: true);
-  }
+            if (Directory.Exists(Path))
+            {
+                Directory.Delete(
+                    Path,
+                    recursive: true);
+            }
         }
     }
 }
