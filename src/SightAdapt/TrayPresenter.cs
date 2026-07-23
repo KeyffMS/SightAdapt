@@ -39,7 +39,7 @@ internal sealed class TrayPresenter : IDisposable
             _statusItem,
             AppTheme.TextSecondary,
             FontStyle.Bold,
-            "status");
+            MenuItemRole.Status);
 
         _toggleItem = new ToolStripMenuItem(
             "Toggle visual correction for active window");
@@ -85,7 +85,7 @@ internal sealed class TrayPresenter : IDisposable
             disableItem,
             AppTheme.Danger,
             FontStyle.Bold,
-            "danger");
+            MenuItemRole.Danger);
 
         var exitItem = new ToolStripMenuItem("Exit SightAdapt");
         exitItem.Click += (_, _) => exit();

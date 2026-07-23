@@ -2,6 +2,13 @@ using System.Drawing.Drawing2D;
 
 namespace SightAdapt;
 
+internal enum MenuItemRole
+{
+    Default,
+    Status,
+    Danger,
+}
+
 internal static class AppTheme
 {
     public static readonly Color WindowBackground = Color.FromArgb(20, 23, 31);
@@ -57,7 +64,7 @@ internal static class AppTheme
         ToolStripItem item,
         Color? foreground = null,
         FontStyle fontStyle = FontStyle.Regular,
-        string? role = null)
+        MenuItemRole role = MenuItemRole.Default)
     {
         item.ForeColor = foreground ?? TextPrimary;
         item.Font = CreateUiFont(10f, fontStyle);
@@ -448,15 +455,7 @@ internal sealed class DarkMenuRenderer : ToolStripProfessionalRenderer
 
     protected override void OnRenderItemText(ToolStripItemTextRenderEventArgs eventArgs)
     {
-        var itemText = eventArgs.Item.Text ?? string.Empty;
-        var isChecked = eventArgs.Item is ToolStripMenuItem menuItem && menuItem.Checked;
-        var textColor = !eventArgs.Item.Enabled
-            ? AppTheme.TextSecondary
-            : itemText.StartsWith("Emergency", StringComparison.OrdinalIgnoreCase)
-                ? AppTheme.Danger
-                : isChecked
-                    ? AppTheme.AccentHover
-                    : AppTheme.TextPrimary;
+        var textColor = ResolveItemTextColor(eventArgs.Item);
 
         TextRenderer.DrawText(
             eventArgs.Graphics,
@@ -465,6 +464,27 @@ internal sealed class DarkMenuRenderer : ToolStripProfessionalRenderer
             eventArgs.TextRectangle,
             textColor,
             eventArgs.TextFormat);
+    }
+
+    internal static Color ResolveItemTextColor(
+        ToolStripItem item)
+    {
+        ArgumentNullException.ThrowIfNull(item);
+
+        if (!item.Enabled)
+        {
+            return AppTheme.TextSecondary;
+        }
+
+        if (item.Tag is MenuItemRole role &&
+            role == MenuItemRole.Danger)
+        {
+            return AppTheme.Danger;
+        }
+
+        return item is ToolStripMenuItem { Checked: true }
+            ? AppTheme.AccentHover
+            : AppTheme.TextPrimary;
     }
 
     protected override void OnRenderItemCheck(ToolStripItemImageRenderEventArgs eventArgs)
