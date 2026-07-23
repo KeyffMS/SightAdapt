@@ -123,3 +123,16 @@ The current backend uses the same rectangle for the magnifier source and overlay
 - no dependency-injection container, event bus, repository layer, global selector guard, delayed settings workaround, or reflection-based popup control is used;
 - no DLL injection, kernel driver, or target-process memory modification is used;
 - the Magnification API backend intentionally corrects only the active foreground target.
+
+## Architecture test strategy
+
+Architecture checks are behavior-first. Transaction publication, failed persistence, emergency ordering, runtime state transitions, transform catalog consistency, overlay-scope recovery, grid commits, menu roles, preview caching, and profile-manager refresh behavior are exercised through executable tests.
+
+Source inspection is retained only for exhaustive negative rules that cannot be proven by a finite runtime scenario:
+
+- collection and property writes must remain inside their mutation authorities;
+- UI and runtime components must not instantiate the persistence store;
+- empty catch blocks are forbidden;
+- removed legacy mutation services must not return.
+
+These focused scans intentionally avoid asserting field names, statement ordering, formatting, RGB literals, or the exact internal spelling of valid implementations.

@@ -16,10 +16,10 @@
     <Copyright>Copyright © $(Company)</Copyright>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <RepositoryUrl>https://github.com/KeyffMS/SightAdapt</RepositoryUrl>
-    <Version>0.5.0.24</Version>
+    <Version>0.5.0.25</Version>
     <AssemblyVersion>0.5.0.0</AssemblyVersion>
-    <FileVersion>0.5.0.24</FileVersion>
-    <InformationalVersion>0.5.0.24</InformationalVersion>
+    <FileVersion>0.5.0.25</FileVersion>
+    <InformationalVersion>0.5.0.25</InformationalVersion>
     <PlatformTarget>x64</PlatformTarget>
     <Platforms>x64</Platforms>
     <SupportedOSPlatformVersion>10.0.19041.0</SupportedOSPlatformVersion>
