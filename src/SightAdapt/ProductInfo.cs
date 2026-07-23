@@ -12,12 +12,11 @@ internal static class ProductInfo
             attribute => attribute.Product,
             "SightAdapt");
 
+    private static readonly string FullVersion =
+        GetVersion();
+
     public static string VersionLabel { get; } =
-        Assembly
-            .GetCustomAttribute<AssemblyInformationalVersionAttribute>()
-            ?.InformationalVersion ??
-        Assembly.GetName().Version?.ToString() ??
-        string.Empty;
+        CreateVersionLabel(FullVersion);
 
     public static string MilestoneLabel { get; } =
         GetMetadata("Milestone", VersionLabel);
@@ -48,6 +47,47 @@ internal static class ProductInfo
 
     public static string RepositoryDisplay { get; } =
         CreateRepositoryDisplay(RepositoryUrl);
+
+    internal static string CreateVersionLabel(
+        string? version)
+    {
+        var normalized =
+            (version ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(normalized))
+        {
+            return "Unknown";
+        }
+
+        var metadataIndex = normalized.IndexOf('+');
+        var display = metadataIndex >= 0
+            ? normalized[..metadataIndex]
+            : normalized;
+        return string.IsNullOrWhiteSpace(display)
+            ? "Unknown"
+            : display.Trim();
+    }
+
+    private static string GetVersion()
+    {
+        var informational = Assembly
+            .GetCustomAttribute<AssemblyInformationalVersionAttribute>()
+            ?.InformationalVersion;
+        if (!string.IsNullOrWhiteSpace(informational))
+        {
+            return informational.Trim();
+        }
+
+        var fileVersion = Assembly
+            .GetCustomAttribute<AssemblyFileVersionAttribute>()
+            ?.Version;
+        if (!string.IsNullOrWhiteSpace(fileVersion))
+        {
+            return fileVersion.Trim();
+        }
+
+        return Assembly.GetName().Version?.ToString() ??
+            "Unknown";
+    }
 
     private static string GetAttribute<TAttribute>(
         Func<TAttribute, string?> selector,

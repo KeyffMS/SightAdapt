@@ -141,6 +141,14 @@ public sealed class ArchitectureComplianceTests
         StringAssert.Contains(source, "value => _workingProfile.HueShiftDegrees = value");
         StringAssert.Contains(source, "OutputLimitPreview");
         Assert.IsFalse(source.Contains("NumericUpDown", StringComparison.Ordinal));
+
+        var preview = ReadSource("ProfileEditorControls.cs");
+        StringAssert.Contains(preview, "LockBits");
+        StringAssert.Contains(preview, "ProfilePreviewKey");
+        Assert.IsFalse(
+            preview.Contains(
+                "using var pen = new Pen(color)",
+                StringComparison.Ordinal));
     }
 
     [TestMethod]

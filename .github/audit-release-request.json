@@ -1,6 +1,0 @@
-{
-  "version": "0.5.0.22",
-  "issue": 22,
-  "title": "Cache profile preview rendering and eliminate per-pixel GDI allocations",
-  "attempt": 4
-}
