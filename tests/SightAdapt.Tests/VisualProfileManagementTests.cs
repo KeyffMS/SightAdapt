@@ -53,9 +53,9 @@ public sealed class VisualProfileManagementTests
         var settings = new SightAdaptSettings();
         var custom = VisualProfileManagementService.Create(settings, "Reader");
 
-        Assert.ThrowsException<InvalidOperationException>(() =>
+        Assert.ThrowsException<SettingsValidationException>(() =>
             VisualProfileManagementService.Create(settings, "reader"));
-        Assert.ThrowsException<InvalidOperationException>(() =>
+        Assert.ThrowsException<SettingsValidationException>(() =>
             VisualProfileManagementService.Rename(settings, custom, "soft invert"));
     }
 
@@ -66,9 +66,9 @@ public sealed class VisualProfileManagementTests
         var builtIn = settings.VisualProfiles.Single(profile =>
             profile.Id == VisualProfile.DefaultSoftInvertId);
 
-        Assert.ThrowsException<InvalidOperationException>(() =>
+        Assert.ThrowsException<SettingsValidationException>(() =>
             VisualProfileManagementService.Rename(settings, builtIn, "Changed"));
-        Assert.ThrowsException<InvalidOperationException>(() =>
+        Assert.ThrowsException<SettingsValidationException>(() =>
             VisualProfileManagementService.Delete(settings, builtIn));
     }
 
@@ -80,11 +80,11 @@ public sealed class VisualProfileManagementTests
         detached.Id = "user-detached";
         detached.Name = "Detached";
 
-        Assert.ThrowsException<InvalidOperationException>(() =>
+        Assert.ThrowsException<SettingsValidationException>(() =>
             VisualProfileManagementService.Duplicate(settings, detached, "Copy"));
-        Assert.ThrowsException<InvalidOperationException>(() =>
+        Assert.ThrowsException<SettingsValidationException>(() =>
             VisualProfileManagementService.Rename(settings, detached, "Renamed"));
-        Assert.ThrowsException<InvalidOperationException>(() =>
+        Assert.ThrowsException<SettingsValidationException>(() =>
             VisualProfileManagementService.Delete(settings, detached));
     }
 
@@ -117,7 +117,7 @@ public sealed class VisualProfileManagementTests
             CreateApplication("C:\\Apps\\Reader.exe", custom.Id),
         ];
 
-        Assert.ThrowsException<InvalidOperationException>(() =>
+        Assert.ThrowsException<SettingsValidationException>(() =>
             VisualProfileManagementService.Delete(settings, custom, "missing"));
 
         Assert.IsTrue(settings.VisualProfiles.Contains(custom));
