@@ -1,5 +1,3 @@
-using System.ComponentModel;
-using System.Diagnostics;
 
 namespace SightAdapt;
 
@@ -157,7 +155,7 @@ internal sealed class AboutForm : Form
         return card;
     }
 
-    private static LinkLabel CreateRepositoryLink()
+    private LinkLabel CreateRepositoryLink()
     {
         var link = new LinkLabel
         {
@@ -175,7 +173,7 @@ internal sealed class AboutForm : Form
             TextAlign = ContentAlignment.MiddleLeft,
             VisitedLinkColor = AppTheme.AccentHover,
         };
-        link.LinkClicked += (_, _) => OpenRepository();
+        link.LinkClicked += (_, _) => ShellLauncher.TryOpenUrl(this, ProductInfo.RepositoryUrl);
         return link;
     }
 
@@ -241,23 +239,5 @@ internal sealed class AboutForm : Form
         };
     }
 
-    private static void OpenRepository()
-    {
-        try
-        {
-            Process.Start(new ProcessStartInfo(ProductInfo.RepositoryUrl)
-            {
-                UseShellExecute = true,
-            });
-        }
-        catch (Exception exception) when (
-            exception is Win32Exception or InvalidOperationException)
-        {
-            MessageBox.Show(
-                $"The repository could not be opened.\n\n{exception.Message}",
-                ProductInfo.ProductName,
-                MessageBoxButtons.OK,
-                MessageBoxIcon.Warning);
-        }
-    }
+
 }

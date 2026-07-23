@@ -1,5 +1,4 @@
-using System.ComponentModel;
-using System.Diagnostics;
+
 using System.Drawing;
 
 namespace SightAdapt;
@@ -318,7 +317,7 @@ internal sealed class ConfigurationForm : Form
         return layout;
     }
 
-    private static Control CreateProjectInfoCard()
+    private Control CreateProjectInfoCard()
     {
         var repository = new LinkLabel
         {
@@ -333,7 +332,7 @@ internal sealed class ConfigurationForm : Form
             Text = ProductInfo.RepositoryDisplay,
             VisitedLinkColor = AppTheme.Accent,
         };
-        repository.LinkClicked += (_, _) => OpenRepository();
+        repository.LinkClicked += (_, _) => ShellLauncher.TryOpenUrl(this, ProductInfo.RepositoryUrl);
 
         var product = new TableLayoutPanel
         {
@@ -468,26 +467,7 @@ internal sealed class ConfigurationForm : Form
         return button;
     }
 
-    private static void OpenRepository()
-    {
-        try
-        {
-            Process.Start(new ProcessStartInfo(ProductInfo.RepositoryUrl)
-            {
-                UseShellExecute = true,
-            });
-        }
-        catch (Exception exception) when (
-            exception is Win32Exception or InvalidOperationException)
-        {
-            Debug.WriteLine($"SightAdapt could not open the repository: {exception}");
-            MessageBox.Show(
-                $"The repository could not be opened.\n\n{exception.Message}",
-                ProductInfo.DisplayName,
-                MessageBoxButtons.OK,
-                MessageBoxIcon.Warning);
-        }
-    }
+
 
     private void AutomaticModeCheckedChanged(object? sender, EventArgs eventArgs)
     {
