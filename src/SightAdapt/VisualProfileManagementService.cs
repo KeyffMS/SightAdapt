@@ -32,7 +32,7 @@ internal static class VisualProfileManagementService
 
         if (!source.SupportsTuning)
         {
-            throw new InvalidOperationException(
+            throw new SettingsValidationException(
                 "Only editable visual profiles can be duplicated.");
         }
 
@@ -79,7 +79,7 @@ internal static class VisualProfileManagementService
 
         if (!profile.SupportsTuning)
         {
-            throw new InvalidOperationException(
+            throw new SettingsValidationException(
                 "Only editable visual profiles can be tuned.");
         }
 
@@ -109,7 +109,7 @@ internal static class VisualProfileManagementService
         if (fallback is null ||
             ReferenceEquals(fallback, profile))
         {
-            throw new InvalidOperationException(
+            throw new SettingsValidationException(
                 "A valid fallback visual profile is " +
                 "required before deletion.");
         }
@@ -126,12 +126,11 @@ internal static class VisualProfileManagementService
     }
 
     public static int CountAssignments(
-        SightAdaptSettings settings,
+        IReadOnlySightAdaptSettings settings,
         VisualProfile profile)
     {
         ArgumentNullException.ThrowIfNull(settings);
         ArgumentNullException.ThrowIfNull(profile);
-        settings.EnsureCollections();
 
         return ApplicationProfileManagementService
             .CountAssignments(
@@ -148,11 +147,10 @@ internal static class VisualProfileManagementService
     }
 
     public static string CreateAvailableName(
-        SightAdaptSettings settings,
+        IReadOnlySightAdaptSettings settings,
         string baseName)
     {
         ArgumentNullException.ThrowIfNull(settings);
-        settings.EnsureCollections();
 
         return VisualProfilePolicy.CreateUniqueName(
             settings.VisualProfiles,
@@ -191,7 +189,7 @@ internal static class VisualProfileManagementService
     {
         if (!settings.VisualProfiles.Contains(profile))
         {
-            throw new InvalidOperationException(
+            throw new SettingsValidationException(
                 "The visual profile is not part " +
                 "of the current settings.");
         }
@@ -203,7 +201,7 @@ internal static class VisualProfileManagementService
     {
         if (IsBuiltIn(profile))
         {
-            throw new InvalidOperationException(
+            throw new SettingsValidationException(
                 $"Built-in visual profiles cannot be " +
                 $"{operation}.");
         }
