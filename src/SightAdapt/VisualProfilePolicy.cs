@@ -29,7 +29,7 @@ internal static class VisualProfilePolicy
     public static bool IsSupportedTransformId(
         string? transformId)
     {
-        return VisualTransformCatalog.IsSupported(
+        return VisualTransformCatalog.Default.IsSupported(
             transformId);
     }
 

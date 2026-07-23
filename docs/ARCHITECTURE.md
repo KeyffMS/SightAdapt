@@ -1,4 +1,3 @@
-
 # SightAdapt current architecture
 
 ## Product flow
@@ -10,12 +9,15 @@ ForegroundWindowTracker
 (detect and deduplicate)
       ↓
 ApplicationDiscovery
-(process path and bounded cache)
+(process lifetime, path, and bounded cache)
       ↓
 ProfileResolver
 (committed assignment)
       ↓
 SightAdaptContext
+(lifecycle and composition)
+      ↓
+RuntimeCoordinator
 (use-case orchestration)
       ↓
 OverlayController
@@ -49,7 +51,8 @@ A failed mutation or failed write does not replace committed settings and does n
 | Concern | Authority |
 |---|---|
 | Settings transaction | `SettingsCoordinator` |
-| Migration, normalization, recovery, and reference repair | `SettingsStore.Normalize` |
+| Runtime use-case orchestration | `RuntimeCoordinator` |
+| Migration, scope canonicalization, normalization, recovery, and reference repair | `SettingsStore.Normalize` |
 | Application assignment mutations and overlay scope | `ApplicationProfileManagementService` |
 | Visual-profile lifecycle and tuning | `VisualProfileManagementService` |
 | Automatic-mode mutation | `AutomaticModeManagementService` |
@@ -73,14 +76,14 @@ A failed mutation or failed write does not replace committed settings and does n
 | Runtime mode, target, active profile, suppression, and message | `ApplicationStateController.Current` |
 | Actual overlay resource and target | `OverlayController` and active `MagnifierOverlay` |
 | Per-application overlay scope | `ApplicationProfile.OverlayScopeId` |
-| Scope identifiers, default, and display names | `OverlayScopePolicy` |
+| Scope enum values, canonical identifiers, aliases, default, and display names | `OverlayScopePolicy` definition table |
 | Profile IDs, fallback, user-ID, and name rules | `VisualProfilePolicy` |
 | Canonical profile values | `VisualProfileDefaults` |
 | Supported transforms and tuning capability | `VisualTransformCatalog` |
 | Parameter ranges | `VisualProfileLimits` |
 | Product name, version, milestone, repository, author, and license | project and assembly metadata exposed through `ProductInfo` |
 
-`ApplicationIdentityCache` is an optimization, not a product source of truth.
+`ApplicationIdentityCache` is an optimization, not a product source of truth. Entries are keyed by both PID and process creation time so a reused PID cannot inherit another process lifetime's identity.
 
 ## Foreground and overlay lifecycle
 
@@ -106,7 +109,7 @@ The current backend uses the same rectangle for the magnifier source and overlay
 
 ## Configuration grid boundary
 
-`ApplicationProfilesGrid` owns columns, rows, selectors, status painting, selection, empty state, stable executable-path keys, typed value-change events, row updates, and failed-cell restoration. It does not know about persistence or dialogs.
+`ApplicationProfilesGrid` owns columns, rows, selectors, status painting, selection, empty state, stable executable-path keys, separate typed change events, row updates, and failed-cell restoration. It does not know about persistence or dialogs.
 
 `ConfigurationForm` resolves current committed assignments and translates typed grid events into domain-service mutations wrapped by `SettingsCoordinator.Commit`. It suppresses only its own synchronous full refresh during a grid-originated commit.
 
@@ -120,3 +123,16 @@ The current backend uses the same rectangle for the magnifier source and overlay
 - no dependency-injection container, event bus, repository layer, global selector guard, delayed settings workaround, or reflection-based popup control is used;
 - no DLL injection, kernel driver, or target-process memory modification is used;
 - the Magnification API backend intentionally corrects only the active foreground target.
+
+## Architecture test strategy
+
+Architecture checks are behavior-first. Transaction publication, failed persistence, emergency ordering, runtime state transitions, transform catalog consistency, overlay-scope recovery, grid commits, menu roles, preview caching, and profile-manager refresh behavior are exercised through executable tests.
+
+Source inspection is retained only for exhaustive negative rules that cannot be proven by a finite runtime scenario:
+
+- collection and property writes must remain inside their mutation authorities;
+- UI and runtime components must not instantiate the persistence store;
+- empty catch blocks are forbidden;
+- removed legacy mutation services must not return.
+
+These focused scans intentionally avoid asserting field names, statement ordering, formatting, RGB literals, or the exact internal spelling of valid implementations.

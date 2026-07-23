@@ -135,23 +135,23 @@ public sealed class VisualProfileTests
     public void CatalogIsCapabilitySourceOfTruth()
     {
         Assert.IsTrue(
-            VisualTransformCatalog.IsSupported(
+            VisualTransformCatalog.Default.IsSupported(
                 InvertVisualTransform.TransformId));
         Assert.IsTrue(
-            VisualTransformCatalog.IsSupported(
+            VisualTransformCatalog.Default.IsSupported(
                 SoftInvertVisualTransform.TransformId));
         Assert.IsFalse(
-            VisualTransformCatalog.IsSupported(
+            VisualTransformCatalog.Default.IsSupported(
                 "missing"));
         Assert.IsFalse(
-            VisualTransformCatalog.SupportsTuning(
+            VisualTransformCatalog.Default.SupportsTuning(
                 InvertVisualTransform.TransformId));
         Assert.IsTrue(
-            VisualTransformCatalog.SupportsTuning(
+            VisualTransformCatalog.Default.SupportsTuning(
                 SoftInvertVisualTransform.TransformId));
         Assert.AreEqual(
             "Soft invert",
-            VisualTransformCatalog.GetDisplayName(
+            VisualTransformCatalog.Default.GetDisplayName(
                 SoftInvertVisualTransform.TransformId));
     }
 

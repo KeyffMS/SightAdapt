@@ -92,7 +92,6 @@ internal sealed class ModernProfileSlider : UserControl
                 _maximum = _minimum;
             }
 
-            ConfigureDefaultNeutralPoint();
             SetValue(_value, raiseEvent: false);
         }
     }
@@ -103,7 +102,6 @@ internal sealed class ModernProfileSlider : UserControl
         set
         {
             _maximum = Math.Max(value, _minimum);
-            ConfigureDefaultNeutralPoint();
             SetValue(_value, raiseEvent: false);
         }
     }
@@ -119,11 +117,7 @@ internal sealed class ModernProfileSlider : UserControl
     public string Unit
     {
         get => _unitLabel.Text;
-        set
-        {
-            _unitLabel.Text = value ?? string.Empty;
-            ConfigureDefaultNeutralPoint();
-        }
+        set => _unitLabel.Text = value ?? string.Empty;
     }
 
     public float Value
@@ -239,25 +233,6 @@ internal sealed class ModernProfileSlider : UserControl
         _valueEditor.AccessibleName = _valueInput.AccessibleName;
     }
 
-    private void ConfigureDefaultNeutralPoint()
-    {
-        if (Minimum < 0f && Maximum > 0f)
-        {
-            _neutralValue = 0f;
-        }
-        else if (string.Equals(Unit, "%", StringComparison.Ordinal) &&
-                 Minimum < 100f &&
-                 Maximum > 100f)
-        {
-            _neutralValue = 100f;
-        }
-        else
-        {
-            _neutralValue = null;
-        }
-
-        _track.Invalidate();
-    }
 
     private void SetValue(float value, bool raiseEvent)
     {

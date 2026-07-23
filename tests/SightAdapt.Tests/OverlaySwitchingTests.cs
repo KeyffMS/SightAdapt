@@ -34,18 +34,42 @@ public sealed class OverlaySwitchingTests
         var reader = CreateIdentity("Reader", "reader.exe");
         var writer = CreateIdentity("Writer", "writer.exe");
         var browser = CreateIdentity("Browser", "browser.exe");
+        var readerKey = CreateProcessKey(1, 100);
+        var writerKey = CreateProcessKey(2, 200);
+        var browserKey = CreateProcessKey(3, 300);
 
-        cache.Set(1, reader);
-        cache.Set(2, writer);
-        Assert.IsTrue(cache.TryGet(1, out var cachedReader));
+        cache.Set(readerKey, reader);
+        cache.Set(writerKey, writer);
+        Assert.IsTrue(cache.TryGet(readerKey, out var cachedReader));
         Assert.AreEqual(reader, cachedReader);
 
-        cache.Set(3, browser);
+        cache.Set(browserKey, browser);
 
         Assert.AreEqual(2, cache.Count);
-        Assert.IsTrue(cache.TryGet(1, out _));
-        Assert.IsFalse(cache.TryGet(2, out _));
-        Assert.IsTrue(cache.TryGet(3, out _));
+        Assert.IsTrue(cache.TryGet(readerKey, out _));
+        Assert.IsFalse(cache.TryGet(writerKey, out _));
+        Assert.IsTrue(cache.TryGet(browserKey, out _));
+    }
+
+    [TestMethod]
+    public void IdentityCacheRejectsReusedPidFromDifferentProcessLifetime()
+    {
+        var cache = new ApplicationIdentityCache(capacity: 2);
+        var reader = CreateIdentity("Reader", "reader.exe");
+        var browser = CreateIdentity("Browser", "browser.exe");
+        var firstLifetime = CreateProcessKey(42, 1000);
+        var reusedPid = CreateProcessKey(42, 2000);
+
+        cache.Set(firstLifetime, reader);
+
+        Assert.IsFalse(cache.TryGet(reusedPid, out _));
+
+        cache.Set(reusedPid, browser);
+
+        Assert.AreEqual(1, cache.Count);
+        Assert.IsFalse(cache.TryGet(firstLifetime, out _));
+        Assert.IsTrue(cache.TryGet(reusedPid, out var cachedBrowser));
+        Assert.AreEqual(browser, cachedBrowser);
     }
 
     [TestMethod]
@@ -63,6 +87,15 @@ public sealed class OverlaySwitchingTests
         StringAssert.Contains(overlay, "public void Retarget(");
         StringAssert.Contains(overlay, "IsWithinTransitionGrace()");
         StringAssert.Contains(overlay, "TargetHandle { get; private set; }");
+    }
+
+    private static ProcessIdentityKey CreateProcessKey(
+        uint processId,
+        ulong creationTime)
+    {
+        return new ProcessIdentityKey(
+            processId,
+            creationTime);
     }
 
     private static ApplicationIdentity CreateIdentity(

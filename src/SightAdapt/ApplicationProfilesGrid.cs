@@ -3,39 +3,70 @@ using System.Drawing.Drawing2D;
 
 namespace SightAdapt;
 
-internal enum ApplicationProfileGridColumn
+internal sealed class ApplicationProfileEnabledChangedEventArgs(
+    string executablePath,
+    bool enabled) : EventArgs
 {
-    Enabled,
-    VisualProfile,
-    OverlayScope,
+    public string ExecutablePath { get; } =
+        !string.IsNullOrWhiteSpace(executablePath)
+            ? executablePath
+            : throw new ArgumentException(
+                "An executable path is required.",
+                nameof(executablePath));
+
+    public bool Enabled { get; } = enabled;
 }
 
-internal sealed class ApplicationProfileGridValueChangedEventArgs : EventArgs
+internal sealed class ApplicationProfileVisualProfileChangedEventArgs(
+    string executablePath,
+    string visualProfileId) : EventArgs
 {
-    public ApplicationProfileGridValueChangedEventArgs(
-        string executablePath,
-        ApplicationProfileGridColumn column,
-        object value)
-    {
-        ExecutablePath = executablePath ??
-            throw new ArgumentNullException(nameof(executablePath));
-        Column = column;
-        Value = value ?? throw new ArgumentNullException(nameof(value));
-    }
+    public string ExecutablePath { get; } =
+        !string.IsNullOrWhiteSpace(executablePath)
+            ? executablePath
+            : throw new ArgumentException(
+                "An executable path is required.",
+                nameof(executablePath));
 
-    public string ExecutablePath { get; }
+    public string VisualProfileId { get; } =
+        !string.IsNullOrWhiteSpace(visualProfileId)
+            ? visualProfileId
+            : throw new ArgumentException(
+                "A visual profile identifier is required.",
+                nameof(visualProfileId));
+}
 
-    public ApplicationProfileGridColumn Column { get; }
+internal sealed class ApplicationProfileOverlayScopeChangedEventArgs(
+    string executablePath,
+    OverlayScope overlayScope) : EventArgs
+{
+    public string ExecutablePath { get; } =
+        !string.IsNullOrWhiteSpace(executablePath)
+            ? executablePath
+            : throw new ArgumentException(
+                "An executable path is required.",
+                nameof(executablePath));
 
-    public object Value { get; }
+    public OverlayScope OverlayScope { get; } =
+        OverlayScopePolicy.IsSupported(overlayScope)
+            ? overlayScope
+            : throw new ArgumentOutOfRangeException(
+                nameof(overlayScope));
 }
 
 internal sealed class ApplicationProfilesGrid : UserControl
 {
     private const string EnabledColumnName = "Enabled";
     private const string ApplicationColumnName = "Application";
-    private const string VisualProfileColumnName = "VisualProfile";
-    private const string OverlayScopeColumnName = "OverlayScope";
+    internal const string VisualProfileColumnName = "VisualProfile";
+    internal const string OverlayScopeColumnName = "OverlayScope";
+
+    private const DataGridViewDataErrorContexts
+        RecoverableSelectorContexts =
+            DataGridViewDataErrorContexts.Formatting |
+            DataGridViewDataErrorContexts.Display |
+            DataGridViewDataErrorContexts.PreferredSize |
+            DataGridViewDataErrorContexts.InitialValueRestoration;
     private const string ExecutableColumnName = "Executable";
     private const string PathColumnName = "Path";
 
@@ -55,7 +86,11 @@ internal sealed class ApplicationProfilesGrid : UserControl
         Controls.Add(_emptyStateLabel);
     }
 
-    public event EventHandler<ApplicationProfileGridValueChangedEventArgs>? ValueChanged;
+    public event EventHandler<ApplicationProfileEnabledChangedEventArgs>? ApplicationEnabledChanged;
+
+    public event EventHandler<ApplicationProfileVisualProfileChangedEventArgs>? VisualProfileChanged;
+
+    public event EventHandler<ApplicationProfileOverlayScopeChangedEventArgs>? OverlayScopeChanged;
 
     public event EventHandler? SelectedApplicationChanged;
 
@@ -127,30 +162,6 @@ internal sealed class ApplicationProfilesGrid : UserControl
         }
     }
 
-    public void RestoreValue(
-        string executablePath,
-        ApplicationProfileGridColumn column,
-        object value)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(executablePath);
-        ArgumentNullException.ThrowIfNull(value);
-
-        var row = FindRow(executablePath);
-        if (row is null)
-        {
-            return;
-        }
-
-        _binding = true;
-        try
-        {
-            row.Cells[GetColumnName(column)].Value = value;
-        }
-        finally
-        {
-            _binding = false;
-        }
-    }
 
     private DataGridView CreateGrid()
     {
@@ -327,32 +338,29 @@ internal sealed class ApplicationProfilesGrid : UserControl
         if (columnName == EnabledColumnName &&
             row.Cells[eventArgs.ColumnIndex].Value is bool enabled)
         {
-            ValueChanged?.Invoke(
+            ApplicationEnabledChanged?.Invoke(
                 this,
-                new ApplicationProfileGridValueChangedEventArgs(
+                new ApplicationProfileEnabledChangedEventArgs(
                     executablePath,
-                    ApplicationProfileGridColumn.Enabled,
                     enabled));
         }
         else if (columnName == VisualProfileColumnName &&
                  row.Cells[eventArgs.ColumnIndex].Value is string profileId)
         {
-            ValueChanged?.Invoke(
+            VisualProfileChanged?.Invoke(
                 this,
-                new ApplicationProfileGridValueChangedEventArgs(
+                new ApplicationProfileVisualProfileChangedEventArgs(
                     executablePath,
-                    ApplicationProfileGridColumn.VisualProfile,
                     profileId));
         }
         else if (columnName == OverlayScopeColumnName &&
                  row.Cells[eventArgs.ColumnIndex].Value is string scopeId)
         {
-            ValueChanged?.Invoke(
+            OverlayScopeChanged?.Invoke(
                 this,
-                new ApplicationProfileGridValueChangedEventArgs(
+                new ApplicationProfileOverlayScopeChangedEventArgs(
                     executablePath,
-                    ApplicationProfileGridColumn.OverlayScope,
-                    scopeId));
+                    OverlayScopePolicy.ParseRequired(scopeId)));
         }
     }
 
@@ -360,12 +368,100 @@ internal sealed class ApplicationProfilesGrid : UserControl
         object? sender,
         DataGridViewDataErrorEventArgs eventArgs)
     {
-        if (eventArgs.Exception is ArgumentException or InvalidOperationException)
+        var grid = sender as DataGridView;
+        var columnName = GetColumnName(
+            grid,
+            eventArgs.ColumnIndex);
+        var executablePath = GetExecutablePath(
+            grid,
+            eventArgs.RowIndex);
+        var recovered = IsExpectedSelectorDataError(
+            eventArgs.Exception,
+            eventArgs.Context,
+            columnName);
+
+        Debug.WriteLine(CreateDataErrorDiagnostic(
+            eventArgs.Exception,
+            eventArgs.Context,
+            eventArgs.RowIndex,
+            eventArgs.ColumnIndex,
+            columnName,
+            executablePath,
+            recovered));
+        eventArgs.ThrowException = !recovered;
+    }
+
+    internal static bool IsExpectedSelectorDataError(
+        Exception? exception,
+        DataGridViewDataErrorContexts context,
+        string? columnName)
+    {
+        if (exception is not ArgumentException ||
+            !IsSelectorColumn(columnName))
         {
-            Debug.WriteLine(
-                $"SightAdapt ignored an expected grid binding race: {eventArgs.Exception}");
-            eventArgs.ThrowException = false;
+            return false;
         }
+
+        var recoverableContext =
+            context & RecoverableSelectorContexts;
+        var unexpectedContext =
+            context & ~RecoverableSelectorContexts;
+        return recoverableContext != 0 &&
+            unexpectedContext == 0;
+    }
+
+    internal static string CreateDataErrorDiagnostic(
+        Exception? exception,
+        DataGridViewDataErrorContexts context,
+        int rowIndex,
+        int columnIndex,
+        string? columnName,
+        string? executablePath,
+        bool recovered)
+    {
+        return
+            $"SightAdapt grid data error; recovered={recovered}; " +
+            $"row={rowIndex}; column={columnIndex}; " +
+            $"columnName={columnName ?? "<unknown>"}; " +
+            $"executablePath={executablePath ?? "<unknown>"}; " +
+            $"context={context}; " +
+            $"exception={exception?.ToString() ?? "<none>"}";
+    }
+
+    private static bool IsSelectorColumn(
+        string? columnName)
+    {
+        return string.Equals(
+                columnName,
+                VisualProfileColumnName,
+                StringComparison.Ordinal) ||
+            string.Equals(
+                columnName,
+                OverlayScopeColumnName,
+                StringComparison.Ordinal);
+    }
+
+    private static string? GetColumnName(
+        DataGridView? grid,
+        int columnIndex)
+    {
+        return grid is not null &&
+            columnIndex >= 0 &&
+            columnIndex < grid.Columns.Count
+                ? grid.Columns[columnIndex].Name
+                : null;
+    }
+
+    private static string? GetExecutablePath(
+        DataGridView? grid,
+        int rowIndex)
+    {
+        return grid is not null &&
+            rowIndex >= 0 &&
+            rowIndex < grid.Rows.Count &&
+            grid.Rows[rowIndex].Tag is string path
+                ? path
+                : null;
     }
 
     private static void GridCellPainting(
@@ -463,14 +559,5 @@ internal sealed class ApplicationProfilesGrid : UserControl
         };
     }
 
-    private static string GetColumnName(ApplicationProfileGridColumn column)
-    {
-        return column switch
-        {
-            ApplicationProfileGridColumn.Enabled => EnabledColumnName,
-            ApplicationProfileGridColumn.VisualProfile => VisualProfileColumnName,
-            ApplicationProfileGridColumn.OverlayScope => OverlayScopeColumnName,
-            _ => throw new ArgumentOutOfRangeException(nameof(column)),
-        };
-    }
+
 }

@@ -1,5 +1,4 @@
-using System.ComponentModel;
-using System.Diagnostics;
+
 using System.Drawing;
 
 namespace SightAdapt;
@@ -49,7 +48,9 @@ internal sealed class ConfigurationForm : Form
             EditSelectedVisualProfile);
         _editVisualProfileButton.Enabled = false;
         _profilesGrid = new ApplicationProfilesGrid();
-        _profilesGrid.ValueChanged += ProfilesGridValueChanged;
+        _profilesGrid.ApplicationEnabledChanged += ProfilesGridEnabledChanged;
+        _profilesGrid.VisualProfileChanged += ProfilesGridVisualProfileChanged;
+        _profilesGrid.OverlayScopeChanged += ProfilesGridOverlayScopeChanged;
         _profilesGrid.SelectedApplicationChanged += (_, _) =>
             UpdateSelectedProfileActions();
 
@@ -316,7 +317,7 @@ internal sealed class ConfigurationForm : Form
         return layout;
     }
 
-    private static Control CreateProjectInfoCard()
+    private Control CreateProjectInfoCard()
     {
         var repository = new LinkLabel
         {
@@ -331,7 +332,7 @@ internal sealed class ConfigurationForm : Form
             Text = ProductInfo.RepositoryDisplay,
             VisitedLinkColor = AppTheme.Accent,
         };
-        repository.LinkClicked += (_, _) => OpenRepository();
+        repository.LinkClicked += (_, _) => ShellLauncher.TryOpenUrl(this, ProductInfo.RepositoryUrl);
 
         var product = new TableLayoutPanel
         {
@@ -466,26 +467,7 @@ internal sealed class ConfigurationForm : Form
         return button;
     }
 
-    private static void OpenRepository()
-    {
-        try
-        {
-            Process.Start(new ProcessStartInfo(ProductInfo.RepositoryUrl)
-            {
-                UseShellExecute = true,
-            });
-        }
-        catch (Exception exception) when (
-            exception is Win32Exception or InvalidOperationException)
-        {
-            Debug.WriteLine($"SightAdapt could not open the repository: {exception}");
-            MessageBox.Show(
-                $"The repository could not be opened.\n\n{exception.Message}",
-                ProductInfo.DisplayName,
-                MessageBoxButtons.OK,
-                MessageBoxIcon.Warning);
-        }
-    }
+
 
     private void AutomaticModeCheckedChanged(object? sender, EventArgs eventArgs)
     {
@@ -514,44 +496,65 @@ internal sealed class ConfigurationForm : Form
             : AppTheme.TextSecondary;
     }
 
-    private void ProfilesGridValueChanged(
+    private void ProfilesGridEnabledChanged(
         object? sender,
-        ApplicationProfileGridValueChangedEventArgs eventArgs)
+        ApplicationProfileEnabledChangedEventArgs eventArgs)
     {
-        var displayedProfile = FindAssignment(
-            Settings,
-            eventArgs.ExecutablePath);
+        CommitGridChange(
+            eventArgs.ExecutablePath,
+            (settings, profile) =>
+                ApplicationProfileManagementService.SetEnabled(
+                    settings,
+                    profile,
+                    eventArgs.Enabled));
+    }
+
+    private void ProfilesGridVisualProfileChanged(
+        object? sender,
+        ApplicationProfileVisualProfileChangedEventArgs eventArgs)
+    {
+        CommitGridChange(
+            eventArgs.ExecutablePath,
+            (settings, profile) =>
+                ApplicationProfileManagementService.AssignVisualProfile(
+                    settings,
+                    profile,
+                    eventArgs.VisualProfileId));
+    }
+
+    private void ProfilesGridOverlayScopeChanged(
+        object? sender,
+        ApplicationProfileOverlayScopeChangedEventArgs eventArgs)
+    {
+        CommitGridChange(
+            eventArgs.ExecutablePath,
+            (settings, profile) =>
+                ApplicationProfileManagementService.SetOverlayScope(
+                    settings,
+                    profile,
+                    eventArgs.OverlayScope));
+    }
+
+    private void CommitGridChange(
+        string executablePath,
+        Action<SightAdaptSettings, ApplicationProfile> mutation)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(executablePath);
+        ArgumentNullException.ThrowIfNull(mutation);
+
+        var displayedProfile =
+            ProfileResolver.RequireAssignmentByExecutablePath(
+                Settings,
+                executablePath);
         SettingsCommitResult result;
 
         _committingGridValue = true;
         try
         {
-            result = eventArgs.Column switch
-            {
-                ApplicationProfileGridColumn.Enabled
-                    when eventArgs.Value is bool enabled =>
-                    _settingsCoordinator.Commit(settings =>
-                        ApplicationProfileManagementService.SetEnabled(
-                            settings,
-                            FindAssignment(settings, eventArgs.ExecutablePath),
-                            enabled)),
-                ApplicationProfileGridColumn.VisualProfile
-                    when eventArgs.Value is string visualProfileId =>
-                    _settingsCoordinator.Commit(settings =>
-                        ApplicationProfileManagementService.AssignVisualProfile(
-                            settings,
-                            FindAssignment(settings, eventArgs.ExecutablePath),
-                            visualProfileId)),
-                ApplicationProfileGridColumn.OverlayScope
-                    when eventArgs.Value is string overlayScopeId =>
-                    _settingsCoordinator.Commit(settings =>
-                        ApplicationProfileManagementService.SetOverlayScope(
-                            settings,
-                            FindAssignment(settings, eventArgs.ExecutablePath),
-                            OverlayScopePolicy.ParseRequired(overlayScopeId))),
-                _ => SettingsCommitResult.Failure(
-                    "The edited application-profile value is not supported."),
-            };
+            result = _settingsCoordinator.Commit(settings =>
+                mutation(
+                    settings,
+                    ProfileResolver.RequireAssignmentByExecutablePath(settings, executablePath)));
         }
         finally
         {
@@ -561,26 +564,14 @@ internal sealed class ConfigurationForm : Form
         if (!result.Succeeded)
         {
             ShowCommitError(result.ErrorMessage);
-            _profilesGrid.RestoreValue(
-                eventArgs.ExecutablePath,
-                eventArgs.Column,
-                eventArgs.Column switch
-                {
-                    ApplicationProfileGridColumn.Enabled =>
-                        displayedProfile.Enabled,
-                    ApplicationProfileGridColumn.VisualProfile =>
-                        displayedProfile.VisualProfileId,
-                    ApplicationProfileGridColumn.OverlayScope =>
-                        displayedProfile.OverlayScopeId,
-                    _ => throw new ArgumentOutOfRangeException(
-                        nameof(eventArgs.Column)),
-                });
+            _profilesGrid.UpdateApplication(displayedProfile);
             return;
         }
 
-        _profilesGrid.UpdateApplication(FindAssignment(
-            Settings,
-            eventArgs.ExecutablePath));
+        _profilesGrid.UpdateApplication(
+            ProfileResolver.RequireAssignmentByExecutablePath(
+                Settings,
+                executablePath));
         UpdateSelectedProfileActions();
     }
 
@@ -626,8 +617,9 @@ internal sealed class ConfigurationForm : Form
         var result = _settingsCoordinator.Commit(settings =>
             VisualProfileManagementService.UpdateTuning(
                 settings,
-                ProfileResolver.FindVisualProfile(settings, profileId) ??
-                    throw new InvalidOperationException("The selected visual profile no longer exists."),
+                ProfileResolver.RequireVisualProfile(
+                    settings,
+                    profileId),
                 values));
         if (!result.Succeeded)
         {
@@ -650,11 +642,9 @@ internal sealed class ConfigurationForm : Form
             return null;
         }
 
-        return Settings.Applications.FirstOrDefault(profile =>
-            string.Equals(
-                profile.ExecutablePath,
-                executablePath,
-                StringComparison.OrdinalIgnoreCase));
+        return ProfileResolver.FindAssignmentByExecutablePath(
+            Settings,
+            executablePath);
     }
 
     private void AddCurrentApplication()
@@ -747,7 +737,7 @@ internal sealed class ConfigurationForm : Form
 
         var path = profile.ExecutablePath;
         var result = _settingsCoordinator.Commit(settings =>
-            ApplicationProfileManagementService.Remove(settings, FindAssignment(settings, path)));
+            ApplicationProfileManagementService.Remove(settings, ProfileResolver.RequireAssignmentByExecutablePath(settings, path)));
         if (!result.Succeeded)
         {
             ShowCommitError(result.ErrorMessage);
@@ -774,12 +764,5 @@ internal sealed class ConfigurationForm : Form
             MessageBoxIcon.Warning);
     }
 
-    private static ApplicationProfile FindAssignment(SightAdaptSettings settings, string executablePath)
-    {
-        return settings.Applications.FirstOrDefault(profile => string.Equals(
-                profile.ExecutablePath,
-                executablePath,
-                StringComparison.OrdinalIgnoreCase)) ??
-            throw new InvalidOperationException("The selected application assignment no longer exists.");
-    }
+
 }

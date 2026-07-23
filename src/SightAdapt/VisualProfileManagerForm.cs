@@ -9,8 +9,9 @@ internal sealed class VisualProfileManagerForm : Form
     private readonly ModernButton _renameButton;
     private readonly ModernButton _editButton;
     private readonly ModernButton _deleteButton;
+    private bool _committingLocalChange;
 
-    private VisualProfileManagerForm(SettingsCoordinator settingsCoordinator)
+    internal VisualProfileManagerForm(SettingsCoordinator settingsCoordinator)
     {
         _settingsCoordinator = settingsCoordinator ??
             throw new ArgumentNullException(nameof(settingsCoordinator));
@@ -37,6 +38,8 @@ internal sealed class VisualProfileManagerForm : Form
     }
 
     private SightAdaptSettings Settings => _settingsCoordinator.Current;
+
+    internal int RefreshGeneration { get; private set; }
 
     public static void ShowManager(IWin32Window owner, SettingsCoordinator settingsCoordinator)
     {
@@ -295,7 +298,7 @@ internal sealed class VisualProfileManagerForm : Form
             var index = _profilesGrid.Rows.Add(
                 profile.Name,
                 VisualProfileManagementService.IsBuiltIn(profile) ? "Built-in" : "User-defined",
-                VisualTransformCatalog.GetDisplayName(profile.TransformId),
+                VisualTransformCatalog.Default.GetDisplayName(profile.TransformId),
                 VisualProfileManagementService.CountAssignments(Settings, profile));
             var row = _profilesGrid.Rows[index];
             row.Tag = profile;
@@ -314,7 +317,9 @@ internal sealed class VisualProfileManagerForm : Form
             _profilesGrid.Rows[0].Selected = true;
             _profilesGrid.CurrentCell = _profilesGrid.Rows[0].Cells["Name"];
         }
+
         UpdateActions();
+        RefreshGeneration++;
     }
 
     private void UpdateActions()
@@ -374,7 +379,7 @@ internal sealed class VisualProfileManagerForm : Form
         var sourceId = source.Id;
         Commit(settings =>
         {
-            var current = FindProfile(settings, sourceId);
+            var current = ProfileResolver.RequireVisualProfile(settings, sourceId);
             return VisualProfileManagementService.Duplicate(settings, current, name).Id;
         });
     }
@@ -396,7 +401,7 @@ internal sealed class VisualProfileManagerForm : Form
         var profileId = profile.Id;
         Commit(settings =>
         {
-            VisualProfileManagementService.Rename(settings, FindProfile(settings, profileId), name);
+            VisualProfileManagementService.Rename(settings, ProfileResolver.RequireVisualProfile(settings, profileId), name);
             return profileId;
         });
     }
@@ -418,7 +423,7 @@ internal sealed class VisualProfileManagerForm : Form
         var profileId = profile.Id;
         Commit(settings =>
         {
-            VisualProfileManagementService.UpdateTuning(settings, FindProfile(settings, profileId), values);
+            VisualProfileManagementService.UpdateTuning(settings, ProfileResolver.RequireVisualProfile(settings, profileId), values);
             return profileId;
         });
     }
@@ -454,14 +459,26 @@ internal sealed class VisualProfileManagerForm : Form
         var fallbackId = fallback.Id;
         Commit(settings =>
         {
-            VisualProfileManagementService.Delete(settings, FindProfile(settings, profileId), fallbackId);
+            VisualProfileManagementService.Delete(settings, ProfileResolver.RequireVisualProfile(settings, profileId), fallbackId);
             return fallbackId;
         });
     }
 
-    private void Commit(Func<SightAdaptSettings, string> mutation)
+    internal void Commit(Func<SightAdaptSettings, string> mutation)
     {
-        var result = _settingsCoordinator.Commit(mutation);
+        ArgumentNullException.ThrowIfNull(mutation);
+
+        SettingsCommitResult<string> result;
+        _committingLocalChange = true;
+        try
+        {
+            result = _settingsCoordinator.Commit(mutation);
+        }
+        finally
+        {
+            _committingLocalChange = false;
+        }
+
         if (result.Succeeded)
         {
             RefreshProfiles(result.Value);
@@ -479,12 +496,11 @@ internal sealed class VisualProfileManagerForm : Form
 
     private void SettingsChanged(object? sender, EventArgs eventArgs)
     {
-        RefreshProfiles();
+        if (!_committingLocalChange)
+        {
+            RefreshProfiles();
+        }
     }
 
-    private static VisualProfile FindProfile(SightAdaptSettings settings, string profileId)
-    {
-        return ProfileResolver.FindVisualProfile(settings, profileId) ??
-            throw new InvalidOperationException("The selected visual profile no longer exists.");
-    }
+
 }

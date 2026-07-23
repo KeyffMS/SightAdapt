@@ -1,11 +1,19 @@
 namespace SightAdapt;
 
+internal readonly record struct ProcessIdentityKey(
+    uint ProcessId,
+    ulong CreationTime)
+{
+    public bool IsValid =>
+        ProcessId != 0 && CreationTime != 0;
+}
+
 internal sealed class ApplicationIdentityCache
 {
     internal const int DefaultCapacity = 64;
 
     private readonly int _capacity;
-    private readonly Dictionary<uint, CacheEntry> _entries = [];
+    private readonly Dictionary<ProcessIdentityKey, CacheEntry> _entries = [];
     private readonly object _sync = new();
     private long _accessSequence;
 
@@ -31,10 +39,10 @@ internal sealed class ApplicationIdentityCache
     }
 
     public bool TryGet(
-        uint processId,
+        ProcessIdentityKey key,
         out ApplicationIdentity identity)
     {
-        if (processId == 0)
+        if (!key.IsValid)
         {
             identity = null!;
             return false;
@@ -42,14 +50,14 @@ internal sealed class ApplicationIdentityCache
 
         lock (_sync)
         {
-            if (!_entries.TryGetValue(processId, out var entry))
+            if (!_entries.TryGetValue(key, out var entry))
             {
                 identity = null!;
                 return false;
             }
 
             identity = entry.Identity;
-            _entries[processId] = entry with
+            _entries[key] = entry with
             {
                 AccessSequence = NextAccessSequence(),
             };
@@ -58,41 +66,58 @@ internal sealed class ApplicationIdentityCache
     }
 
     public void Set(
-        uint processId,
+        ProcessIdentityKey key,
         ApplicationIdentity identity)
     {
-        if (processId == 0)
+        if (!key.IsValid)
         {
-            throw new ArgumentOutOfRangeException(nameof(processId));
+            throw new ArgumentOutOfRangeException(nameof(key));
         }
 
         ArgumentNullException.ThrowIfNull(identity);
 
         lock (_sync)
         {
-            if (!_entries.ContainsKey(processId) &&
+            RemoveOtherLifetimes(key);
+
+            if (!_entries.ContainsKey(key) &&
                 _entries.Count >= _capacity)
             {
                 RemoveLeastRecentlyUsed();
             }
 
-            _entries[processId] = new CacheEntry(
+            _entries[key] = new CacheEntry(
                 identity,
                 NextAccessSequence());
         }
     }
 
-    public void Remove(uint processId)
+    public void Remove(ProcessIdentityKey key)
     {
         lock (_sync)
         {
-            _entries.Remove(processId);
+            _entries.Remove(key);
         }
     }
 
     private long NextAccessSequence()
     {
         return ++_accessSequence;
+    }
+
+    private void RemoveOtherLifetimes(
+        ProcessIdentityKey key)
+    {
+        var staleKeys = _entries.Keys
+            .Where(candidate =>
+                candidate.ProcessId == key.ProcessId &&
+                candidate != key)
+            .ToArray();
+
+        foreach (var staleKey in staleKeys)
+        {
+            _entries.Remove(staleKey);
+        }
     }
 
     private void RemoveLeastRecentlyUsed()

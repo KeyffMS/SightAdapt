@@ -183,9 +183,31 @@ internal static class NativeMethods
         StringBuilder executablePath,
         ref uint pathLength);
 
+    [DllImport("kernel32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool GetProcessTimes(
+        nint process,
+        out NativeFileTime creationTime,
+        out NativeFileTime exitTime,
+        out NativeFileTime kernelTime,
+        out NativeFileTime userTime);
+
     [DllImport("kernel32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool CloseHandle(nint handle);
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct NativeFileTime
+    {
+        public uint LowDateTime;
+        public uint HighDateTime;
+
+        public readonly ulong ToUInt64()
+        {
+            return ((ulong)HighDateTime << 32) |
+                LowDateTime;
+        }
+    }
 
     public static bool TryGetVisibleWindowBounds(nint window, out Rect rect)
     {
@@ -217,17 +239,21 @@ internal static class NativeMethods
             : string.Empty;
     }
 
-    public static bool TryGetProcessPath(nint window, out string executablePath)
+    public static bool TryGetProcessIdentityKey(
+        nint window,
+        out ProcessIdentityKey key)
     {
-        executablePath = string.Empty;
-
+        key = default;
         GetWindowThreadProcessId(window, out var processId);
         if (processId == 0)
         {
             return false;
         }
 
-        var process = OpenProcess(ProcessQueryLimitedInformation, false, processId);
+        var process = OpenProcess(
+            ProcessQueryLimitedInformation,
+            false,
+            processId);
         if (process == nint.Zero)
         {
             return false;
@@ -235,10 +261,54 @@ internal static class NativeMethods
 
         try
         {
+            return TryReadProcessIdentityKey(
+                processId,
+                process,
+                out key);
+        }
+        finally
+        {
+            CloseHandle(process);
+        }
+    }
+
+    public static bool TryGetProcessPath(
+        ProcessIdentityKey expectedKey,
+        out string executablePath)
+    {
+        executablePath = string.Empty;
+        if (!expectedKey.IsValid)
+        {
+            return false;
+        }
+
+        var process = OpenProcess(
+            ProcessQueryLimitedInformation,
+            false,
+            expectedKey.ProcessId);
+        if (process == nint.Zero)
+        {
+            return false;
+        }
+
+        try
+        {
+            if (!TryReadProcessIdentityKey(
+                    expectedKey.ProcessId,
+                    process,
+                    out var currentKey) ||
+                currentKey != expectedKey)
+            {
+                return false;
+            }
+
             var builder = new StringBuilder(32768);
             var length = (uint)builder.Capacity;
-
-            if (!QueryFullProcessImageName(process, 0, builder, ref length))
+            if (!QueryFullProcessImageName(
+                    process,
+                    0,
+                    builder,
+                    ref length))
             {
                 return false;
             }
@@ -250,6 +320,34 @@ internal static class NativeMethods
         {
             CloseHandle(process);
         }
+    }
+
+    private static bool TryReadProcessIdentityKey(
+        uint processId,
+        nint process,
+        out ProcessIdentityKey key)
+    {
+        key = default;
+        if (!GetProcessTimes(
+                process,
+                out var creationTime,
+                out _,
+                out _,
+                out _))
+        {
+            return false;
+        }
+
+        var creationTimeValue = creationTime.ToUInt64();
+        if (creationTimeValue == 0)
+        {
+            return false;
+        }
+
+        key = new ProcessIdentityKey(
+            processId,
+            creationTimeValue);
+        return true;
     }
 }
 

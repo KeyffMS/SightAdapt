@@ -75,11 +75,7 @@ internal sealed class ApplicationProfile
     public string OverlayScopeId
     {
         get => _overlayScopeId;
-        set
-        {
-            OverlayScopePolicy.TryParseId(value, out var scope);
-            _overlayScopeId = OverlayScopePolicy.ToId(scope);
-        }
+        set => _overlayScopeId = value ?? string.Empty;
     }
 
     [JsonIgnore]
@@ -161,7 +157,7 @@ internal sealed class VisualProfile
 
     [JsonIgnore]
     public bool SupportsTuning =>
-        VisualTransformCatalog.SupportsTuning(TransformId);
+        VisualTransformCatalog.Default.SupportsTuning(TransformId);
 
     public VisualProfile CreateWorkingCopy()
     {

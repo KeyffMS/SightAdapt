@@ -43,26 +43,77 @@ public sealed class OverlayScopeTests
     }
 
     [TestMethod]
-    public void ScopeIdentifiersRoundTrip()
+    public void ScopeMetadataRoundTripsEveryIdentifier()
     {
-        foreach (var scope in OverlayScopePolicy.All)
+        CollectionAssert.AreEqual(
+            OverlayScopePolicy.Definitions
+                .Select(definition => definition.Scope)
+                .ToArray(),
+            OverlayScopePolicy.All.ToArray());
+
+        foreach (var definition in OverlayScopePolicy.Definitions)
         {
-            var id = OverlayScopePolicy.ToId(scope);
-            Assert.IsTrue(OverlayScopePolicy.TryParseId(id, out var parsed));
-            Assert.AreEqual(scope, parsed);
+            Assert.IsTrue(
+                OverlayScopePolicy.IsSupported(definition.Scope));
+            Assert.AreEqual(
+                definition.Id,
+                OverlayScopePolicy.ToId(definition.Scope));
+            Assert.AreEqual(
+                definition.DisplayName,
+                OverlayScopePolicy.GetDisplayName(definition.Scope));
+
+            foreach (var identifier in definition.Identifiers)
+            {
+                Assert.IsTrue(
+                    OverlayScopePolicy.TryParseId(
+                        $"  {identifier.ToUpperInvariant()}  ",
+                        out var parsed));
+                Assert.AreEqual(definition.Scope, parsed);
+            }
         }
     }
 
     [TestMethod]
-    public void InvalidPersistedScopeRecoversToDefault()
+    public void UnknownScopeIdentifierIsRejectedConsistently()
+    {
+        Assert.IsFalse(
+            OverlayScopePolicy.TryParseId(
+                "unknown-scope",
+                out var parsed));
+        Assert.AreEqual(OverlayScopePolicy.Default, parsed);
+        Assert.ThrowsException<ArgumentException>(() =>
+            OverlayScopePolicy.ParseRequired("unknown-scope"));
+        Assert.ThrowsException<ArgumentOutOfRangeException>(() =>
+            OverlayScopePolicy.ToId((OverlayScope)999));
+        Assert.ThrowsException<ArgumentOutOfRangeException>(() =>
+            OverlayScopePolicy.GetDisplayName((OverlayScope)999));
+    }
+
+    [TestMethod]
+    public void InvalidPersistedScopeIsRecoveredBySettingsNormalization()
     {
         var profile = new ApplicationProfile
         {
+            DisplayName = "Reader",
+            ExecutableName = "reader.exe",
+            ExecutablePath = @"C:\Apps\reader.exe",
             OverlayScopeId = "unknown-scope",
         };
+        var settings = new SightAdaptSettings
+        {
+            Applications = [profile],
+        };
 
+        Assert.AreEqual("unknown-scope", profile.OverlayScopeId);
+        Assert.ThrowsException<ArgumentException>(() =>
+        {
+            _ = profile.OverlayScope;
+        });
+
+        Assert.IsTrue(SettingsStore.Normalize(settings));
         Assert.AreEqual(OverlayScope.ClientArea, profile.OverlayScope);
         Assert.AreEqual("client-area", profile.OverlayScopeId);
+        Assert.IsFalse(SettingsStore.Normalize(settings));
     }
 
     [TestMethod]
