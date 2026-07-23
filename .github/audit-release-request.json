@@ -1,0 +1,5 @@
+{
+  "version": "0.5.0.25",
+  "issue": 25,
+  "title": "Replace text-coupled architecture tests with behavioral tests"
+}
