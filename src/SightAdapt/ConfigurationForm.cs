@@ -7,6 +7,8 @@ internal sealed class ConfigurationForm : Form
 {
     private readonly SettingsCoordinator _settingsCoordinator;
     private readonly Func<ApplicationIdentity?> _getCurrentApplication;
+    private readonly Action<IWin32Window, SettingsCoordinator>
+        _showVisualProfileManager;
     private readonly ToggleSwitch _automaticModeSwitch;
     private readonly Label _automaticModeStateLabel;
     private readonly Label _profileCountLabel;
@@ -17,12 +19,16 @@ internal sealed class ConfigurationForm : Form
 
     public ConfigurationForm(
         SettingsCoordinator settingsCoordinator,
-        Func<ApplicationIdentity?> getCurrentApplication)
+        Func<ApplicationIdentity?> getCurrentApplication,
+        Action<IWin32Window, SettingsCoordinator>?
+            showVisualProfileManager = null)
     {
         _settingsCoordinator = settingsCoordinator ??
             throw new ArgumentNullException(nameof(settingsCoordinator));
         _getCurrentApplication = getCurrentApplication ??
             throw new ArgumentNullException(nameof(getCurrentApplication));
+        _showVisualProfileManager = showVisualProfileManager ??
+            VisualProfileManagerForm.ShowManager;
 
         Text = ProductInfo.WindowTitle;
         StartPosition = FormStartPosition.CenterScreen;
@@ -62,6 +68,8 @@ internal sealed class ConfigurationForm : Form
 
     private SightAdaptSettings Settings => _settingsCoordinator.Current;
 
+    internal int RefreshGeneration { get; private set; }
+
     public void RefreshProfiles()
     {
         if (IsDisposed)
@@ -88,6 +96,8 @@ internal sealed class ConfigurationForm : Form
         {
             _refreshing = false;
         }
+
+        RefreshGeneration++;
     }
 
     private Control CreateRootLayout()
@@ -628,10 +638,9 @@ internal sealed class ConfigurationForm : Form
         }
     }
 
-    private void ManageVisualProfiles()
+    internal void ManageVisualProfiles()
     {
-        VisualProfileManagerForm.ShowManager(this, _settingsCoordinator);
-        RefreshProfiles();
+        _showVisualProfileManager(this, _settingsCoordinator);
     }
 
     private ApplicationProfile? GetSelectedApplicationProfile()

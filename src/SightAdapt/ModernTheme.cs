@@ -14,6 +14,7 @@ internal static class AppTheme
     public static readonly Color WindowBackground = Color.FromArgb(20, 23, 31);
     public static readonly Color HeaderBackground = Color.FromArgb(24, 28, 38);
     public static readonly Color Surface = Color.FromArgb(29, 34, 45);
+    public static readonly Color SurfaceAlternate = Color.FromArgb(32, 38, 50);
     public static readonly Color SurfaceRaised = Color.FromArgb(36, 42, 55);
     public static readonly Color SurfaceHover = Color.FromArgb(45, 53, 69);
     public static readonly Color Border = Color.FromArgb(54, 63, 81);
@@ -28,6 +29,9 @@ internal static class AppTheme
     public static readonly Color SuccessSoft = Color.FromArgb(30, 76, 67);
     public static readonly Color Danger = Color.FromArgb(255, 111, 128);
     public static readonly Color DangerSoft = Color.FromArgb(84, 43, 54);
+    public static readonly Color DangerHover = Color.FromArgb(96, 47, 59);
+    public static readonly Color DangerPressed = Color.FromArgb(105, 47, 60);
+    public static readonly Color DangerBorder = Color.FromArgb(120, 58, 70);
     public static readonly Color Selection = Color.FromArgb(52, 67, 105);
 
     public static Font CreateUiFont(float size = 9.5f, FontStyle style = FontStyle.Regular)
@@ -109,7 +113,7 @@ internal static class AppTheme
 
         grid.AlternatingRowsDefaultCellStyle = new DataGridViewCellStyle
         {
-            BackColor = Color.FromArgb(32, 38, 50),
+            BackColor = SurfaceAlternate,
             ForeColor = TextPrimary,
             SelectionBackColor = Selection,
             SelectionForeColor = TextPrimary,
@@ -243,28 +247,71 @@ internal sealed class ModernButton : Button
 
     private (Color Background, Color Border, Color Foreground) ResolveColors()
     {
-        if (!Enabled)
+        return ResolveColors(
+            VisualStyle,
+            Enabled,
+            _hovered,
+            _pressed);
+    }
+
+    internal static (
+        Color Background,
+        Color Border,
+        Color Foreground) ResolveColors(
+            ModernButtonStyle visualStyle,
+            bool enabled,
+            bool hovered,
+            bool pressed)
+    {
+        if (!enabled)
         {
-            return (AppTheme.Surface, AppTheme.Border, AppTheme.TextMuted);
+            return (
+                AppTheme.Surface,
+                AppTheme.Border,
+                AppTheme.TextMuted);
         }
 
-        return VisualStyle switch
+        return visualStyle switch
         {
             ModernButtonStyle.Primary => (
-                _pressed ? AppTheme.AccentPressed : _hovered ? AppTheme.AccentHover : AppTheme.Accent,
-                _pressed ? AppTheme.AccentPressed : AppTheme.AccentHover,
+                pressed
+                    ? AppTheme.AccentPressed
+                    : hovered
+                        ? AppTheme.AccentHover
+                        : AppTheme.Accent,
+                pressed
+                    ? AppTheme.AccentPressed
+                    : AppTheme.AccentHover,
                 Color.White),
             ModernButtonStyle.Danger => (
-                _pressed ? Color.FromArgb(105, 47, 60) : _hovered ? Color.FromArgb(96, 47, 59) : AppTheme.DangerSoft,
-                _hovered ? AppTheme.Danger : Color.FromArgb(120, 58, 70),
-                _hovered ? Color.White : AppTheme.Danger),
+                pressed
+                    ? AppTheme.DangerPressed
+                    : hovered
+                        ? AppTheme.DangerHover
+                        : AppTheme.DangerSoft,
+                hovered
+                    ? AppTheme.Danger
+                    : AppTheme.DangerBorder,
+                hovered
+                    ? Color.White
+                    : AppTheme.Danger),
             ModernButtonStyle.Ghost => (
-                _pressed ? AppTheme.SurfaceRaised : _hovered ? AppTheme.SurfaceHover : AppTheme.WindowBackground,
-                _hovered ? AppTheme.Border : AppTheme.WindowBackground,
+                pressed
+                    ? AppTheme.SurfaceRaised
+                    : hovered
+                        ? AppTheme.SurfaceHover
+                        : AppTheme.WindowBackground,
+                hovered
+                    ? AppTheme.Border
+                    : AppTheme.WindowBackground,
                 AppTheme.TextSecondary),
             _ => (
-                _pressed ? AppTheme.SurfaceHover : _hovered ? AppTheme.SurfaceHover : AppTheme.SurfaceRaised,
-                _hovered ? AppTheme.Accent : AppTheme.Border,
+                pressed || hovered
+                    ? AppTheme.SurfaceHover
+                    : AppTheme.SurfaceRaised,
+                hovered
+                    ? AppTheme.Accent
+                    : AppTheme.Border,
                 AppTheme.TextPrimary),
         };
     }
