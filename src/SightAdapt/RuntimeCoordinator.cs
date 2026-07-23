@@ -35,6 +35,7 @@ internal sealed class RuntimeCoordinator
     private readonly Func<nint, ApplicationIdentity?> _resolveIdentity;
     private readonly Action<string> _showNotification;
     private readonly Action<bool> _synchronizeAutomaticMode;
+    private bool _committingSettings;
 
     public RuntimeCoordinator(
         SettingsCoordinator settingsCoordinator,
@@ -119,7 +120,7 @@ internal sealed class RuntimeCoordinator
             return;
         }
 
-        var commit = _settingsCoordinator.Commit(settings =>
+        var commit = CommitSettings(settings =>
         {
             var result =
                 ApplicationProfileManagementService.Toggle(
@@ -148,6 +149,10 @@ internal sealed class RuntimeCoordinator
         {
             ResumeAutomaticOperation();
         }
+        else
+        {
+            HandleSettingsChanged();
+        }
 
         _showNotification(result.IsEnabled
             ? result.WasCreated
@@ -159,7 +164,7 @@ internal sealed class RuntimeCoordinator
 
     public void SetAutomaticMode(bool enabled)
     {
-        var commit = _settingsCoordinator.Commit(settings =>
+        var commit = CommitSettings(settings =>
             AutomaticModeManagementService.Set(settings, enabled));
 
         if (!commit.Succeeded)
@@ -172,6 +177,10 @@ internal sealed class RuntimeCoordinator
         if (enabled)
         {
             ResumeAutomaticOperation();
+        }
+        else
+        {
+            HandleSettingsChanged();
         }
     }
 
@@ -191,6 +200,11 @@ internal sealed class RuntimeCoordinator
 
     public void HandleSettingsChanged()
     {
+        if (_committingSettings)
+        {
+            return;
+        }
+
         if (_stateController.Current.Kind ==
             ApplicationRunState.ManualActive)
         {
@@ -237,7 +251,7 @@ internal sealed class RuntimeCoordinator
         _stateController.SetEmergency(
             "All overlays were disabled.");
 
-        var commit = _settingsCoordinator.Commit(settings =>
+        var commit = CommitSettings(settings =>
             AutomaticModeManagementService.Disable(settings));
 
         if (commit.Succeeded)
@@ -259,6 +273,22 @@ internal sealed class RuntimeCoordinator
     {
         _overlay.Disable();
         _stateController.SetInactive();
+    }
+
+    private SettingsCommitResult<T> CommitSettings<T>(
+        Func<SightAdaptSettings, T> mutation)
+    {
+        ArgumentNullException.ThrowIfNull(mutation);
+
+        _committingSettings = true;
+        try
+        {
+            return _settingsCoordinator.Commit(mutation);
+        }
+        finally
+        {
+            _committingSettings = false;
+        }
     }
 
     private void ResumeAutomaticOperation()

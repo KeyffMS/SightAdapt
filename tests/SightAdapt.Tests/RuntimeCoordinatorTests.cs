@@ -49,6 +49,43 @@ public sealed class RuntimeCoordinatorTests
     }
 
     [TestMethod]
+    public void ProfileToggleWithSettingsEventActivatesOverlayOnce()
+    {
+        using var context = new RuntimeTestContext();
+        context.AddDisabledAssignment();
+        context.WireSettingsChanged();
+
+        context.Coordinator.ToggleActiveApplicationProfile();
+
+        Assert.AreEqual(1, context.Overlay.ActivationCount);
+        Assert.IsTrue(context.Overlay.IsActive);
+        Assert.IsTrue(
+            context.Settings.Current.AutomaticMode);
+        Assert.AreEqual(
+            ApplicationRunState.AutomaticActive,
+            context.State.Current.Kind);
+    }
+
+    [TestMethod]
+    public void EnablingAutomaticModeWithSettingsEventActivatesOverlayOnce()
+    {
+        using var context = new RuntimeTestContext();
+        context.AddEnabledAssignment();
+        context.DisableAutomaticMode();
+        context.WireSettingsChanged();
+
+        context.Coordinator.SetAutomaticMode(enabled: true);
+
+        Assert.AreEqual(1, context.Overlay.ActivationCount);
+        Assert.IsTrue(context.Overlay.IsActive);
+        Assert.IsTrue(
+            context.Settings.Current.AutomaticMode);
+        Assert.AreEqual(
+            ApplicationRunState.AutomaticActive,
+            context.State.Current.Kind);
+    }
+
+    [TestMethod]
     public void EmergencyDisablesOverlayBeforePersistingAutomaticMode()
     {
         using var context = new RuntimeTestContext();
@@ -139,6 +176,36 @@ public sealed class RuntimeCoordinatorTests
                     settings,
                     _identity));
             Assert.IsTrue(result.Succeeded);
+        }
+
+        public void AddDisabledAssignment()
+        {
+            var result = Settings.Commit(settings =>
+            {
+                var assignment =
+                    ApplicationProfileManagementService.AddOrEnable(
+                        settings,
+                        _identity).Profile;
+                ApplicationProfileManagementService.SetEnabled(
+                    settings,
+                    assignment,
+                    enabled: false);
+                AutomaticModeManagementService.Disable(settings);
+            });
+            Assert.IsTrue(result.Succeeded);
+        }
+
+        public void DisableAutomaticMode()
+        {
+            var result = Settings.Commit(settings =>
+                AutomaticModeManagementService.Disable(settings));
+            Assert.IsTrue(result.Succeeded);
+        }
+
+        public void WireSettingsChanged()
+        {
+            Settings.Changed += (_, _) =>
+                Coordinator.HandleSettingsChanged();
         }
 
         public void Dispose()
