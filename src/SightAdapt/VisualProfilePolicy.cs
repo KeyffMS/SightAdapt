@@ -111,18 +111,16 @@ internal static class VisualProfilePolicy
         if (string.IsNullOrWhiteSpace(
                 normalizedName))
         {
-            throw new ArgumentException(
-                "The visual profile name cannot be empty.",
-                nameof(name));
+            throw new SettingsValidationException(
+                "The visual profile name cannot be empty.");
         }
 
         if (normalizedName.Length >
             MaximumNameLength)
         {
-            throw new ArgumentException(
+            throw new SettingsValidationException(
                 $"The visual profile name cannot exceed " +
-                $"{MaximumNameLength} characters.",
-                nameof(name));
+                $"{MaximumNameLength} characters.");
         }
 
         if (NameExists(
@@ -130,7 +128,7 @@ internal static class VisualProfilePolicy
                 normalizedName,
                 exceptProfile))
         {
-            throw new InvalidOperationException(
+            throw new SettingsValidationException(
                 $"A visual profile named " +
                 $"'{normalizedName}' already exists.");
         }

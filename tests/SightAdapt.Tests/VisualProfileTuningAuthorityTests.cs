@@ -36,12 +36,12 @@ public sealed class VisualProfileTuningAuthorityTests
         var exact = settings.VisualProfiles.Single(
             profile => profile.Id == VisualProfile.DefaultInvertId);
 
-        Assert.ThrowsException<InvalidOperationException>(() =>
+        Assert.ThrowsException<SettingsValidationException>(() =>
             VisualProfileManagementService.UpdateTuning(
                 settings,
                 detached,
                 detached.CreateWorkingCopy()));
-        Assert.ThrowsException<InvalidOperationException>(() =>
+        Assert.ThrowsException<SettingsValidationException>(() =>
             VisualProfileManagementService.UpdateTuning(
                 settings,
                 exact,

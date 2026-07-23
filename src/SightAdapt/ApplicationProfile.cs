@@ -2,7 +2,18 @@ using System.Text.Json.Serialization;
 
 namespace SightAdapt;
 
-internal sealed class SightAdaptSettings
+internal interface IReadOnlySightAdaptSettings
+{
+    int SchemaVersion { get; }
+
+    bool AutomaticMode { get; }
+
+    IReadOnlyList<ApplicationProfile> Applications { get; }
+
+    IReadOnlyList<VisualProfile> VisualProfiles { get; }
+}
+
+internal sealed class SightAdaptSettings : IReadOnlySightAdaptSettings
 {
     public const int CurrentSchemaVersion = 4;
 
@@ -17,6 +28,12 @@ internal sealed class SightAdaptSettings
         VisualProfile.CreateDefaultInvert(),
         VisualProfile.CreateDefaultSoftInvert(),
     ];
+
+    IReadOnlyList<ApplicationProfile>
+        IReadOnlySightAdaptSettings.Applications => Applications;
+
+    IReadOnlyList<VisualProfile>
+        IReadOnlySightAdaptSettings.VisualProfiles => VisualProfiles;
 
     public SightAdaptSettings CreateWorkingCopy()
     {

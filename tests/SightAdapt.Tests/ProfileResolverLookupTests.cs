@@ -33,7 +33,7 @@ public sealed class ProfileResolverLookupTests
             ProfileResolver.FindAssignmentByExecutablePath(
                 settings,
                 "C:\\Apps\\Missing.exe"));
-        Assert.ThrowsException<InvalidOperationException>(() =>
+        Assert.ThrowsException<SettingsValidationException>(() =>
             ProfileResolver.RequireAssignmentByExecutablePath(
                 settings,
                 "C:\\Apps\\Missing.exe"));
@@ -56,7 +56,7 @@ public sealed class ProfileResolverLookupTests
     [TestMethod]
     public void RequiredVisualProfileReportsMissingSelection()
     {
-        Assert.ThrowsException<InvalidOperationException>(() =>
+        Assert.ThrowsException<SettingsValidationException>(() =>
             ProfileResolver.RequireVisualProfile(
                 CreateSettings(),
                 "missing-profile"));

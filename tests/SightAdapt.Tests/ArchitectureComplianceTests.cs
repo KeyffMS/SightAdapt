@@ -15,12 +15,12 @@ public sealed class ArchitectureComplianceTests
             @"(?m)^(?!\s*string\?\s+VisualProfileId\s*=)\s*.*\bVisualProfileId\s*=",
             "ApplicationProfile.cs",
             "ApplicationProfileManagementService.cs",
-            "SettingsStore.cs",
+            "SettingsNormalizer.cs",
             "OverlayController.cs");
         AssertPatternRestrictedTo(
             @"\.Applications\.(Add|Remove)\(",
             "ApplicationProfileManagementService.cs",
-            "SettingsStore.cs");
+            "SettingsNormalizer.cs");
     }
 
     [TestMethod]

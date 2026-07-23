@@ -34,7 +34,7 @@ public sealed class ApplicationProfileManagementTests
             custom.Id);
 
         Assert.AreEqual(custom.Id, assignment.VisualProfileId);
-        Assert.ThrowsException<InvalidOperationException>(() =>
+        Assert.ThrowsException<SettingsValidationException>(() =>
             ApplicationProfileManagementService.AssignVisualProfile(
                 settings,
                 assignment,
@@ -66,9 +66,9 @@ public sealed class ApplicationProfileManagementTests
         var settings = new SightAdaptSettings();
         var detached = new ApplicationProfile();
 
-        Assert.ThrowsException<InvalidOperationException>(() =>
+        Assert.ThrowsException<SettingsValidationException>(() =>
             ApplicationProfileManagementService.SetEnabled(settings, detached, false));
-        Assert.ThrowsException<InvalidOperationException>(() =>
+        Assert.ThrowsException<SettingsValidationException>(() =>
             ApplicationProfileManagementService.Remove(settings, detached));
     }
 

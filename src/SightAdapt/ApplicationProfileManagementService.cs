@@ -54,7 +54,7 @@ internal static class ApplicationProfileManagementService
             ProfileResolver.FindVisualProfile(
                 settings,
                 visualProfileId) ??
-            throw new InvalidOperationException(
+            throw new SettingsValidationException(
                 $"The visual profile " +
                 $"'{visualProfileId}' does not exist.");
 
@@ -109,7 +109,7 @@ internal static class ApplicationProfileManagementService
             ProfileResolver.FindVisualProfile(
                 settings,
                 targetProfileId) ??
-            throw new InvalidOperationException(
+            throw new SettingsValidationException(
                 $"The fallback visual profile " +
                 $"'{targetProfileId}' does not exist.");
 
@@ -132,11 +132,10 @@ internal static class ApplicationProfileManagementService
     }
 
     public static int CountAssignments(
-        SightAdaptSettings settings,
+        IReadOnlySightAdaptSettings settings,
         string visualProfileId)
     {
         ArgumentNullException.ThrowIfNull(settings);
-        settings.EnsureCollections();
 
         return settings.Applications.Count(
             assignment =>
@@ -180,8 +179,8 @@ internal static class ApplicationProfileManagementService
     private static (
         ApplicationProfile Profile,
         bool WasCreated) GetOrCreate(
-        SightAdaptSettings settings,
-        ApplicationIdentity identity)
+            SightAdaptSettings settings,
+            ApplicationIdentity identity)
     {
         var existing =
             ProfileResolver.FindAssignment(
@@ -233,7 +232,7 @@ internal static class ApplicationProfileManagementService
     {
         if (!settings.Applications.Contains(profile))
         {
-            throw new InvalidOperationException(
+            throw new SettingsValidationException(
                 "The application assignment is not part " +
                 "of the current settings.");
         }
