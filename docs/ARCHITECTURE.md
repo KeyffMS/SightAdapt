@@ -1,4 +1,3 @@
-
 # SightAdapt current architecture
 
 ## Product flow
@@ -51,7 +50,8 @@ A failed mutation or failed write does not replace committed settings and does n
 
 | Concern | Authority |
 |---|---|
-| Settings transaction | `SettingsCoordinator` |`n| Runtime use-case orchestration | `RuntimeCoordinator` |
+| Settings transaction | `SettingsCoordinator` |
+| Runtime use-case orchestration | `RuntimeCoordinator` |
 | Migration, scope canonicalization, normalization, recovery, and reference repair | `SettingsStore.Normalize` |
 | Application assignment mutations and overlay scope | `ApplicationProfileManagementService` |
 | Visual-profile lifecycle and tuning | `VisualProfileManagementService` |
