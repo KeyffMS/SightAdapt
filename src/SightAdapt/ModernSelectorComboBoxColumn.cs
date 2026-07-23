@@ -155,7 +155,9 @@ internal sealed class ModernSelectorComboBoxCell :
             graphics,
             Rectangle.Inflate(cellBounds, -7, -6),
             formattedValue?.ToString() ?? string.Empty,
-            cellStyle.Font ?? AppTheme.CreateUiFont(9.5f),
+            ResolvePaintFont(
+                cellStyle.Font,
+                DataGridView?.Font),
             foreground,
             selected,
             focused:
@@ -163,12 +165,22 @@ internal sealed class ModernSelectorComboBoxCell :
                 DataGridView?.CurrentCellAddress.X == ColumnIndex &&
                 DataGridView.CurrentCellAddress.Y == rowIndex);
     }
+
+    internal static Font ResolvePaintFont(
+        Font? cellStyleFont,
+        Font? gridFont)
+    {
+        return cellStyleFont ??
+            gridFont ??
+            Control.DefaultFont;
+    }
 }
 
 internal sealed class ModernSelectorEditingControl :
     Control,
     IDataGridViewEditingControl
 {
+    private readonly Font _defaultFont;
     private readonly ListBox _list;
     private readonly ToolStripDropDown _dropDown;
     private ModernSelectorOption[] _options = [];
@@ -177,10 +189,12 @@ internal sealed class ModernSelectorEditingControl :
 
     public ModernSelectorEditingControl()
     {
+        _defaultFont = AppTheme.CreateUiFont(9.5f);
+
         AccessibleRole = AccessibleRole.ComboBox;
         BackColor = AppTheme.SurfaceRaised;
         Cursor = Cursors.Hand;
-        Font = AppTheme.CreateUiFont(9.5f);
+        Font = _defaultFont;
         ForeColor = AppTheme.TextPrimary;
         TabStop = true;
         SetStyle(
@@ -196,7 +210,7 @@ internal sealed class ModernSelectorEditingControl :
             BackColor = AppTheme.SurfaceRaised,
             BorderStyle = BorderStyle.None,
             DrawMode = DrawMode.OwnerDrawFixed,
-            Font = AppTheme.CreateUiFont(9.5f),
+            Font = _defaultFont,
             ForeColor = AppTheme.TextPrimary,
             IntegralHeight = false,
             ItemHeight = 34,
@@ -248,7 +262,7 @@ internal sealed class ModernSelectorEditingControl :
     {
         _options = options.ToArray();
         EditingControlValueChanged = false;
-        Font = style.Font ?? AppTheme.CreateUiFont(9.5f);
+        Font = style.Font ?? _defaultFont;
         ForeColor = AppTheme.TextPrimary;
         BackColor = AppTheme.SurfaceRaised;
         SelectByValue(selectedId);
@@ -261,7 +275,7 @@ internal sealed class ModernSelectorEditingControl :
     public void ApplyCellStyleToEditingControl(
         DataGridViewCellStyle dataGridViewCellStyle)
     {
-        Font = dataGridViewCellStyle.Font ?? AppTheme.CreateUiFont(9.5f);
+        Font = dataGridViewCellStyle.Font ?? _defaultFont;
         ForeColor = AppTheme.TextPrimary;
         BackColor = AppTheme.SurfaceRaised;
     }
@@ -397,6 +411,7 @@ internal sealed class ModernSelectorEditingControl :
         {
             _dropDown.Dispose();
             _list.Dispose();
+            _defaultFont.Dispose();
         }
 
         base.Dispose(disposing);
