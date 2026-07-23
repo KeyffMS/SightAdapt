@@ -37,22 +37,26 @@ CreateWorkingCopy
 Domain-service mutation
       ↓
 SettingsStore.Save
-(normalize and atomic replacement)
+      ↓
+SettingsNormalizer.Normalize
+      ↓
+atomic file replacement
       ↓
 Current.ReplaceWith
       ↓
 one synchronous Changed event
 ```
 
-A failed mutation or failed write does not replace committed settings and does not publish a settings change.
+A failed mutation or failed write does not replace committed settings and does not publish a settings change. `SettingsCoordinator.Current` returns a defensive snapshot, so consumers cannot mutate the committed in-memory object outside a transaction.
 
 ## Authorities
 
 | Concern | Authority |
 |---|---|
-| Settings transaction | `SettingsCoordinator` |
+| Settings transaction and published snapshots | `SettingsCoordinator` |
+| Settings JSON persistence and atomic replacement | `SettingsStore` |
+| Migration, scope canonicalization, normalization, recovery, and reference repair | `SettingsNormalizer` |
 | Runtime use-case orchestration | `RuntimeCoordinator` |
-| Migration, scope canonicalization, normalization, recovery, and reference repair | `SettingsStore.Normalize` |
 | Application assignment mutations and overlay scope | `ApplicationProfileManagementService` |
 | Visual-profile lifecycle and tuning | `VisualProfileManagementService` |
 | Automatic-mode mutation | `AutomaticModeManagementService` |
@@ -72,7 +76,7 @@ A failed mutation or failed write does not replace committed settings and does n
 
 | Data or rule | Source of truth |
 |---|---|
-| Persisted automatic mode, applications, assignments, scopes, and profiles | `SightAdaptSettings` committed through `SettingsCoordinator.Current` |
+| Persisted automatic mode, applications, assignments, scopes, and profiles | `SightAdaptSettings` committed through `SettingsCoordinator` |
 | Runtime mode, target, active profile, suppression, and message | `ApplicationStateController.Current` |
 | Actual overlay resource and target | `OverlayController` and active `MagnifierOverlay` |
 | Per-application overlay scope | `ApplicationProfile.OverlayScopeId` |
@@ -126,7 +130,7 @@ The current backend uses the same rectangle for the magnifier source and overlay
 
 ## Architecture test strategy
 
-Architecture checks are behavior-first. Transaction publication, failed persistence, emergency ordering, runtime state transitions, transform catalog consistency, overlay-scope recovery, grid commits, menu roles, preview caching, and profile-manager refresh behavior are exercised through executable tests.
+Architecture checks are behavior-first. Transaction publication, defensive settings snapshots, failed persistence, expected and unexpected transaction failures, emergency ordering, runtime state transitions, transform catalog consistency, overlay-scope recovery, grid commits, menu roles, preview caching, and profile-manager refresh behavior are exercised through executable tests.
 
 Source inspection is retained only for exhaustive negative rules that cannot be proven by a finite runtime scenario:
 
