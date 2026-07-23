@@ -1,5 +1,6 @@
 {
   "version": "0.5.0.24",
   "issue": 24,
-  "title": "Use semantic menu roles instead of matching visible text"
+  "title": "Use semantic menu roles instead of matching visible text",
+  "attempt": 2
 }
