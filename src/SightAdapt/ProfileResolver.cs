@@ -3,18 +3,18 @@ namespace SightAdapt;
 internal static class ProfileResolver
 {
     public static ApplicationProfile? FindAssignment(
-        SightAdaptSettings settings,
+        IReadOnlySightAdaptSettings settings,
         ApplicationIdentity identity)
     {
         ArgumentNullException.ThrowIfNull(settings);
         ArgumentNullException.ThrowIfNull(identity);
 
-        return settings.Applications?.FirstOrDefault(profile =>
+        return settings.Applications.FirstOrDefault(profile =>
             profile is not null && profile.Matches(identity));
     }
 
     public static ApplicationProfile? FindAssignmentByExecutablePath(
-        SightAdaptSettings settings,
+        IReadOnlySightAdaptSettings settings,
         string? executablePath)
     {
         ArgumentNullException.ThrowIfNull(settings);
@@ -25,7 +25,7 @@ internal static class ProfileResolver
         }
 
         var normalizedPath = executablePath.Trim();
-        return settings.Applications?.FirstOrDefault(profile =>
+        return settings.Applications.FirstOrDefault(profile =>
             profile is not null && string.Equals(
                 profile.ExecutablePath,
                 normalizedPath,
@@ -33,28 +33,29 @@ internal static class ProfileResolver
     }
 
     public static ApplicationProfile RequireAssignmentByExecutablePath(
-        SightAdaptSettings settings,
+        IReadOnlySightAdaptSettings settings,
         string executablePath)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(executablePath);
         return FindAssignmentByExecutablePath(
                 settings,
                 executablePath) ??
-            throw new InvalidOperationException(
+            throw new SettingsValidationException(
                 "The selected application assignment no longer exists.");
     }
 
     public static ApplicationProfile? FindEnabledAssignment(
-        SightAdaptSettings settings,
+        IReadOnlySightAdaptSettings settings,
         ApplicationIdentity identity)
     {
-        return FindAssignment(settings, identity) is { Enabled: true } assignment
-            ? assignment
-            : null;
+        return FindAssignment(settings, identity) is
+            { Enabled: true } assignment
+                ? assignment
+                : null;
     }
 
     public static VisualProfile? FindVisualProfile(
-        SightAdaptSettings settings,
+        IReadOnlySightAdaptSettings settings,
         string? profileId)
     {
         ArgumentNullException.ThrowIfNull(settings);
@@ -64,7 +65,7 @@ internal static class ProfileResolver
             return null;
         }
 
-        return settings.VisualProfiles?.FirstOrDefault(candidate =>
+        return settings.VisualProfiles.FirstOrDefault(candidate =>
             candidate is not null && string.Equals(
                 candidate.Id,
                 profileId.Trim(),
@@ -72,17 +73,17 @@ internal static class ProfileResolver
     }
 
     public static VisualProfile RequireVisualProfile(
-        SightAdaptSettings settings,
+        IReadOnlySightAdaptSettings settings,
         string profileId)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(profileId);
         return FindVisualProfile(settings, profileId) ??
-            throw new InvalidOperationException(
+            throw new SettingsValidationException(
                 "The selected visual profile no longer exists.");
     }
 
     public static string ResolveVisualProfileName(
-        SightAdaptSettings settings,
+        IReadOnlySightAdaptSettings settings,
         string? profileId,
         string fallback)
     {
@@ -96,15 +97,18 @@ internal static class ProfileResolver
     }
 
     public static VisualProfile ResolveVisualProfile(
-        SightAdaptSettings settings,
+        IReadOnlySightAdaptSettings settings,
         ApplicationProfile? assignment)
     {
         ArgumentNullException.ThrowIfNull(settings);
 
-        return FindVisualProfile(settings, assignment?.VisualProfileId)
+        return FindVisualProfile(
+                settings,
+                assignment?.VisualProfileId)
             ?? FindVisualProfile(
                 settings,
-                VisualProfilePolicy.MissingReferenceFallbackProfileId)
+                VisualProfilePolicy
+                    .MissingReferenceFallbackProfileId)
             ?? VisualProfile.CreateDefaultInvert();
     }
 }
