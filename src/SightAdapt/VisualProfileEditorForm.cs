@@ -13,7 +13,7 @@ internal sealed class VisualProfileEditorForm : Form
     private readonly ModernProfileSlider _hueSlider;
     private bool _loadingValues;
 
-    private VisualProfileEditorForm(VisualProfile profile)
+    internal VisualProfileEditorForm(VisualProfile profile)
     {
         ArgumentNullException.ThrowIfNull(profile);
         if (!profile.SupportsTuning)
@@ -41,23 +41,28 @@ internal sealed class VisualProfileEditorForm : Form
         _outputBlackSlider = CreatePercentageSlider(
             "Output black",
             VisualProfileLimits.MinimumOutputBlack,
-            VisualProfileLimits.MaximumOutputBlack);
+            VisualProfileLimits.MaximumOutputBlack,
+            neutralValue: null);
         _outputWhiteSlider = CreatePercentageSlider(
             "Output white",
             VisualProfileLimits.MinimumOutputWhite,
-            VisualProfileLimits.MaximumOutputWhite);
+            VisualProfileLimits.MaximumOutputWhite,
+            neutralValue: null);
         _brightnessSlider = CreatePercentageSlider(
             "Brightness",
             VisualProfileLimits.MinimumBrightness,
-            VisualProfileLimits.MaximumBrightness);
+            VisualProfileLimits.MaximumBrightness,
+            neutralValue: 0f);
         _contrastSlider = CreatePercentageSlider(
             "Contrast",
             VisualProfileLimits.MinimumContrast,
-            VisualProfileLimits.MaximumContrast);
+            VisualProfileLimits.MaximumContrast,
+            neutralValue: 100f);
         _saturationSlider = CreatePercentageSlider(
             "Saturation",
             VisualProfileLimits.MinimumSaturation,
-            VisualProfileLimits.MaximumSaturation);
+            VisualProfileLimits.MaximumSaturation,
+            neutralValue: 100f);
         _hueSlider = new ModernProfileSlider
         {
             AccessibleName = "Hue shift",
@@ -65,6 +70,7 @@ internal sealed class VisualProfileEditorForm : Form
             Minimum = VisualProfileLimits.MinimumHueShift,
             Maximum = VisualProfileLimits.MaximumHueShift,
             SmallChange = 0.5f,
+            NeutralValue = 0f,
             Unit = "°",
         };
 
@@ -438,7 +444,8 @@ internal sealed class VisualProfileEditorForm : Form
     private static ModernProfileSlider CreatePercentageSlider(
         string accessibleName,
         float minimum,
-        float maximum)
+        float maximum,
+        float? neutralValue)
     {
         return new ModernProfileSlider
         {
@@ -447,6 +454,7 @@ internal sealed class VisualProfileEditorForm : Form
             Minimum = minimum * 100f,
             Maximum = maximum * 100f,
             SmallChange = 0.25f,
+            NeutralValue = neutralValue,
             Unit = "%",
         };
     }
