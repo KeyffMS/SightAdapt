@@ -5,6 +5,8 @@ internal sealed class VisualProfileEditorForm : Form
     private readonly VisualProfile _workingProfile;
     private readonly ColorProfilePreview _preview;
     private readonly OutputLimitPreview _outputPreview;
+    private readonly IReadOnlyDictionary<string, VisualAdjustmentBinding>
+        _adjustments;
     private readonly ModernProfileSlider _outputBlackSlider;
     private readonly ModernProfileSlider _outputWhiteSlider;
     private readonly ModernProfileSlider _brightnessSlider;
@@ -38,41 +40,25 @@ internal sealed class VisualProfileEditorForm : Form
             Profile = _workingProfile,
             TransformCatalog = VisualTransformCatalog.Default,
         };
-        _outputBlackSlider = CreatePercentageSlider(
-            "Output black",
-            VisualProfileLimits.MinimumOutputBlack,
-            VisualProfileLimits.MaximumOutputBlack,
-            neutralValue: null);
-        _outputWhiteSlider = CreatePercentageSlider(
-            "Output white",
-            VisualProfileLimits.MinimumOutputWhite,
-            VisualProfileLimits.MaximumOutputWhite,
-            neutralValue: null);
-        _brightnessSlider = CreatePercentageSlider(
-            "Brightness",
-            VisualProfileLimits.MinimumBrightness,
-            VisualProfileLimits.MaximumBrightness,
-            neutralValue: 0f);
-        _contrastSlider = CreatePercentageSlider(
-            "Contrast",
-            VisualProfileLimits.MinimumContrast,
-            VisualProfileLimits.MaximumContrast,
-            neutralValue: 100f);
-        _saturationSlider = CreatePercentageSlider(
-            "Saturation",
-            VisualProfileLimits.MinimumSaturation,
-            VisualProfileLimits.MaximumSaturation,
-            neutralValue: 100f);
-        _hueSlider = new ModernProfileSlider
-        {
-            AccessibleName = "Hue shift",
-            DecimalPlaces = 1,
-            Minimum = VisualProfileLimits.MinimumHueShift,
-            Maximum = VisualProfileLimits.MaximumHueShift,
-            SmallChange = 0.5f,
-            NeutralValue = 0f,
-            Unit = "°",
-        };
+        _adjustments = VisualAdjustmentDefinitions.All
+            .Select(definition => new VisualAdjustmentBinding(
+                definition,
+                definition.CreateSlider()))
+            .ToDictionary(
+                binding => binding.Definition.Id,
+                StringComparer.Ordinal);
+        _outputBlackSlider = SliderFor(
+            VisualAdjustmentDefinitions.OutputBlack);
+        _outputWhiteSlider = SliderFor(
+            VisualAdjustmentDefinitions.OutputWhite);
+        _brightnessSlider = SliderFor(
+            VisualAdjustmentDefinitions.Brightness);
+        _contrastSlider = SliderFor(
+            VisualAdjustmentDefinitions.Contrast);
+        _saturationSlider = SliderFor(
+            VisualAdjustmentDefinitions.Saturation);
+        _hueSlider = SliderFor(
+            VisualAdjustmentDefinitions.HueShift);
 
         Text = $"{ProductInfo.DisplayName} · Edit {profile.Name}";
         StartPosition = FormStartPosition.CenterParent;
@@ -173,20 +159,10 @@ internal sealed class VisualProfileEditorForm : Form
         controls.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 29));
         controls.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 29));
         controls.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 42));
-        controls.Controls.Add(CreateSliderPanel(
-            "Output black",
-            PercentageRange(
-                VisualProfileLimits.MinimumOutputBlack,
-                VisualProfileLimits.MaximumOutputBlack,
-                "minimum output level"),
-            _outputBlackSlider), 0, 0);
-        controls.Controls.Add(CreateSliderPanel(
-            "Output white",
-            PercentageRange(
-                VisualProfileLimits.MinimumOutputWhite,
-                VisualProfileLimits.MaximumOutputWhite,
-                "maximum output level"),
-            _outputWhiteSlider), 1, 0);
+        controls.Controls.Add(CreateAdjustmentPanel(
+            VisualAdjustmentDefinitions.OutputBlack), 0, 0);
+        controls.Controls.Add(CreateAdjustmentPanel(
+            VisualAdjustmentDefinitions.OutputWhite), 1, 0);
         controls.Controls.Add(CreateConversionSamplePanel(), 2, 0);
 
         return CreateSectionCard(
@@ -252,35 +228,14 @@ internal sealed class VisualProfileEditorForm : Form
         grid.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50));
         grid.RowStyles.Add(new RowStyle(SizeType.Percent, 50));
         grid.RowStyles.Add(new RowStyle(SizeType.Percent, 50));
-        grid.Controls.Add(CreateSliderPanel(
-            "Brightness",
-            PercentageRange(
-                VisualProfileLimits.MinimumBrightness,
-                VisualProfileLimits.MaximumBrightness,
-                "moves the whole output range"),
-            _brightnessSlider), 0, 0);
-        grid.Controls.Add(CreateSliderPanel(
-            "Contrast",
-            PercentageRange(
-                VisualProfileLimits.MinimumContrast,
-                VisualProfileLimits.MaximumContrast,
-                "expands or compresses differences"),
-            _contrastSlider), 1, 0);
-        grid.Controls.Add(CreateSliderPanel(
-            "Saturation",
-            PercentageRange(
-                VisualProfileLimits.MinimumSaturation,
-                VisualProfileLimits.MaximumSaturation,
-                "grayscale to amplified color"),
-            _saturationSlider), 0, 1);
-        grid.Controls.Add(CreateSliderPanel(
-            "Hue shift",
-            Range(
-                VisualProfileLimits.MinimumHueShift,
-                VisualProfileLimits.MaximumHueShift,
-                "°",
-                "rotates the color spectrum"),
-            _hueSlider), 1, 1);
+        grid.Controls.Add(CreateAdjustmentPanel(
+            VisualAdjustmentDefinitions.Brightness), 0, 0);
+        grid.Controls.Add(CreateAdjustmentPanel(
+            VisualAdjustmentDefinitions.Contrast), 1, 0);
+        grid.Controls.Add(CreateAdjustmentPanel(
+            VisualAdjustmentDefinitions.Saturation), 0, 1);
+        grid.Controls.Add(CreateAdjustmentPanel(
+            VisualAdjustmentDefinitions.HueShift), 1, 1);
 
         return CreateSectionCard(
             "COLOR ADJUSTMENTS",
@@ -441,67 +396,38 @@ internal sealed class VisualProfileEditorForm : Form
         };
     }
 
-    private static ModernProfileSlider CreatePercentageSlider(
-        string accessibleName,
-        float minimum,
-        float maximum,
-        float? neutralValue)
+    private ModernProfileSlider SliderFor(
+        VisualAdjustmentDefinition definition)
     {
-        return new ModernProfileSlider
-        {
-            AccessibleName = accessibleName,
-            DecimalPlaces = 2,
-            Minimum = minimum * 100f,
-            Maximum = maximum * 100f,
-            SmallChange = 0.25f,
-            NeutralValue = neutralValue,
-            Unit = "%",
-        };
+        return _adjustments[definition.Id].Slider;
+    }
+
+    private Control CreateAdjustmentPanel(
+        VisualAdjustmentDefinition definition)
+    {
+        return CreateSliderPanel(
+            definition.Title,
+            definition.RangeDescription,
+            SliderFor(definition));
     }
 
     private void AttachChangeHandlers()
     {
-        AttachPercentage(
-            _outputBlackSlider,
-            value => _workingProfile.OutputBlack = value);
-        AttachPercentage(
-            _outputWhiteSlider,
-            value => _workingProfile.OutputWhite = value);
-        AttachPercentage(
-            _brightnessSlider,
-            value => _workingProfile.Brightness = value);
-        AttachPercentage(
-            _contrastSlider,
-            value => _workingProfile.Contrast = value);
-        AttachPercentage(
-            _saturationSlider,
-            value => _workingProfile.Saturation = value);
-        AttachSlider(
-            _hueSlider,
-            value => _workingProfile.HueShiftDegrees = value);
-    }
-
-    private void AttachPercentage(
-        ModernProfileSlider slider,
-        Action<float> setter)
-    {
-        AttachSlider(slider, value => setter(value / 100f));
-    }
-
-    private void AttachSlider(
-        ModernProfileSlider slider,
-        Action<float> setter)
-    {
-        slider.ValueChanged += (_, _) =>
+        foreach (var binding in _adjustments.Values)
         {
-            if (_loadingValues)
+            binding.Slider.ValueChanged += (_, _) =>
             {
-                return;
-            }
+                if (_loadingValues)
+                {
+                    return;
+                }
 
-            setter(slider.Value);
-            InvalidatePreviews();
-        };
+                binding.Definition.WriteEditorValue(
+                    _workingProfile,
+                    binding.Slider.Value);
+                InvalidatePreviews();
+            };
+        }
     }
 
     private void LoadValues()
@@ -509,12 +435,12 @@ internal sealed class VisualProfileEditorForm : Form
         _loadingValues = true;
         try
         {
-            _outputBlackSlider.Value = _workingProfile.OutputBlack * 100f;
-            _outputWhiteSlider.Value = _workingProfile.OutputWhite * 100f;
-            _brightnessSlider.Value = _workingProfile.Brightness * 100f;
-            _contrastSlider.Value = _workingProfile.Contrast * 100f;
-            _saturationSlider.Value = _workingProfile.Saturation * 100f;
-            _hueSlider.Value = _workingProfile.HueShiftDegrees;
+            foreach (var binding in _adjustments.Values)
+            {
+                binding.Slider.Value =
+                    binding.Definition.ReadEditorValue(
+                        _workingProfile);
+            }
         }
         finally
         {
@@ -537,20 +463,5 @@ internal sealed class VisualProfileEditorForm : Form
         _outputPreview.Invalidate();
     }
 
-    private static string PercentageRange(
-        float minimum,
-        float maximum,
-        string explanation)
-    {
-        return Range(minimum * 100f, maximum * 100f, "%", explanation);
-    }
 
-    private static string Range(
-        float minimum,
-        float maximum,
-        string unit,
-        string explanation)
-    {
-        return $"{minimum:0.##}–{maximum:0.##}{unit} · {explanation}";
-    }
 }
