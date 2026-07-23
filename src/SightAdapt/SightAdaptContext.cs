@@ -210,8 +210,10 @@ internal sealed class SightAdaptContext : ApplicationContext
             ? null
             : NativeMethods.GetWindowTitle(
                 state.TargetWindow);
-        var profileName = ResolveProfileName(
-            state.VisualProfileId);
+        var profileName = ProfileResolver.ResolveVisualProfileName(
+            Settings,
+            state.VisualProfileId,
+            "Visual correction");
 
         _tray.ApplyState(
             state,
@@ -227,16 +229,7 @@ internal sealed class SightAdaptContext : ApplicationContext
         }
     }
 
-    private string ResolveProfileName(
-        string? profileId)
-    {
-        return Settings.VisualProfiles
-            .FirstOrDefault(profile => string.Equals(
-                profile.Id,
-                profileId,
-                StringComparison.OrdinalIgnoreCase))
-            ?.Name ?? "Visual correction";
-    }
+
 
     private void FaultStateTimerTick(
         object? sender,

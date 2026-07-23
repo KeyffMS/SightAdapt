@@ -379,7 +379,7 @@ internal sealed class VisualProfileManagerForm : Form
         var sourceId = source.Id;
         Commit(settings =>
         {
-            var current = FindProfile(settings, sourceId);
+            var current = ProfileResolver.RequireVisualProfile(settings, sourceId);
             return VisualProfileManagementService.Duplicate(settings, current, name).Id;
         });
     }
@@ -401,7 +401,7 @@ internal sealed class VisualProfileManagerForm : Form
         var profileId = profile.Id;
         Commit(settings =>
         {
-            VisualProfileManagementService.Rename(settings, FindProfile(settings, profileId), name);
+            VisualProfileManagementService.Rename(settings, ProfileResolver.RequireVisualProfile(settings, profileId), name);
             return profileId;
         });
     }
@@ -423,7 +423,7 @@ internal sealed class VisualProfileManagerForm : Form
         var profileId = profile.Id;
         Commit(settings =>
         {
-            VisualProfileManagementService.UpdateTuning(settings, FindProfile(settings, profileId), values);
+            VisualProfileManagementService.UpdateTuning(settings, ProfileResolver.RequireVisualProfile(settings, profileId), values);
             return profileId;
         });
     }
@@ -459,7 +459,7 @@ internal sealed class VisualProfileManagerForm : Form
         var fallbackId = fallback.Id;
         Commit(settings =>
         {
-            VisualProfileManagementService.Delete(settings, FindProfile(settings, profileId), fallbackId);
+            VisualProfileManagementService.Delete(settings, ProfileResolver.RequireVisualProfile(settings, profileId), fallbackId);
             return fallbackId;
         });
     }
@@ -502,9 +502,5 @@ internal sealed class VisualProfileManagerForm : Form
         }
     }
 
-    private static VisualProfile FindProfile(SightAdaptSettings settings, string profileId)
-    {
-        return ProfileResolver.FindVisualProfile(settings, profileId) ??
-            throw new InvalidOperationException("The selected visual profile no longer exists.");
-    }
+
 }

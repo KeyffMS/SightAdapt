@@ -542,9 +542,10 @@ internal sealed class ConfigurationForm : Form
         ArgumentException.ThrowIfNullOrWhiteSpace(executablePath);
         ArgumentNullException.ThrowIfNull(mutation);
 
-        var displayedProfile = FindAssignment(
-            Settings,
-            executablePath);
+        var displayedProfile =
+            ProfileResolver.RequireAssignmentByExecutablePath(
+                Settings,
+                executablePath);
         SettingsCommitResult result;
 
         _committingGridValue = true;
@@ -553,7 +554,7 @@ internal sealed class ConfigurationForm : Form
             result = _settingsCoordinator.Commit(settings =>
                 mutation(
                     settings,
-                    FindAssignment(settings, executablePath)));
+                    ProfileResolver.RequireAssignmentByExecutablePath(settings, executablePath)));
         }
         finally
         {
@@ -567,9 +568,10 @@ internal sealed class ConfigurationForm : Form
             return;
         }
 
-        _profilesGrid.UpdateApplication(FindAssignment(
-            Settings,
-            executablePath));
+        _profilesGrid.UpdateApplication(
+            ProfileResolver.RequireAssignmentByExecutablePath(
+                Settings,
+                executablePath));
         UpdateSelectedProfileActions();
     }
 
@@ -615,8 +617,9 @@ internal sealed class ConfigurationForm : Form
         var result = _settingsCoordinator.Commit(settings =>
             VisualProfileManagementService.UpdateTuning(
                 settings,
-                ProfileResolver.FindVisualProfile(settings, profileId) ??
-                    throw new InvalidOperationException("The selected visual profile no longer exists."),
+                ProfileResolver.RequireVisualProfile(
+                    settings,
+                    profileId),
                 values));
         if (!result.Succeeded)
         {
@@ -639,11 +642,9 @@ internal sealed class ConfigurationForm : Form
             return null;
         }
 
-        return Settings.Applications.FirstOrDefault(profile =>
-            string.Equals(
-                profile.ExecutablePath,
-                executablePath,
-                StringComparison.OrdinalIgnoreCase));
+        return ProfileResolver.FindAssignmentByExecutablePath(
+            Settings,
+            executablePath);
     }
 
     private void AddCurrentApplication()
@@ -736,7 +737,7 @@ internal sealed class ConfigurationForm : Form
 
         var path = profile.ExecutablePath;
         var result = _settingsCoordinator.Commit(settings =>
-            ApplicationProfileManagementService.Remove(settings, FindAssignment(settings, path)));
+            ApplicationProfileManagementService.Remove(settings, ProfileResolver.RequireAssignmentByExecutablePath(settings, path)));
         if (!result.Succeeded)
         {
             ShowCommitError(result.ErrorMessage);
@@ -763,12 +764,5 @@ internal sealed class ConfigurationForm : Form
             MessageBoxIcon.Warning);
     }
 
-    private static ApplicationProfile FindAssignment(SightAdaptSettings settings, string executablePath)
-    {
-        return settings.Applications.FirstOrDefault(profile => string.Equals(
-                profile.ExecutablePath,
-                executablePath,
-                StringComparison.OrdinalIgnoreCase)) ??
-            throw new InvalidOperationException("The selected application assignment no longer exists.");
-    }
+
 }

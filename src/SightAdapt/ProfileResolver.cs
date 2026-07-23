@@ -13,6 +13,37 @@ internal static class ProfileResolver
             profile is not null && profile.Matches(identity));
     }
 
+    public static ApplicationProfile? FindAssignmentByExecutablePath(
+        SightAdaptSettings settings,
+        string? executablePath)
+    {
+        ArgumentNullException.ThrowIfNull(settings);
+
+        if (string.IsNullOrWhiteSpace(executablePath))
+        {
+            return null;
+        }
+
+        var normalizedPath = executablePath.Trim();
+        return settings.Applications?.FirstOrDefault(profile =>
+            profile is not null && string.Equals(
+                profile.ExecutablePath,
+                normalizedPath,
+                StringComparison.OrdinalIgnoreCase));
+    }
+
+    public static ApplicationProfile RequireAssignmentByExecutablePath(
+        SightAdaptSettings settings,
+        string executablePath)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(executablePath);
+        return FindAssignmentByExecutablePath(
+                settings,
+                executablePath) ??
+            throw new InvalidOperationException(
+                "The selected application assignment no longer exists.");
+    }
+
     public static ApplicationProfile? FindEnabledAssignment(
         SightAdaptSettings settings,
         ApplicationIdentity identity)
@@ -38,6 +69,30 @@ internal static class ProfileResolver
                 candidate.Id,
                 profileId.Trim(),
                 StringComparison.OrdinalIgnoreCase));
+    }
+
+    public static VisualProfile RequireVisualProfile(
+        SightAdaptSettings settings,
+        string profileId)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(profileId);
+        return FindVisualProfile(settings, profileId) ??
+            throw new InvalidOperationException(
+                "The selected visual profile no longer exists.");
+    }
+
+    public static string ResolveVisualProfileName(
+        SightAdaptSettings settings,
+        string? profileId,
+        string fallback)
+    {
+        ArgumentNullException.ThrowIfNull(settings);
+        ArgumentException.ThrowIfNullOrWhiteSpace(fallback);
+
+        var name = FindVisualProfile(settings, profileId)?.Name;
+        return string.IsNullOrWhiteSpace(name)
+            ? fallback
+            : name;
     }
 
     public static VisualProfile ResolveVisualProfile(
