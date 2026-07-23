@@ -9,8 +9,9 @@ internal sealed class VisualProfileManagerForm : Form
     private readonly ModernButton _renameButton;
     private readonly ModernButton _editButton;
     private readonly ModernButton _deleteButton;
+    private bool _committingLocalChange;
 
-    private VisualProfileManagerForm(SettingsCoordinator settingsCoordinator)
+    internal VisualProfileManagerForm(SettingsCoordinator settingsCoordinator)
     {
         _settingsCoordinator = settingsCoordinator ??
             throw new ArgumentNullException(nameof(settingsCoordinator));
@@ -37,6 +38,8 @@ internal sealed class VisualProfileManagerForm : Form
     }
 
     private SightAdaptSettings Settings => _settingsCoordinator.Current;
+
+    internal int RefreshGeneration { get; private set; }
 
     public static void ShowManager(IWin32Window owner, SettingsCoordinator settingsCoordinator)
     {
@@ -314,7 +317,9 @@ internal sealed class VisualProfileManagerForm : Form
             _profilesGrid.Rows[0].Selected = true;
             _profilesGrid.CurrentCell = _profilesGrid.Rows[0].Cells["Name"];
         }
+
         UpdateActions();
+        RefreshGeneration++;
     }
 
     private void UpdateActions()
@@ -459,9 +464,21 @@ internal sealed class VisualProfileManagerForm : Form
         });
     }
 
-    private void Commit(Func<SightAdaptSettings, string> mutation)
+    internal void Commit(Func<SightAdaptSettings, string> mutation)
     {
-        var result = _settingsCoordinator.Commit(mutation);
+        ArgumentNullException.ThrowIfNull(mutation);
+
+        SettingsCommitResult<string> result;
+        _committingLocalChange = true;
+        try
+        {
+            result = _settingsCoordinator.Commit(mutation);
+        }
+        finally
+        {
+            _committingLocalChange = false;
+        }
+
         if (result.Succeeded)
         {
             RefreshProfiles(result.Value);
@@ -479,7 +496,10 @@ internal sealed class VisualProfileManagerForm : Form
 
     private void SettingsChanged(object? sender, EventArgs eventArgs)
     {
-        RefreshProfiles();
+        if (!_committingLocalChange)
+        {
+            RefreshProfiles();
+        }
     }
 
     private static VisualProfile FindProfile(SightAdaptSettings settings, string profileId)

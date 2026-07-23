@@ -1,5 +1,0 @@
-{
-  "version": "0.5.0.23",
-  "issue": 23,
-  "title": "Avoid duplicate profile-grid refresh after local commits"
-}
