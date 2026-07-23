@@ -1,5 +1,6 @@
 {
   "version": "0.5.0.26",
   "issue": 26,
-  "title": "Make slider neutral values explicit instead of inferring from unit text"
+  "title": "Make slider neutral values explicit instead of inferring from unit text",
+  "attempt": 2
 }
