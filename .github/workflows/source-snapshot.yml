@@ -1,8 +1,8 @@
 name: Temporary source snapshot
 
 on:
-  push:
-    branches: [agent/final-ui-cleanup]
+  pull_request:
+    branches: [main]
 
 permissions:
   contents: read
