@@ -66,7 +66,7 @@ internal sealed class SettingsCoordinator
         _current = _store.Load();
     }
 
-    public IReadOnlySightAdaptSettings Current =>
+    public SightAdaptSettings Current =>
         _current.CreateWorkingCopy();
 
     public string SettingsPath => _store.SettingsPath;
