@@ -96,6 +96,20 @@ internal static class ProfileResolver
             : name;
     }
 
+    public static VisualProfile ResolveMenuVisualProfile(
+        IReadOnlySightAdaptSettings settings,
+        ApplicationProfile? assignment)
+    {
+        ArgumentNullException.ThrowIfNull(settings);
+
+        return FindVisualProfile(
+                settings,
+                assignment?.MenuVisualProfileId)
+            ?? ResolveVisualProfile(
+                settings,
+                assignment);
+    }
+
     public static VisualProfile ResolveVisualProfile(
         IReadOnlySightAdaptSettings settings,
         ApplicationProfile? assignment)

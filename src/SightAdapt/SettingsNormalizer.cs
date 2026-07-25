@@ -102,6 +102,8 @@ internal static class SettingsNormalizer
                 normalizedId) ||
             VisualProfilePolicy.IsBuiltInId(
                 normalizedId) ||
+            ApplicationMenuProfilePolicy.IsReservedProfileId(
+                normalizedId) ||
             context.ProfileIds.Contains(
                 normalizedId))
         {
@@ -271,18 +273,24 @@ internal static class SettingsNormalizer
         foreach (var application in
                  context.Applications)
         {
-            if (!string.IsNullOrWhiteSpace(
-                    application.VisualProfileId) &&
-                context.ProfileIds.Contains(
+            if (string.IsNullOrWhiteSpace(
+                    application.VisualProfileId) ||
+                !context.ProfileIds.Contains(
                     application.VisualProfileId))
             {
-                continue;
+                application.VisualProfileId =
+                    VisualProfilePolicy
+                        .MissingReferenceFallbackProfileId;
+                context.MarkChanged();
             }
 
-            application.VisualProfileId =
-                VisualProfilePolicy
-                    .MissingReferenceFallbackProfileId;
-            context.MarkChanged();
+            if (application.MenuVisualProfileId is not null &&
+                !context.ProfileIds.Contains(
+                    application.MenuVisualProfileId))
+            {
+                application.MenuVisualProfileId = null;
+                context.MarkChanged();
+            }
         }
     }
 
@@ -338,6 +346,9 @@ internal static class SettingsNormalizer
         var visualProfileId =
             (application.VisualProfileId ??
              string.Empty).Trim();
+        var menuVisualProfileId =
+            ApplicationMenuProfilePolicy.FromSelectorId(
+                application.MenuVisualProfileId);
 
         var changed = !string.Equals(
                 application.DisplayName,
@@ -354,6 +365,10 @@ internal static class SettingsNormalizer
             !string.Equals(
                 application.VisualProfileId,
                 visualProfileId,
+                StringComparison.Ordinal) ||
+            !string.Equals(
+                application.MenuVisualProfileId,
+                menuVisualProfileId,
                 StringComparison.Ordinal);
 
         application.DisplayName = displayName;
@@ -361,6 +376,8 @@ internal static class SettingsNormalizer
         application.ExecutablePath = executablePath;
         application.VisualProfileId =
             visualProfileId;
+        application.MenuVisualProfileId =
+            menuVisualProfileId;
         return changed;
     }
 

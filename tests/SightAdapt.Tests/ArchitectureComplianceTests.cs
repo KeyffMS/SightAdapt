@@ -18,6 +18,10 @@ public sealed class ArchitectureComplianceTests
             "SettingsNormalizer.cs",
             "OverlayController.cs");
         AssertPatternRestrictedTo(
+            @"\.MenuVisualProfileId\s*=",
+            "ApplicationProfileManagementService.cs",
+            "SettingsNormalizer.cs");
+        AssertPatternRestrictedTo(
             @"\.Applications\.(Add|Remove)\(",
             "ApplicationProfileManagementService.cs",
             "SettingsNormalizer.cs");

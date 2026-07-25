@@ -2,14 +2,22 @@ using System.Drawing;
 
 namespace SightAdapt;
 
+internal enum MagnifierOverlayTargetKind
+{
+    ForegroundWindow,
+    TransientPopup,
+}
+
 internal sealed class MagnifierOverlay : Form
 {
     internal const int ForegroundTransitionGraceMilliseconds = 125;
 
     private readonly System.Windows.Forms.Timer _updateTimer;
+    private readonly MagnifierOverlayTargetKind _targetKind;
     private MagColorEffect _colorEffect;
     private string _transformId;
     private OverlayScope _overlayScope;
+    private nint[] _excludedWindows = [];
     private nint _magnifierWindow;
     private long _transitionStartedAt = -1;
     private bool _hasRenderedFrame;
@@ -20,11 +28,28 @@ internal sealed class MagnifierOverlay : Form
         MagColorEffect colorEffect,
         string transformId,
         OverlayScope overlayScope)
+        : this(
+            targetHandle,
+            colorEffect,
+            transformId,
+            overlayScope,
+            MagnifierOverlayTargetKind
+                .ForegroundWindow)
+    {
+    }
+
+    internal MagnifierOverlay(
+        nint targetHandle,
+        MagColorEffect colorEffect,
+        string transformId,
+        OverlayScope overlayScope,
+        MagnifierOverlayTargetKind targetKind)
     {
         TargetHandle = ValidateTarget(targetHandle);
         _colorEffect = colorEffect;
         _transformId = NormalizeTransformId(transformId);
         _overlayScope = ValidateOverlayScope(overlayScope);
+        _targetKind = ValidateTargetKind(targetKind);
 
         AutoScaleMode = AutoScaleMode.None;
         BackColor = Color.Black;
@@ -81,6 +106,23 @@ internal sealed class MagnifierOverlay : Form
         UpdateOverlay();
     }
 
+    public void SetExcludedWindows(
+        IEnumerable<nint> windows)
+    {
+        ArgumentNullException.ThrowIfNull(windows);
+
+        _excludedWindows = windows
+            .Where(window => window != nint.Zero)
+            .Append(Handle)
+            .Distinct()
+            .ToArray();
+
+        if (_initialized)
+        {
+            ApplyExcludedWindowsToMagnifier();
+        }
+    }
+
     protected override void OnShown(EventArgs eventArgs)
     {
         base.OnShown(eventArgs);
@@ -118,15 +160,7 @@ internal sealed class MagnifierOverlay : Form
             "Initialize magnifier transform");
 
         ApplyColorEffectToMagnifier();
-
-        var excludedWindows = new[] { Handle };
-        NativeCall.RequireSuccess(
-            NativeMethods.MagSetWindowFilterList(
-                _magnifierWindow,
-                NativeMethods.MwFilterModeExclude,
-                excludedWindows.Length,
-                excludedWindows),
-            "Exclude overlay window from magnifier source");
+        ApplyExcludedWindowsToMagnifier();
 
         _initialized = true;
         _updateTimer.Start();
@@ -174,6 +208,22 @@ internal sealed class MagnifierOverlay : Form
             $"Apply '{_transformId}' visual transform");
     }
 
+    private void ApplyExcludedWindowsToMagnifier()
+    {
+        var excludedWindows =
+            _excludedWindows.Length > 0
+                ? _excludedWindows
+                : new[] { Handle };
+
+        NativeCall.RequireSuccess(
+            NativeMethods.MagSetWindowFilterList(
+                _magnifierWindow,
+                NativeMethods.MwFilterModeExclude,
+                excludedWindows.Length,
+                excludedWindows),
+            "Exclude SightAdapt overlays from magnifier source");
+    }
+
     private void UpdateOverlay()
     {
         if (!_initialized)
@@ -186,11 +236,14 @@ internal sealed class MagnifierOverlay : Form
         var targetAvailable = targetExists &&
             NativeMethods.IsWindowVisible(TargetHandle) &&
             !NativeMethods.IsIconic(TargetHandle) &&
-            IsTargetForeground();
+            IsTargetKindAvailable();
 
         if (!targetAvailable)
         {
-            if (_hasRenderedFrame &&
+            if (_targetKind ==
+                    MagnifierOverlayTargetKind
+                        .ForegroundWindow &&
+                _hasRenderedFrame &&
                 IsWithinTransitionGrace())
             {
                 return;
@@ -220,16 +273,27 @@ internal sealed class MagnifierOverlay : Form
         }
 
         var destination = geometry.Destination;
+        var positionFlags =
+            NativeMethods.SwpNoActivate |
+            NativeMethods.SwpShowWindow;
+        var insertAfter = NativeMethods.HwndTopMost;
+        if (_targetKind ==
+                MagnifierOverlayTargetKind.TransientPopup &&
+            _hasRenderedFrame)
+        {
+            positionFlags |= NativeMethods.SwpNoZOrder;
+            insertAfter = nint.Zero;
+        }
+
         if (!NativeCall.TryTransient(
                 NativeMethods.SetWindowPos(
                     Handle,
-                    NativeMethods.HwndTopMost,
+                    insertAfter,
                     destination.Left,
                     destination.Top,
                     destination.Width,
                     destination.Height,
-                    NativeMethods.SwpNoActivate |
-                        NativeMethods.SwpShowWindow),
+                    positionFlags),
                 "Position overlay window"))
         {
             HideOverlay();
@@ -299,6 +363,20 @@ internal sealed class MagnifierOverlay : Form
         _transitionStartedAt = -1;
     }
 
+    private bool IsTargetKindAvailable()
+    {
+        return _targetKind switch
+        {
+            MagnifierOverlayTargetKind.ForegroundWindow =>
+                IsTargetForeground(),
+            MagnifierOverlayTargetKind.TransientPopup =>
+                Win32MenuWindowPolicy.IsPopupMenuClass(
+                    NativeMethods.GetWindowClass(
+                        TargetHandle)),
+            _ => false,
+        };
+    }
+
     private bool IsTargetForeground()
     {
         var foreground =
@@ -306,7 +384,35 @@ internal sealed class MagnifierOverlay : Form
         foreground = NativeMethods.GetAncestor(
             foreground,
             NativeMethods.GaRoot);
-        return foreground == TargetHandle;
+
+        if (foreground == TargetHandle)
+        {
+            return true;
+        }
+
+        if (foreground == nint.Zero ||
+            !Win32MenuWindowPolicy.IsPopupMenuClass(
+                NativeMethods.GetWindowClass(
+                    foreground)))
+        {
+            return false;
+        }
+
+        var targetThreadId =
+            NativeMethods.GetWindowThreadProcessId(
+                TargetHandle,
+                out var targetProcessId);
+        var foregroundThreadId =
+            NativeMethods.GetWindowThreadProcessId(
+                foreground,
+                out var foregroundProcessId);
+
+        return Win32MenuWindowPolicy
+            .IsAssociatedWithTarget(
+                targetThreadId,
+                targetProcessId,
+                foregroundThreadId,
+                foregroundProcessId);
     }
 
     private static nint ValidateTarget(nint targetHandle)
@@ -337,5 +443,19 @@ internal sealed class MagnifierOverlay : Form
                 nameof(overlayScope),
                 overlayScope,
                 "The overlay scope is not supported.");
+    }
+
+    private static MagnifierOverlayTargetKind
+        ValidateTargetKind(
+            MagnifierOverlayTargetKind targetKind)
+    {
+        return targetKind is
+               MagnifierOverlayTargetKind.ForegroundWindow or
+               MagnifierOverlayTargetKind.TransientPopup
+            ? targetKind
+            : throw new ArgumentOutOfRangeException(
+                    nameof(targetKind),
+                    targetKind,
+                    "The overlay target kind is not supported.");
     }
 }

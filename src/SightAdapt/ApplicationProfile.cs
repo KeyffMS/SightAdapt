@@ -15,7 +15,7 @@ internal interface IReadOnlySightAdaptSettings
 
 internal sealed class SightAdaptSettings : IReadOnlySightAdaptSettings
 {
-    public const int CurrentSchemaVersion = 4;
+    public const int CurrentSchemaVersion = 5;
 
     public int SchemaVersion { get; set; } = CurrentSchemaVersion;
 
@@ -85,6 +85,9 @@ internal sealed class ApplicationProfile
     public string VisualProfileId { get; set; } =
         VisualProfilePolicy.NewAssignmentProfileId;
 
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? MenuVisualProfileId { get; set; }
+
     private string _overlayScopeId =
         OverlayScopePolicy.ToId(OverlayScopePolicy.Default);
 
@@ -123,6 +126,7 @@ internal sealed class ApplicationProfile
             ExecutablePath = ExecutablePath,
             Enabled = Enabled,
             VisualProfileId = VisualProfileId,
+            MenuVisualProfileId = MenuVisualProfileId,
             OverlayScopeId = OverlayScopeId,
             LegacyEffect = LegacyEffect,
         };

@@ -5,7 +5,7 @@
 
 SightAdapt runs in the Windows notification area and enforces one process per user session. It tracks the active supported top-level window and applies the saved assignment when automatic mode and that assignment are enabled.
 
-Only one foreground target is corrected at a time. The overlay is separate from the target process, never intentionally receives input, and does not modify target files or memory.
+Only one foreground application session is corrected at a time. SightAdapt uses one persistent application overlay plus transient overlays for detected native popup menus. The overlays are separate from the target process, never intentionally receive input, and do not modify target files or memory.
 
 ## Application assignments
 
@@ -16,6 +16,7 @@ Every assignment stores:
 - executable path;
 - enabled state;
 - visual-profile identifier;
+- optional native-menu visual-profile identifier;
 - overlay-scope identifier.
 
 Assignments are matched primarily by executable path without regard to letter case. A disabled assignment remains available for the local shortcut but does not activate automatically.
@@ -23,6 +24,7 @@ Assignments are matched primarily by executable path without regard to letter ca
 New assignments use:
 
 - visual profile: `Soft invert`;
+- native-menu profile: inherit the application visual profile;
 - overlay scope: `Client area`.
 
 ## Visual profiles
@@ -73,6 +75,14 @@ Supported operations:
 
 Deleting a user-defined profile reassigns affected applications to built-in Soft Invert before removing the profile. Built-in profiles are protected.
 
+## Native popup-menu profiles
+
+Each application assignment can optionally select a second visual profile for native Win32 popup-menu windows. Leaving the selector at `Same as application` stores no duplicate profile identifier and resolves the current application profile at runtime.
+
+The initial implementation detects visible top-level windows with class `#32768` that belong to the foreground application's process or GUI thread. It covers standard menu drops, context menus, system menus, nested submenus, and owner-drawn menus that retain the native popup class. WPF, WinUI, Chromium/Electron, Qt, and other custom-rendered menus are outside this feature boundary.
+
+One persistent overlay continues to render the application target. Zero or more transient menu overlays are created by popup HWND, use window bounds, and are removed when their native window disappears. Every active SightAdapt overlay is excluded from every magnifier source to prevent recursive capture.
+
 ## Overlay scope per application
 
 | UI choice | Persisted ID | Result |
@@ -88,7 +98,7 @@ Changing one assignment does not modify another assignment's scope. Missing or i
 
 The foreground tracker polls every 75 ms by default and publishes only a changed supported top-level handle. Application identity is cached in a bounded 64-entry least-recently-used process cache. The cache contains derived runtime data only; saved assignments remain authoritative.
 
-During normal switching, SightAdapt reuses one existing overlay instance and retargets it with the new window handle, profile, scope, and geometry. The last rendered frame may remain visible for at most 125 ms while the new target is resolved. Explicit disable and emergency shutdown bypass this grace period.
+During normal application switching, SightAdapt reuses one persistent application overlay and retargets it with the new window handle, profile, scope, and geometry. Native popup menus are detected by WinEvent notifications with a 75 ms polling verification path and rendered through transient overlays keyed by HWND. The last application frame may remain visible for at most 125 ms while a new application target is resolved. Explicit disable and emergency shutdown bypass this grace period.
 
 ## Keyboard and tray controls
 
@@ -115,7 +125,7 @@ Settings are stored at:
 %LOCALAPPDATA%\SightAdapt\settings.json
 ```
 
-Schema `4` contains automatic mode, application assignments, overlay scopes, and visual profiles. Changes use a copy, mutate, normalize, save, and publish transaction. Failed domain operations or failed writes do not replace the committed in-memory state.
+Schema `5` contains automatic mode, application assignments, application and native-menu profile references, overlay scopes, and visual profiles. Changes use a copy, mutate, normalize, save, and publish transaction. Failed domain operations or failed writes do not replace the committed in-memory state.
 
 Older valid assignments are preserved where possible. Legacy `effect: "invert"` values migrate to built-in Exact Invert.
 
@@ -125,14 +135,17 @@ Older valid assignments are preserved where possible. Legacy `effect: "invert"` 
 - emergency shutdown removes the overlay before attempting settings persistence;
 - renderer fault and explicit emergency shutdown are separate runtime states;
 - failed persistence cannot publish candidate settings;
-- destroyed targets close the overlay;
+- destroyed targets close the corresponding overlay;
 - minimized, hidden, or unavailable targets hide it;
+- native menu tracking or filter-list failure removes only transient menu overlays and leaves the primary correction active;
+- every magnifier excludes all active SightAdapt overlay windows from its source;
 - application exit and disposal release native overlay resources;
 - no DLL injection or kernel driver is used.
 
 ## Limitations
 
-- only one foreground target is corrected at a time;
+- only one foreground application session is corrected at a time;
+- separate menu profiles apply only to native `#32768` popup windows; custom-rendered menus remain part of the application overlay;
 - the current Magnification API backend cannot provide a stable persistent filter for obscured background windows;
 - minimized targets are not continuously rendered;
 - profile import and export are not implemented;

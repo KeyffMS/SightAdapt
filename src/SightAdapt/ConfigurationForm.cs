@@ -32,8 +32,8 @@ internal sealed class ConfigurationForm : Form
 
         Text = ProductInfo.WindowTitle;
         StartPosition = FormStartPosition.CenterScreen;
-        MinimumSize = new Size(980, 680);
-        Size = new Size(1180, 780);
+        MinimumSize = new Size(1180, 680);
+        Size = new Size(1400, 780);
         ShowIcon = false;
         BackColor = AppTheme.WindowBackground;
         AppTheme.ApplyTo(this);
@@ -56,6 +56,7 @@ internal sealed class ConfigurationForm : Form
         _profilesGrid = new ApplicationProfilesGrid();
         _profilesGrid.ApplicationEnabledChanged += ProfilesGridEnabledChanged;
         _profilesGrid.VisualProfileChanged += ProfilesGridVisualProfileChanged;
+        _profilesGrid.MenuVisualProfileChanged += ProfilesGridMenuVisualProfileChanged;
         _profilesGrid.OverlayScopeChanged += ProfilesGridOverlayScopeChanged;
         _profilesGrid.SelectedApplicationChanged += (_, _) =>
             UpdateSelectedProfileActions();
@@ -165,7 +166,7 @@ internal sealed class ConfigurationForm : Form
             AppTheme.TextPrimary,
             ContentAlignment.BottomLeft), 0, 0);
         text.Controls.Add(CreateHeaderLabel(
-            "Assign and manage independent visual correction profiles for each Windows application.",
+            "Assign visual correction profiles to application windows and native popup menus.",
             9.5f,
             FontStyle.Regular,
             AppTheme.TextSecondary,
@@ -207,7 +208,7 @@ internal sealed class ConfigurationForm : Form
             AppTheme.TextPrimary,
             ContentAlignment.BottomLeft), 0, 0);
         description.Controls.Add(CreateHeaderLabel(
-            "Apply each application's assigned visual profile whenever its window becomes active.",
+            "Apply each application's window and native-menu profiles whenever it becomes active.",
             9f,
             FontStyle.Regular,
             AppTheme.TextSecondary,
@@ -530,6 +531,19 @@ internal sealed class ConfigurationForm : Form
                     settings,
                     profile,
                     eventArgs.VisualProfileId));
+    }
+
+    private void ProfilesGridMenuVisualProfileChanged(
+        object? sender,
+        ApplicationProfileMenuVisualProfileChangedEventArgs eventArgs)
+    {
+        CommitGridChange(
+            eventArgs.ExecutablePath,
+            (settings, profile) =>
+                ApplicationProfileManagementService.AssignMenuVisualProfile(
+                    settings,
+                    profile,
+                    eventArgs.MenuVisualProfileId));
     }
 
     private void ProfilesGridOverlayScopeChanged(

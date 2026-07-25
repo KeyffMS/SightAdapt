@@ -80,6 +80,12 @@ internal sealed class ForegroundWindowTracker : IDisposable
         }
 
         var windowClass = NativeMethods.GetWindowClass(window);
+        if (Win32MenuWindowPolicy.IsPopupMenuClass(
+                windowClass))
+        {
+            return false;
+        }
+
         return windowClass is not (
             "Shell_TrayWnd" or
             "Shell_SecondaryTrayWnd" or

@@ -3,16 +3,16 @@
 ## Product flow
 
 ```text
-Foreground window
+Foreground application window
       ↓
 ForegroundWindowTracker
-(detect and deduplicate)
+(ignore native popup menus, detect and deduplicate)
       ↓
 ApplicationDiscovery
 (process lifetime, path, and bounded cache)
       ↓
 ProfileResolver
-(committed assignment)
+(application profile plus optional menu profile)
       ↓
 SightAdaptContext
 (lifecycle and composition)
@@ -21,10 +21,13 @@ RuntimeCoordinator
 (use-case orchestration)
       ↓
 OverlayController
-(create once, retarget, disable)
+(one persistent overlay plus transient menu overlays)
+      ↑
+Win32MenuWindowTracker
+(WinEvent hint plus polling verification for `#32768`)
       ↓
 MagnifierOverlay
-(target, geometry, rendering)
+(target kind, geometry, cross-filtering, rendering)
 ```
 
 ## Settings transaction
@@ -61,13 +64,14 @@ A failed mutation or failed write does not replace committed settings and does n
 | Visual-profile lifecycle and tuning | `VisualProfileManagementService` |
 | Automatic-mode mutation | `AutomaticModeManagementService` |
 | Runtime mode, target, profile, suppression, and message | `ApplicationStateController` |
-| Foreground detection and duplicate suppression | `ForegroundWindowTracker` |
+| Foreground detection, native-menu exclusion, and duplicate suppression | `ForegroundWindowTracker` |
+| Native popup-menu detection and association | `Win32MenuWindowTracker` and `Win32MenuWindowPolicy` |
 | Runtime identity resolution | `ApplicationDiscovery` |
 | Bounded process identity cache | `ApplicationIdentityCache` |
 | Overlay geometry | `OverlayBoundsResolver` |
-| Overlay resource lifetime and retargeting | `OverlayController` |
+| Persistent and transient overlay lifetime, retargeting, and cross-filtering | `OverlayController` |
 | Native call failure classification and diagnostics | `NativeCall` |
-| Native target, rendering, geometry refresh, and transition grace | `MagnifierOverlay` |
+| Native target kind, rendering, geometry refresh, and transition grace | `MagnifierOverlay` |
 | Notification-area presentation | `TrayPresenter` |
 | Application-table presentation and edit mechanics | `ApplicationProfilesGrid` |
 | Configuration use cases and dialogs | `ConfigurationForm` |
@@ -81,6 +85,7 @@ A failed mutation or failed write does not replace committed settings and does n
 | Runtime mode, target, active profile, suppression, and message | `ApplicationStateController.Current` |
 | Actual overlay resource and target | `OverlayController` and active `MagnifierOverlay` |
 | Per-application overlay scope | `ApplicationProfile.OverlayScopeId` |
+| Optional native-menu profile reference and inheritance sentinel | `ApplicationProfile.MenuVisualProfileId` and `ApplicationMenuProfilePolicy` |
 | Scope enum values, canonical identifiers, aliases, default, and display names | `OverlayScopePolicy` definition table |
 | Profile IDs, fallback, user-ID, and name rules | `VisualProfilePolicy` |
 | Canonical profile values | `VisualProfileDefaults` |
@@ -92,14 +97,18 @@ A failed mutation or failed write does not replace committed settings and does n
 
 ## Foreground and overlay lifecycle
 
-The foreground tracker polls every 75 ms and publishes only a changed supported top-level handle. When an enabled assignment exists, the context resolves its profile and scope and activates correction.
+The foreground tracker polls every 75 ms and publishes only a changed supported application handle. Native `#32768` popup-menu windows are deliberately rejected as application targets, so opening a menu does not replace the active assignment. When an enabled assignment exists, the context resolves the application profile, the inherited or explicit menu profile, and the overlay scope.
 
-- without an active overlay, `OverlayController` creates one `MagnifierOverlay`;
-- with an active overlay, it retargets the same instance;
-- without an enabled assignment, an automatically active overlay is disabled;
-- local disable, emergency shutdown, exit, and disposal remove it immediately.
+- without an active application overlay, `OverlayController` creates one persistent `MagnifierOverlay`;
+- with an active application overlay, it retargets the same instance;
+- `Win32MenuWindowTracker` combines out-of-context WinEvent menu notifications with 75 ms `EnumWindows` verification;
+- visible associated `#32768` HWNDs create transient window-scope overlays, including nested menus;
+- disappearing or destroyed menu HWNDs remove only their transient overlays;
+- every active overlay handle is installed in every magnifier filter list before a new menu overlay is shown;
+- without an enabled assignment, an automatically active overlay session is disabled;
+- local disable, emergency shutdown, exit, and disposal remove the complete overlay session immediately.
 
-A rendered frame may remain visible for at most 125 ms during target transition. This is a rendering grace period, not a second runtime state.
+A rendered application frame may remain visible for at most 125 ms during application-target transition. Native popup overlays do not use this grace period. This rendering grace is not a second runtime state.
 
 ## Geometry
 
@@ -120,6 +129,8 @@ The current backend uses the same rectangle for the magnifier source and overlay
 - **transient** geometry, positioning, and source-update failures are diagnosed, hide the overlay, and allow a later timer tick to recover;
 - **best effort** cleanup failures are diagnosed without replacing the primary application failure.
 
+Native menu detection, menu-overlay creation, and cross-filter refresh are subordinate operations. Their failure closes transient menu overlays and restores the primary overlay's self-filter instead of disabling the application correction.
+
 `ShowWindow` and `InvalidateRect` are handled explicitly at their call sites because their Boolean return values do not represent a standard extended-error success contract.
 
 ## Configuration grid boundary
@@ -137,11 +148,12 @@ The current backend uses the same rectangle for the magnifier source and overlay
 - fault and emergency are distinct states;
 - no dependency-injection container, event bus, repository layer, global selector guard, delayed settings workaround, or reflection-based popup control is used;
 - no DLL injection, kernel driver, or target-process memory modification is used;
-- the Magnification API backend intentionally corrects only the active foreground target.
+- separate menu profiles intentionally cover only associated native `#32768` popup windows;
+- the Magnification API backend intentionally corrects only the active foreground application session and its detected native popup menus.
 
 ## Architecture test strategy
 
-Architecture checks are behavior-first. Transaction publication, defensive settings snapshots, failed persistence, expected and unexpected transaction failures, emergency ordering, runtime state transitions, native call classification, transform catalog consistency, overlay-scope recovery, grid commits, menu roles, preview caching, and profile-manager refresh behavior are exercised through executable tests.
+Architecture checks are behavior-first. Transaction publication, defensive settings snapshots, failed persistence, expected and unexpected transaction failures, emergency ordering, runtime state transitions, native call classification, transform catalog consistency, overlay-scope and menu-profile recovery, grid commits, native menu policy, menu roles, preview caching, and profile-manager refresh behavior are exercised through executable tests.
 
 Source inspection is retained only for exhaustive negative rules that cannot be proven by a finite runtime scenario:
 

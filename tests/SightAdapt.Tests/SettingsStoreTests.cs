@@ -67,7 +67,7 @@ public sealed class SettingsStoreTests
         var json = File.ReadAllText(settingsPath);
         var reloaded = store.Load();
 
-        StringAssert.Contains(json, "\"schemaVersion\": 4");
+        StringAssert.Contains(json, "\"schemaVersion\": 5");
         StringAssert.Contains(json, "\"visualProfileId\": \"default-soft-invert\"");
         StringAssert.Contains(json, "\"overlayScope\": \"client-area\"");
         StringAssert.Contains(json, "\"outputBlack\": 0.08");
@@ -86,7 +86,7 @@ public sealed class SettingsStoreTests
             settingsPath,
             """
             {
-              "schemaVersion": 4,
+              "schemaVersion": 5,
               "applications": [
                 {
                   "displayName": "Reader",
@@ -116,7 +116,7 @@ public sealed class SettingsStoreTests
             settingsPath,
             """
             {
-              "schemaVersion": 4,
+              "schemaVersion": 5,
               "applications": [
                 {
                   "displayName": "Reader",
@@ -151,7 +151,7 @@ public sealed class SettingsStoreTests
             settingsPath,
             """
             {
-              "schemaVersion": 4,
+              "schemaVersion": 5,
               "applications": [
                 {
                   "displayName": "Reader",
