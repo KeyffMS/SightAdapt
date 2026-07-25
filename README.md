@@ -5,14 +5,14 @@ SightAdapt is an open-source visual-accessibility application for Windows 10 and
 ## Current version
 
 ```text
-Product version: 0.5.0-alpha.1+<commit>
-File version:    0.5.0.0
+Product version: 0.5.0.36
+File version:    0.5.0.36
 Milestone:       Alpha 0.5
 Settings schema: 5
 Runtime:         .NET 8, Windows x64
 ```
 
-The commit suffix in `ProductVersion` identifies the exact source revision used to build the executable.
+The product and file versions are read from the executable assembly metadata.
 
 ## Functionality
 
