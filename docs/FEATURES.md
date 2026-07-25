@@ -29,6 +29,10 @@ New assignments use:
 
 ## Visual profiles
 
+### None
+
+`None` is a fixed built-in no-correction profile. It uses an identity color matrix and cannot be edited, renamed, or deleted. Selecting `None` as the application profile while selecting an explicit native-menu profile keeps the application visually unchanged and applies correction only to supported popup menus.
+
 ### Exact invert
 
 `Exact invert` is a fixed built-in profile. It cannot be edited, renamed, or deleted.
@@ -77,7 +81,7 @@ Deleting a user-defined profile reassigns affected applications to built-in Soft
 
 ## Native popup-menu profiles
 
-Each application assignment can optionally select a second visual profile for native Win32 popup-menu windows. Leaving the selector at `Same as application` stores no duplicate profile identifier and resolves the current application profile at runtime.
+Each application assignment can optionally select a second visual profile for native Win32 popup-menu windows. Leaving the selector at `Same as application` stores no duplicate profile identifier and resolves the current application profile at runtime. Choosing `None` for the application and a different menu profile provides a menu-only correction mode.
 
 The initial implementation detects visible top-level windows with class `#32768` that belong to the foreground application's process or GUI thread. It covers standard menu drops, context menus, system menus, nested submenus, and owner-drawn menus that retain the native popup class. WPF, WinUI, Chromium/Electron, Qt, and other custom-rendered menus are outside this feature boundary.
 

@@ -66,6 +66,23 @@ internal static class SettingsNormalizer
         }
 
         context.AddProfile(softInvert);
+
+        var none = TakeProfile(
+            context.RemainingProfiles,
+            VisualProfile.DefaultNoneId);
+
+        if (none is null)
+        {
+            none = VisualProfile.CreateDefaultNone();
+            context.MarkChanged();
+        }
+
+        if (VisualProfileDefaults.CanonicalizeNone(none))
+        {
+            context.MarkChanged();
+        }
+
+        context.AddProfile(none);
     }
 
     private static void NormalizeCustomProfiles(

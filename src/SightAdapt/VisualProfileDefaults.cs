@@ -10,6 +10,7 @@ internal readonly record struct VisualProfileTuning(
 
 internal static class VisualProfileDefaults
 {
+    public const string NoneName = "None";
     public const string ExactInvertName = "Exact invert";
     public const string SoftInvertName = "Soft invert";
 
@@ -43,6 +44,18 @@ internal static class VisualProfileDefaults
         SoftSaturation,
         SoftHueShiftDegrees);
 
+    public static VisualProfile CreateNone()
+    {
+        var profile = new VisualProfile
+        {
+            Id = VisualProfile.DefaultNoneId,
+            Name = NoneName,
+            TransformId = NoneVisualTransform.TransformId,
+        };
+        ApplyTuning(profile, ExactInvertTuning);
+        return profile;
+    }
+
     public static VisualProfile CreateExactInvert()
     {
         var profile = new VisualProfile
@@ -65,6 +78,29 @@ internal static class VisualProfileDefaults
         };
         ApplyTuning(profile, SoftInvertTuning);
         return profile;
+    }
+
+    public static bool CanonicalizeNone(VisualProfile profile)
+    {
+        ArgumentNullException.ThrowIfNull(profile);
+
+        var changed = !string.Equals(
+                profile.Id,
+                VisualProfile.DefaultNoneId,
+                StringComparison.Ordinal) ||
+            !string.Equals(
+                profile.Name,
+                NoneName,
+                StringComparison.Ordinal) ||
+            !string.Equals(
+                profile.TransformId,
+                NoneVisualTransform.TransformId,
+                StringComparison.Ordinal);
+
+        profile.Id = VisualProfile.DefaultNoneId;
+        profile.Name = NoneName;
+        profile.TransformId = NoneVisualTransform.TransformId;
+        return ApplyTuningIfChanged(profile, ExactInvertTuning) || changed;
     }
 
     public static bool CanonicalizeExactInvert(VisualProfile profile)
@@ -115,10 +151,10 @@ internal static class VisualProfileDefaults
 
         var tuning = string.Equals(
             profile.TransformId,
-            InvertVisualTransform.TransformId,
+            SoftInvertVisualTransform.TransformId,
             StringComparison.OrdinalIgnoreCase)
-                ? ExactInvertTuning
-                : NormalizeSoftInvertTuning(profile);
+                ? NormalizeSoftInvertTuning(profile)
+                : ExactInvertTuning;
 
         return ApplyTuningIfChanged(profile, tuning);
     }

@@ -27,6 +27,7 @@ internal sealed class SightAdaptSettings : IReadOnlySightAdaptSettings
     [
         VisualProfile.CreateDefaultInvert(),
         VisualProfile.CreateDefaultSoftInvert(),
+        VisualProfile.CreateDefaultNone(),
     ];
 
     IReadOnlyList<ApplicationProfile>
@@ -154,6 +155,7 @@ internal sealed class ApplicationProfile
 
 internal sealed class VisualProfile
 {
+    public const string DefaultNoneId = "default-none";
     public const string DefaultInvertId = "default-invert";
     public const string DefaultSoftInvertId = "default-soft-invert";
 
@@ -199,6 +201,11 @@ internal sealed class VisualProfile
     public override string ToString()
     {
         return string.IsNullOrWhiteSpace(Name) ? Id : Name;
+    }
+
+    public static VisualProfile CreateDefaultNone()
+    {
+        return VisualProfileDefaults.CreateNone();
     }
 
     public static VisualProfile CreateDefaultInvert()

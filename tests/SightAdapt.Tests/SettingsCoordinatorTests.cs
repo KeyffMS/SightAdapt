@@ -70,7 +70,7 @@ public sealed class SettingsCoordinatorTests
         Assert.IsTrue(current.AutomaticMode);
         Assert.AreEqual(1, current.Applications.Count);
         Assert.IsTrue(current.Applications[0].Enabled);
-        Assert.AreEqual(2, current.VisualProfiles.Count);
+        Assert.AreEqual(3, current.VisualProfiles.Count);
         Assert.AreEqual(0, changedEvents);
     }
 

@@ -101,6 +101,7 @@ The foreground tracker polls every 75 ms and publishes only a changed supported 
 
 - without an active application overlay, `OverlayController` creates one persistent `MagnifierOverlay`;
 - with an active application overlay, it retargets the same instance;
+- the built-in `None` profile retains the application session with an identity color effect, allowing an explicit menu profile to correct only native popup menus;
 - `Win32MenuWindowTracker` combines out-of-context WinEvent menu notifications with 75 ms `EnumWindows` verification;
 - visible associated `#32768` HWNDs create transient window-scope overlays, including nested menus;
 - disappearing or destroyed menu HWNDs remove only their transient overlays;

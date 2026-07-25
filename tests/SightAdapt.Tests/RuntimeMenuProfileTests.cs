@@ -43,6 +43,25 @@ public sealed class RuntimeMenuProfileTests
             context.Overlay.MenuVisualProfileId);
     }
 
+    [TestMethod]
+    public void NonePrimaryWithExplicitMenuProfileFlowsToRuntimeOverlay()
+    {
+        using var context = new RuntimeTestContext();
+        context.AddMenuOnlyAssignment();
+
+        context.Coordinator
+            .HandleForegroundWindowChanged(
+                context.Target);
+
+        Assert.IsTrue(context.Overlay.IsActive);
+        Assert.AreEqual(
+            VisualProfile.DefaultNoneId,
+            context.Overlay.PrimaryVisualProfileId);
+        Assert.AreEqual(
+            VisualProfile.DefaultInvertId,
+            context.Overlay.MenuVisualProfileId);
+    }
+
     private sealed class RuntimeTestContext : IDisposable
     {
         private readonly string _directory;
@@ -129,6 +148,31 @@ public sealed class RuntimeMenuProfileTests
 
             Assert.IsTrue(result.Succeeded);
             return result.Value;
+        }
+
+        public void AddMenuOnlyAssignment()
+        {
+            var result = Settings.Commit(settings =>
+            {
+                var assignment =
+                    ApplicationProfileManagementService
+                        .AddOrEnable(
+                            settings,
+                            _identity)
+                        .Profile;
+                ApplicationProfileManagementService
+                    .AssignVisualProfile(
+                        settings,
+                        assignment,
+                        VisualProfile.DefaultNoneId);
+                ApplicationProfileManagementService
+                    .AssignMenuVisualProfile(
+                        settings,
+                        assignment,
+                        VisualProfile.DefaultInvertId);
+            });
+
+            Assert.IsTrue(result.Succeeded);
         }
 
         public void Dispose()

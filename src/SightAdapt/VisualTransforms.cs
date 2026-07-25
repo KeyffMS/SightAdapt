@@ -7,6 +7,21 @@ internal interface IVisualTransform
     MagColorEffect CreateColorEffect(VisualProfile profile);
 }
 
+internal sealed class NoneVisualTransform : IVisualTransform
+{
+    public const string TransformId = "none";
+
+    public string Id => TransformId;
+
+    public MagColorEffect CreateColorEffect(VisualProfile profile)
+    {
+        ArgumentNullException.ThrowIfNull(profile);
+        return ColorAffineMatrix
+            .CreateScaleOffset(1.0f, 0.0f)
+            .ToMagColorEffect();
+    }
+}
+
 internal sealed class InvertVisualTransform : IVisualTransform
 {
     public const string TransformId = "invert";
@@ -89,6 +104,11 @@ internal sealed class VisualTransformCatalog
     private static readonly VisualTransformDefinition[]
         CanonicalDefinitions =
         [
+            new(
+                NoneVisualTransform.TransformId,
+                VisualProfileDefaults.NoneName,
+                SupportsTuning: false,
+                Transform: new NoneVisualTransform()),
             new(
                 InvertVisualTransform.TransformId,
                 VisualProfileDefaults.ExactInvertName,

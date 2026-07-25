@@ -21,7 +21,7 @@ SightAdapt currently provides:
 - persistent per-application visual-profile assignments;
 - optional distinct visual profiles for native Win32 popup menus, with inheritance from the application profile;
 - automatic activation for enabled application assignments;
-- fixed `Exact invert` and editable `Soft invert` profiles;
+- built-in `None` (no correction), fixed `Exact invert`, and editable `Soft invert` profiles;
 - independent user-defined Soft Invert profiles;
 - output-black, output-white, brightness, contrast, saturation, and hue controls;
 - grayscale and hue-spectrum profile previews;
@@ -37,7 +37,7 @@ SightAdapt currently provides:
 - schema-versioned JSON settings with migration and atomic persistence;
 - automated build, test, architecture, migration, and Windows publish validation.
 
-New application assignments use Soft Invert, inherit that profile for native popup menus, and use client-area scope by default.
+New application assignments use Soft Invert, inherit that profile for native popup menus, and use client-area scope by default. Selecting `None` for the application and an explicit menu profile leaves the application unchanged while correcting only its native popup menus.
 
 ## Keyboard controls
 
