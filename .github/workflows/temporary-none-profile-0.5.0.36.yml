@@ -58,12 +58,17 @@ jobs:
 
       - name: Test
         shell: pwsh
-        run: >-
-          dotnet test .\tests\SightAdapt.Tests\SightAdapt.Tests.csproj
-          --configuration Release
-          --no-restore
-          --results-directory "$env:RUNNER_TEMP\none-profile-test-results"
-          --logger "trx;LogFileName=none-profile-0.5.0.36.trx"
+        run: |
+          $results = "$env:RUNNER_TEMP\none-profile-test-results"
+          $output = & dotnet test .\tests\SightAdapt.Tests\SightAdapt.Tests.csproj `
+            --configuration Release `
+            --no-restore `
+            --results-directory $results `
+            --logger "trx;LogFileName=none-profile-0.5.0.36.trx" 2>&1
+          $exitCode = $LASTEXITCODE
+          $output | Set-Content -Path "$env:RUNNER_TEMP\none-profile-test.txt" -Encoding utf8
+          $output | ForEach-Object { Write-Host $_ }
+          exit $exitCode
 
       - name: Publish validated branch
         shell: pwsh
@@ -81,20 +86,14 @@ jobs:
           $lease = "refs/heads/$env:GITHUB_HEAD_REF`:$env:EXPECTED_HEAD"
           git push --force-with-lease=$lease origin "HEAD:refs/heads/$env:GITHUB_HEAD_REF"
 
-      - name: Upload build diagnostics
+      - name: Upload diagnostics
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: none-profile-0.5.0.36-build
-          path: ${{ runner.temp }}\none-profile-build.txt
-          if-no-files-found: ignore
-          retention-days: 3
-
-      - name: Upload test result
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: none-profile-0.5.0.36-tests
-          path: ${{ runner.temp }}\none-profile-test-results\none-profile-0.5.0.36.trx
+          name: none-profile-0.5.0.36-diagnostics
+          path: |
+            ${{ runner.temp }}\none-profile-build.txt
+            ${{ runner.temp }}\none-profile-test.txt
+            ${{ runner.temp }}\none-profile-test-results\**\*.trx
           if-no-files-found: ignore
           retention-days: 3
