@@ -36,6 +36,7 @@ jobs:
         shell: pwsh
         run: |
           python .\tools\none-profile-0.5.0.36.py
+          python .\tools\none-profile-0.5.0.36-fix.py
           git diff --check
           if (-not (git status --porcelain)) {
             throw 'The None profile patch produced no changes.'
@@ -77,6 +78,7 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git rm --ignore-unmatch .github/workflows/temporary-none-profile-0.5.0.36.yml
           git rm --ignore-unmatch tools/none-profile-0.5.0.36.py
+          git rm --ignore-unmatch tools/none-profile-0.5.0.36-fix.py
           git add --all
           git diff --cached --check
           if (-not (git diff --cached --name-only)) {
