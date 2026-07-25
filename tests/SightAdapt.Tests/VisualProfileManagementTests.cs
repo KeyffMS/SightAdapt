@@ -22,7 +22,7 @@ public sealed class VisualProfileManagementTests
         Assert.AreEqual(0.08f, profile.OutputBlack);
         Assert.AreEqual(0.92f, profile.OutputWhite);
         Assert.IsFalse(VisualProfileManagementService.IsBuiltIn(profile));
-        Assert.AreEqual(3, settings.VisualProfiles.Count);
+        Assert.AreEqual(4, settings.VisualProfiles.Count);
     }
 
     [TestMethod]

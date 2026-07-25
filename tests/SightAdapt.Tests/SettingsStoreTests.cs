@@ -67,7 +67,7 @@ public sealed class SettingsStoreTests
         var json = File.ReadAllText(settingsPath);
         var reloaded = store.Load();
 
-        StringAssert.Contains(json, "\"schemaVersion\": 4");
+        StringAssert.Contains(json, "\"schemaVersion\": 5");
         StringAssert.Contains(json, "\"visualProfileId\": \"default-soft-invert\"");
         StringAssert.Contains(json, "\"overlayScope\": \"client-area\"");
         StringAssert.Contains(json, "\"outputBlack\": 0.08");
@@ -86,7 +86,7 @@ public sealed class SettingsStoreTests
             settingsPath,
             """
             {
-              "schemaVersion": 4,
+              "schemaVersion": 5,
               "applications": [
                 {
                   "displayName": "Reader",
@@ -116,7 +116,7 @@ public sealed class SettingsStoreTests
             settingsPath,
             """
             {
-              "schemaVersion": 4,
+              "schemaVersion": 5,
               "applications": [
                 {
                   "displayName": "Reader",
@@ -151,7 +151,7 @@ public sealed class SettingsStoreTests
             settingsPath,
             """
             {
-              "schemaVersion": 4,
+              "schemaVersion": 5,
               "applications": [
                 {
                   "displayName": "Reader",
@@ -300,7 +300,7 @@ public sealed class SettingsStoreTests
         var settings = store.Load();
 
         Assert.IsTrue(store.SettingsWereMigrated);
-        Assert.AreEqual(3, settings.VisualProfiles.Count);
+        Assert.AreEqual(4, settings.VisualProfiles.Count);
         var recovered = settings.VisualProfiles.Single(profile =>
             !VisualProfileManagementService.IsBuiltIn(profile));
         Assert.IsTrue(recovered.Id.StartsWith(
@@ -384,8 +384,8 @@ public sealed class SettingsStoreTests
         var changed = SettingsStore.Normalize(settings);
 
         Assert.IsTrue(changed);
-        Assert.AreEqual(5, settings.VisualProfiles.Count);
-        Assert.AreEqual(5, settings.VisualProfiles
+        Assert.AreEqual(6, settings.VisualProfiles.Count);
+        Assert.AreEqual(6, settings.VisualProfiles
             .Select(profile => profile.Id)
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .Count());
@@ -468,7 +468,7 @@ public sealed class SettingsStoreTests
         var reloaded = store.Load();
 
         Assert.IsFalse(store.SettingsWereMigrated);
-        Assert.AreEqual(4, reloaded.VisualProfiles.Count);
+        Assert.AreEqual(5, reloaded.VisualProfiles.Count);
         Assert.AreEqual(reading.Id, reloaded.Applications[0].VisualProfileId);
         Assert.AreEqual(spreadsheet.Id, reloaded.Applications[1].VisualProfileId);
         Assert.AreEqual(0.08f, reloaded.VisualProfiles.Single(profile =>

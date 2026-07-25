@@ -36,6 +36,22 @@ internal sealed class ApplicationProfileVisualProfileChangedEventArgs(
                 nameof(visualProfileId));
 }
 
+internal sealed class ApplicationProfileMenuVisualProfileChangedEventArgs(
+    string executablePath,
+    string? menuVisualProfileId) : EventArgs
+{
+    public string ExecutablePath { get; } =
+        !string.IsNullOrWhiteSpace(executablePath)
+            ? executablePath
+            : throw new ArgumentException(
+                "An executable path is required.",
+                nameof(executablePath));
+
+    public string? MenuVisualProfileId { get; } =
+        ApplicationMenuProfilePolicy.FromSelectorId(
+            menuVisualProfileId);
+}
+
 internal sealed class ApplicationProfileOverlayScopeChangedEventArgs(
     string executablePath,
     OverlayScope overlayScope) : EventArgs
@@ -59,6 +75,8 @@ internal sealed class ApplicationProfilesGrid : UserControl
     private const string EnabledColumnName = "Enabled";
     private const string ApplicationColumnName = "Application";
     internal const string VisualProfileColumnName = "VisualProfile";
+    internal const string MenuVisualProfileColumnName =
+        "MenuVisualProfile";
     internal const string OverlayScopeColumnName = "OverlayScope";
 
     private const DataGridViewDataErrorContexts
@@ -90,6 +108,8 @@ internal sealed class ApplicationProfilesGrid : UserControl
 
     public event EventHandler<ApplicationProfileVisualProfileChangedEventArgs>? VisualProfileChanged;
 
+    public event EventHandler<ApplicationProfileMenuVisualProfileChangedEventArgs>? MenuVisualProfileChanged;
+
     public event EventHandler<ApplicationProfileOverlayScopeChangedEventArgs>? OverlayScopeChanged;
 
     public event EventHandler? SelectedApplicationChanged;
@@ -117,6 +137,7 @@ internal sealed class ApplicationProfilesGrid : UserControl
         try
         {
             SetVisualProfiles(visualProfiles);
+            SetMenuVisualProfiles(visualProfiles);
             SetOverlayScopes();
             _grid.Rows.Clear();
 
@@ -150,6 +171,9 @@ internal sealed class ApplicationProfilesGrid : UserControl
             row.Cells[EnabledColumnName].Value = application.Enabled;
             row.Cells[ApplicationColumnName].Value = application.DisplayName;
             row.Cells[VisualProfileColumnName].Value = application.VisualProfileId;
+            row.Cells[MenuVisualProfileColumnName].Value =
+                ApplicationMenuProfilePolicy.ToSelectorId(
+                    application.MenuVisualProfileId);
             row.Cells[OverlayScopeColumnName].Value =
                 OverlayScopePolicy.ToId(application.OverlayScope);
             row.Cells[ExecutableColumnName].Value = application.ExecutableName;
@@ -212,6 +236,16 @@ internal sealed class ApplicationProfilesGrid : UserControl
         });
         grid.Columns.Add(new StableModernSelectorComboBoxColumn
         {
+            Name = MenuVisualProfileColumnName,
+            HeaderText = "MENU PROFILE",
+            DisplayStyle = DataGridViewComboBoxDisplayStyle.ComboBox,
+            FlatStyle = FlatStyle.Flat,
+            Width = 185,
+            MinimumWidth = 160,
+            SortMode = DataGridViewColumnSortMode.NotSortable,
+        });
+        grid.Columns.Add(new StableModernSelectorComboBoxColumn
+        {
             Name = OverlayScopeColumnName,
             HeaderText = "OVERLAY SCOPE",
             DisplayStyle = DataGridViewComboBoxDisplayStyle.ComboBox,
@@ -250,6 +284,8 @@ internal sealed class ApplicationProfilesGrid : UserControl
             application.Enabled,
             application.DisplayName,
             application.VisualProfileId,
+            ApplicationMenuProfilePolicy.ToSelectorId(
+                application.MenuVisualProfileId),
             OverlayScopePolicy.ToId(application.OverlayScope),
             application.ExecutableName,
             application.ExecutablePath);
@@ -275,6 +311,27 @@ internal sealed class ApplicationProfilesGrid : UserControl
         {
             column.SetProfiles(profiles);
         }
+    }
+
+    private void SetMenuVisualProfiles(
+        IReadOnlyList<VisualProfile> profiles)
+    {
+        if (_grid.Columns[MenuVisualProfileColumnName] is not
+            StableModernSelectorComboBoxColumn column)
+        {
+            return;
+        }
+
+        column.SetOptions(
+            new[]
+            {
+                new ModernSelectorOption(
+                    ApplicationMenuProfilePolicy.InheritSelectorId,
+                    ApplicationMenuProfilePolicy.InheritDisplayName),
+            }.Concat(profiles.Select(profile =>
+                new ModernSelectorOption(
+                    profile.Id,
+                    profile.Name))));
     }
 
     private void SetOverlayScopes()
@@ -352,6 +409,15 @@ internal sealed class ApplicationProfilesGrid : UserControl
                 new ApplicationProfileVisualProfileChangedEventArgs(
                     executablePath,
                     profileId));
+        }
+        else if (columnName == MenuVisualProfileColumnName &&
+                 row.Cells[eventArgs.ColumnIndex].Value is string menuProfileId)
+        {
+            MenuVisualProfileChanged?.Invoke(
+                this,
+                new ApplicationProfileMenuVisualProfileChangedEventArgs(
+                    executablePath,
+                    menuProfileId));
         }
         else if (columnName == OverlayScopeColumnName &&
                  row.Cells[eventArgs.ColumnIndex].Value is string scopeId)
@@ -434,6 +500,10 @@ internal sealed class ApplicationProfilesGrid : UserControl
         return string.Equals(
                 columnName,
                 VisualProfileColumnName,
+                StringComparison.Ordinal) ||
+            string.Equals(
+                columnName,
+                MenuVisualProfileColumnName,
                 StringComparison.Ordinal) ||
             string.Equals(
                 columnName,

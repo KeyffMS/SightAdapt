@@ -22,6 +22,20 @@ internal interface IRuntimeOverlay
         VisualProfile visualProfile,
         OverlayScope overlayScope);
 
+    void Activate(
+        nint targetWindow,
+        VisualProfile visualProfile,
+        VisualProfile menuVisualProfile,
+        OverlayScope overlayScope)
+    {
+        ArgumentNullException.ThrowIfNull(
+            menuVisualProfile);
+        Activate(
+            targetWindow,
+            visualProfile,
+            overlayScope);
+    }
+
     void Disable();
 }
 
@@ -316,13 +330,19 @@ internal sealed class RuntimeCoordinator
     {
         try
         {
+            var settings = Settings;
             var visualProfile =
                 ProfileResolver.ResolveVisualProfile(
-                    Settings,
+                    settings,
+                    assignment);
+            var menuVisualProfile =
+                ProfileResolver.ResolveMenuVisualProfile(
+                    settings,
                     assignment);
             _overlay.Activate(
                 target,
                 visualProfile,
+                menuVisualProfile,
                 assignment?.OverlayScope ??
                     OverlayScopePolicy.Default);
 

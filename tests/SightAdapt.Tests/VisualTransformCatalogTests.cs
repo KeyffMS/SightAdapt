@@ -10,6 +10,15 @@ public sealed class VisualTransformCatalogTests
     {
         var catalog = VisualTransformCatalog.Default;
 
+        Assert.IsTrue(catalog.IsSupported(NoneVisualTransform.TransformId));
+        Assert.IsFalse(catalog.SupportsTuning(NoneVisualTransform.TransformId));
+        Assert.AreEqual(
+            VisualProfileDefaults.NoneName,
+            catalog.GetDisplayName(NoneVisualTransform.TransformId));
+        Assert.AreEqual(
+            NoneVisualTransform.TransformId,
+            catalog.GetRequired(NoneVisualTransform.TransformId).Id);
+
         Assert.IsTrue(catalog.IsSupported(InvertVisualTransform.TransformId));
         Assert.IsFalse(catalog.SupportsTuning(InvertVisualTransform.TransformId));
         Assert.AreEqual(

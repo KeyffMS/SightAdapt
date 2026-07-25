@@ -5,22 +5,23 @@ SightAdapt is an open-source visual-accessibility application for Windows 10 and
 ## Current version
 
 ```text
-Product version: 0.5.0-alpha.1+<commit>
-File version:    0.5.0.0
+Product version: 0.5.0.36
+File version:    0.5.0.36
 Milestone:       Alpha 0.5
-Settings schema: 4
+Settings schema: 5
 Runtime:         .NET 8, Windows x64
 ```
 
-The commit suffix in `ProductVersion` identifies the exact source revision used to build the executable.
+The product and file versions are read from the executable assembly metadata.
 
 ## Functionality
 
 SightAdapt currently provides:
 
 - persistent per-application visual-profile assignments;
+- optional distinct visual profiles for native Win32 popup menus, with inheritance from the application profile;
 - automatic activation for enabled application assignments;
-- fixed `Exact invert` and editable `Soft invert` profiles;
+- built-in `None` (no correction), fixed `Exact invert`, and editable `Soft invert` profiles;
 - independent user-defined Soft Invert profiles;
 - output-black, output-white, brightness, contrast, saturation, and hue controls;
 - grayscale and hue-spectrum profile previews;
@@ -28,7 +29,7 @@ SightAdapt currently provides:
 - per-application overlay scope: client area, full window, current screen, or all screens;
 - foreground-window detection every 75 ms with duplicate suppression;
 - a bounded runtime application-identity cache;
-- reuse and retargeting of one overlay instance during normal application switching;
+- reuse and retargeting of one persistent application overlay, plus transient native-menu overlays;
 - a short transition grace period that reduces visible white flashes;
 - two global shortcuts;
 - a notification-area menu and configuration panel;
@@ -36,7 +37,7 @@ SightAdapt currently provides:
 - schema-versioned JSON settings with migration and atomic persistence;
 - automated build, test, architecture, migration, and Windows publish validation.
 
-New application assignments use Soft Invert and client-area scope by default.
+New application assignments use Soft Invert, inherit that profile for native popup menus, and use client-area scope by default. Selecting `None` for the application and an explicit menu profile leaves the application unchanged while correcting only its native popup menus.
 
 ## Keyboard controls
 
@@ -83,8 +84,9 @@ artifacts\win-x64\SightAdapt.exe
 
 ## Current limitations
 
-- only one foreground target is corrected at a time;
+- only one foreground application session is corrected at a time;
 - background or fully obscured windows are not persistently filtered by the current Magnification API backend;
+- separate menu profiles apply only to native Win32 `#32768` popup menus; WPF, WinUI, Chromium/Electron, Qt, and other custom-rendered menus are not separately corrected;
 - profile import and export are not implemented;
 - palette analysis, dominant-color extraction, targeted color rules, and LUT import are not implemented;
 - protected or DRM-controlled content may not be capturable;

@@ -15,7 +15,7 @@ internal interface IReadOnlySightAdaptSettings
 
 internal sealed class SightAdaptSettings : IReadOnlySightAdaptSettings
 {
-    public const int CurrentSchemaVersion = 4;
+    public const int CurrentSchemaVersion = 5;
 
     public int SchemaVersion { get; set; } = CurrentSchemaVersion;
 
@@ -27,6 +27,7 @@ internal sealed class SightAdaptSettings : IReadOnlySightAdaptSettings
     [
         VisualProfile.CreateDefaultInvert(),
         VisualProfile.CreateDefaultSoftInvert(),
+        VisualProfile.CreateDefaultNone(),
     ];
 
     IReadOnlyList<ApplicationProfile>
@@ -85,6 +86,9 @@ internal sealed class ApplicationProfile
     public string VisualProfileId { get; set; } =
         VisualProfilePolicy.NewAssignmentProfileId;
 
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? MenuVisualProfileId { get; set; }
+
     private string _overlayScopeId =
         OverlayScopePolicy.ToId(OverlayScopePolicy.Default);
 
@@ -123,6 +127,7 @@ internal sealed class ApplicationProfile
             ExecutablePath = ExecutablePath,
             Enabled = Enabled,
             VisualProfileId = VisualProfileId,
+            MenuVisualProfileId = MenuVisualProfileId,
             OverlayScopeId = OverlayScopeId,
             LegacyEffect = LegacyEffect,
         };
@@ -150,6 +155,7 @@ internal sealed class ApplicationProfile
 
 internal sealed class VisualProfile
 {
+    public const string DefaultNoneId = "default-none";
     public const string DefaultInvertId = "default-invert";
     public const string DefaultSoftInvertId = "default-soft-invert";
 
@@ -195,6 +201,11 @@ internal sealed class VisualProfile
     public override string ToString()
     {
         return string.IsNullOrWhiteSpace(Name) ? Id : Name;
+    }
+
+    public static VisualProfile CreateDefaultNone()
+    {
+        return VisualProfileDefaults.CreateNone();
     }
 
     public static VisualProfile CreateDefaultInvert()

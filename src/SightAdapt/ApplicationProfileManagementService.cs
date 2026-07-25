@@ -63,6 +63,37 @@ internal static class ApplicationProfileManagementService
         profile.LegacyEffect = null;
     }
 
+    public static void AssignMenuVisualProfile(
+        SightAdaptSettings settings,
+        ApplicationProfile profile,
+        string? menuVisualProfileId)
+    {
+        ArgumentNullException.ThrowIfNull(settings);
+        ArgumentNullException.ThrowIfNull(profile);
+        settings.EnsureCollections();
+        EnsureMember(settings, profile);
+
+        var normalizedId =
+            ApplicationMenuProfilePolicy.FromSelectorId(
+                menuVisualProfileId);
+        if (normalizedId is null)
+        {
+            profile.MenuVisualProfileId = null;
+            return;
+        }
+
+        var visualProfile =
+            ProfileResolver.FindVisualProfile(
+                settings,
+                normalizedId) ??
+            throw new SettingsValidationException(
+                $"The menu visual profile " +
+                $"'{normalizedId}' does not exist.");
+
+        profile.MenuVisualProfileId =
+            visualProfile.Id;
+    }
+
     public static void SetOverlayScope(
         SightAdaptSettings settings,
         ApplicationProfile profile,
@@ -113,22 +144,39 @@ internal static class ApplicationProfileManagementService
                 $"The fallback visual profile " +
                 $"'{targetProfileId}' does not exist.");
 
-        var assignments = settings.Applications
-            .Where(assignment =>
-                assignment is not null &&
-                string.Equals(
+        var changed = 0;
+        foreach (var assignment in
+                 settings.Applications.Where(
+                     assignment => assignment is not null))
+        {
+            var assignmentChanged = false;
+
+            if (string.Equals(
                     assignment.VisualProfileId,
                     sourceProfileId,
                     StringComparison.OrdinalIgnoreCase))
-            .ToArray();
+            {
+                assignment.VisualProfileId = target.Id;
+                assignment.LegacyEffect = null;
+                assignmentChanged = true;
+            }
 
-        foreach (var assignment in assignments)
-        {
-            assignment.VisualProfileId = target.Id;
-            assignment.LegacyEffect = null;
+            if (string.Equals(
+                    assignment.MenuVisualProfileId,
+                    sourceProfileId,
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                assignment.MenuVisualProfileId = target.Id;
+                assignmentChanged = true;
+            }
+
+            if (assignmentChanged)
+            {
+                changed++;
+            }
         }
 
-        return assignments.Length;
+        return changed;
     }
 
     public static int CountAssignments(
@@ -140,10 +188,14 @@ internal static class ApplicationProfileManagementService
         return settings.Applications.Count(
             assignment =>
                 assignment is not null &&
-                string.Equals(
-                    assignment.VisualProfileId,
-                    visualProfileId,
-                    StringComparison.OrdinalIgnoreCase));
+                (string.Equals(
+                     assignment.VisualProfileId,
+                     visualProfileId,
+                     StringComparison.OrdinalIgnoreCase) ||
+                 string.Equals(
+                     assignment.MenuVisualProfileId,
+                     visualProfileId,
+                     StringComparison.OrdinalIgnoreCase)));
     }
 
     private static ApplicationProfileToggleResult
@@ -215,15 +267,23 @@ internal static class ApplicationProfileManagementService
 
         if (ProfileResolver.FindVisualProfile(
                 settings,
-                profile.VisualProfileId) is not null)
+                profile.VisualProfileId) is null)
         {
-            return;
+            profile.VisualProfileId = wasCreated
+                ? VisualProfilePolicy.NewAssignmentProfileId
+                : VisualProfilePolicy
+                    .MissingReferenceFallbackProfileId;
         }
 
-        profile.VisualProfileId = wasCreated
-            ? VisualProfilePolicy.NewAssignmentProfileId
-            : VisualProfilePolicy
-                .MissingReferenceFallbackProfileId;
+        var menuProfileId =
+            ApplicationMenuProfilePolicy.FromSelectorId(
+                profile.MenuVisualProfileId);
+        profile.MenuVisualProfileId =
+            menuProfileId is null
+                ? null
+                : ProfileResolver.FindVisualProfile(
+                    settings,
+                    menuProfileId)?.Id;
     }
 
     private static void EnsureMember(

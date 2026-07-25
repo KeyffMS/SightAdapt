@@ -74,7 +74,7 @@ public sealed class MutationPersistenceRegressionTests
             VisualProfileManagementService.Delete(settings, profile);
         }
 
-        Assert.AreEqual(2, settings.VisualProfiles.Count);
+        Assert.AreEqual(3, settings.VisualProfiles.Count);
         Assert.AreEqual(20, settings.Applications.Count);
         Assert.IsTrue(settings.Applications.All(assignment =>
             assignment.VisualProfileId == VisualProfile.DefaultSoftInvertId));

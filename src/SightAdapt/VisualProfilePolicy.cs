@@ -18,6 +18,10 @@ internal static class VisualProfilePolicy
     {
         return string.Equals(
                    profileId,
+                   VisualProfile.DefaultNoneId,
+                   StringComparison.OrdinalIgnoreCase) ||
+               string.Equals(
+                   profileId,
                    VisualProfile.DefaultInvertId,
                    StringComparison.OrdinalIgnoreCase) ||
                string.Equals(
