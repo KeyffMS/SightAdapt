@@ -32,15 +32,14 @@ public sealed class SettingsStoreTests
 
         Assert.IsTrue(store.SettingsWereMigrated);
         Assert.AreEqual(SightAdaptSettings.CurrentSchemaVersion, settings.SchemaVersion);
-        Assert.AreEqual(1, settings.Applications.Count);
+        Assert.AreEqual(1, settings.Assignments.Count);
         Assert.AreEqual(
-            VisualProfile.DefaultInvertId,
-            settings.Applications[0].VisualProfileId);
-        Assert.IsNull(settings.Applications[0].LegacyEffect);
+            VisualProfileCatalog.DefaultInvertId,
+            settings.Assignments[0].VisualProfileId);
         Assert.IsTrue(settings.VisualProfiles.Any(
-            profile => profile.Id == VisualProfile.DefaultInvertId));
+            profile => profile.Id == VisualProfileCatalog.DefaultInvertId));
         Assert.IsTrue(settings.VisualProfiles.Any(
-            profile => profile.Id == VisualProfile.DefaultSoftInvertId));
+            profile => profile.Id == VisualProfileCatalog.DefaultSoftInvertId));
     }
 
     [TestMethod]
@@ -51,14 +50,14 @@ public sealed class SettingsStoreTests
         var store = new SettingsStore(settingsPath);
         var settings = new SightAdaptSettings
         {
-            Applications =
+            Assignments =
             [
-                new ApplicationProfile
+                new ApplicationAssignment
                 {
                     DisplayName = "Notepad",
                     ExecutableName = "notepad.exe",
                     ExecutablePath = "C:\\Windows\\System32\\notepad.exe",
-                    VisualProfileId = VisualProfile.DefaultSoftInvertId,
+                    VisualProfileId = VisualProfileCatalog.DefaultSoftInvertId,
                 },
             ],
         };
@@ -73,7 +72,7 @@ public sealed class SettingsStoreTests
         StringAssert.Contains(json, "\"outputBlack\": 0.08");
         StringAssert.Contains(json, "\"outputWhite\": 0.92");
         Assert.IsFalse(json.Contains("\"effect\"", StringComparison.OrdinalIgnoreCase));
-        Assert.AreEqual(1, reloaded.Applications.Count);
+        Assert.AreEqual(1, reloaded.Assignments.Count);
         Assert.IsFalse(store.SettingsWereMigrated);
     }
 
@@ -103,8 +102,8 @@ public sealed class SettingsStoreTests
         var settings = store.Load();
 
         Assert.IsFalse(store.SettingsWereMigrated);
-        Assert.AreEqual("screen", settings.Applications[0].OverlayScopeId);
-        Assert.AreEqual(OverlayScope.Screen, settings.Applications[0].OverlayScope);
+        Assert.AreEqual("screen", settings.Assignments[0].OverlayScopeId);
+        Assert.AreEqual(OverlayScope.Screen, settings.Assignments[0].OverlayScope);
     }
 
     [TestMethod]
@@ -133,8 +132,8 @@ public sealed class SettingsStoreTests
         var settings = store.Load();
 
         Assert.IsTrue(store.SettingsWereMigrated);
-        Assert.AreEqual("window", settings.Applications[0].OverlayScopeId);
-        Assert.AreEqual(OverlayScope.Window, settings.Applications[0].OverlayScope);
+        Assert.AreEqual("window", settings.Assignments[0].OverlayScopeId);
+        Assert.AreEqual(OverlayScope.Window, settings.Assignments[0].OverlayScope);
 
         store.Save(settings);
         StringAssert.Contains(
@@ -168,8 +167,8 @@ public sealed class SettingsStoreTests
         var settings = store.Load();
 
         Assert.IsTrue(store.SettingsWereMigrated);
-        Assert.AreEqual("client-area", settings.Applications[0].OverlayScopeId);
-        Assert.AreEqual(OverlayScope.ClientArea, settings.Applications[0].OverlayScope);
+        Assert.AreEqual("client-area", settings.Assignments[0].OverlayScopeId);
+        Assert.AreEqual(OverlayScope.ClientArea, settings.Assignments[0].OverlayScope);
 
         store.Save(settings);
         StringAssert.Contains(
@@ -182,7 +181,7 @@ public sealed class SettingsStoreTests
     {
         var settings = new SightAdaptSettings
         {
-            Applications =
+            Assignments =
             [
                 CreateApplication("C:\\Apps\\Reader.exe"),
                 CreateApplication("c:\\apps\\reader.exe"),
@@ -192,13 +191,13 @@ public sealed class SettingsStoreTests
         var changed = SettingsStore.Normalize(settings);
 
         Assert.IsTrue(changed);
-        Assert.AreEqual(1, settings.Applications.Count);
+        Assert.AreEqual(1, settings.Assignments.Count);
     }
 
     [TestMethod]
     public void NormalizeClampsSoftProfileParameters()
     {
-        var profile = VisualProfile.CreateDefaultSoftInvert();
+        var profile = VisualProfileCatalog.Default.CreateBuiltInProfile(VisualProfileCatalog.DefaultSoftInvertId);
         profile.OutputBlack = -3.0f;
         profile.OutputWhite = 4.0f;
         profile.Brightness = float.NaN;
@@ -209,7 +208,7 @@ public sealed class SettingsStoreTests
         {
             VisualProfiles =
             [
-                VisualProfile.CreateDefaultInvert(),
+                VisualProfileCatalog.Default.CreateBuiltInProfile(VisualProfileCatalog.DefaultInvertId),
                 profile,
             ],
         };
@@ -259,9 +258,9 @@ public sealed class SettingsStoreTests
         var settings = store.Load();
 
         Assert.IsTrue(store.SettingsWereMigrated);
-        Assert.AreEqual(VisualProfile.DefaultInvertId, settings.Applications[0].VisualProfileId);
+        Assert.AreEqual(VisualProfileCatalog.DefaultInvertId, settings.Assignments[0].VisualProfileId);
         Assert.IsTrue(settings.VisualProfiles.Any(
-            profile => profile.Id == VisualProfile.DefaultSoftInvertId));
+            profile => profile.Id == VisualProfileCatalog.DefaultSoftInvertId));
     }
 
     [TestMethod]
@@ -311,12 +310,12 @@ public sealed class SettingsStoreTests
         Assert.AreEqual(0.12f, recovered.OutputBlack);
         Assert.AreEqual(0.88f, recovered.OutputWhite);
 
-        Assert.AreEqual(1, settings.Applications.Count);
-        Assert.AreEqual("Reader.exe", settings.Applications[0].ExecutableName);
-        Assert.AreEqual("Reader", settings.Applications[0].DisplayName);
+        Assert.AreEqual(1, settings.Assignments.Count);
+        Assert.AreEqual("Reader.exe", settings.Assignments[0].ExecutableName);
+        Assert.AreEqual("Reader", settings.Assignments[0].DisplayName);
         Assert.AreEqual(
             VisualProfilePolicy.MissingReferenceFallbackProfileId,
-            settings.Applications[0].VisualProfileId);
+            settings.Assignments[0].VisualProfileId);
     }
 
     [TestMethod]
@@ -324,7 +323,7 @@ public sealed class SettingsStoreTests
     {
         var exact = new VisualProfile
         {
-            Id = VisualProfile.DefaultInvertId,
+            Id = VisualProfileCatalog.DefaultInvertId,
             Name = "Broken exact",
             TransformId = SoftInvertVisualTransform.TransformId,
             OutputBlack = 0.2f,
@@ -332,7 +331,7 @@ public sealed class SettingsStoreTests
         };
         var soft = new VisualProfile
         {
-            Id = VisualProfile.DefaultSoftInvertId,
+            Id = VisualProfileCatalog.DefaultSoftInvertId,
             Name = "Broken soft",
             TransformId = InvertVisualTransform.TransformId,
             OutputBlack = 0.17f,
@@ -367,14 +366,14 @@ public sealed class SettingsStoreTests
         var first = CreateCustomProfile("shared-id", "Reader");
         var second = CreateCustomProfile("shared-id", "Notes");
         var reservedDuplicate = CreateCustomProfile(
-            VisualProfile.DefaultSoftInvertId,
+            VisualProfileCatalog.DefaultSoftInvertId,
             "Reserved copy");
         var settings = new SightAdaptSettings
         {
             VisualProfiles =
             [
-                VisualProfile.CreateDefaultInvert(),
-                VisualProfile.CreateDefaultSoftInvert(),
+                VisualProfileCatalog.Default.CreateBuiltInProfile(VisualProfileCatalog.DefaultInvertId),
+                VisualProfileCatalog.Default.CreateBuiltInProfile(VisualProfileCatalog.DefaultSoftInvertId),
                 first,
                 second,
                 reservedDuplicate,
@@ -408,8 +407,8 @@ public sealed class SettingsStoreTests
         {
             VisualProfiles =
             [
-                VisualProfile.CreateDefaultInvert(),
-                VisualProfile.CreateDefaultSoftInvert(),
+                VisualProfileCatalog.Default.CreateBuiltInProfile(VisualProfileCatalog.DefaultInvertId),
+                VisualProfileCatalog.Default.CreateBuiltInProfile(VisualProfileCatalog.DefaultSoftInvertId),
                 first,
                 second,
             ],
@@ -433,9 +432,9 @@ public sealed class SettingsStoreTests
                 CreateCustomProfile(string.Empty, string.Empty),
                 CreateCustomProfile(string.Empty, string.Empty),
             ],
-            Applications =
+            Assignments =
             [
-                new ApplicationProfile
+                new ApplicationAssignment
                 {
                     ExecutablePath = " C:\\Apps\\Reader.exe ",
                     VisualProfileId = "missing",
@@ -458,7 +457,7 @@ public sealed class SettingsStoreTests
         reading.Brightness = 0.08f;
         var spreadsheet = VisualProfileManagementService.Create(settings, "Spreadsheet muted");
         spreadsheet.Saturation = 0.35f;
-        settings.Applications =
+        settings.Assignments =
         [
             CreateApplication("C:\\Apps\\Reader.exe", reading.Id),
             CreateApplication("C:\\Apps\\Sheet.exe", spreadsheet.Id),
@@ -469,8 +468,8 @@ public sealed class SettingsStoreTests
 
         Assert.IsFalse(store.SettingsWereMigrated);
         Assert.AreEqual(5, reloaded.VisualProfiles.Count);
-        Assert.AreEqual(reading.Id, reloaded.Applications[0].VisualProfileId);
-        Assert.AreEqual(spreadsheet.Id, reloaded.Applications[1].VisualProfileId);
+        Assert.AreEqual(reading.Id, reloaded.Assignments[0].VisualProfileId);
+        Assert.AreEqual(spreadsheet.Id, reloaded.Assignments[1].VisualProfileId);
         Assert.AreEqual(0.08f, reloaded.VisualProfiles.Single(profile =>
             profile.Id == reading.Id).Brightness);
         Assert.AreEqual(0.35f, reloaded.VisualProfiles.Single(profile =>
@@ -479,17 +478,17 @@ public sealed class SettingsStoreTests
 
     private static VisualProfile CreateCustomProfile(string id, string name)
     {
-        var profile = VisualProfile.CreateDefaultSoftInvert();
+        var profile = VisualProfileCatalog.Default.CreateBuiltInProfile(VisualProfileCatalog.DefaultSoftInvertId);
         profile.Id = id;
         profile.Name = name;
         return profile;
     }
 
-    private static ApplicationProfile CreateApplication(
+    private static ApplicationAssignment CreateApplication(
         string path,
-        string visualProfileId = VisualProfile.DefaultSoftInvertId)
+        string visualProfileId = VisualProfileCatalog.DefaultSoftInvertId)
     {
-        return new ApplicationProfile
+        return new ApplicationAssignment
         {
             DisplayName = "Reader",
             ExecutableName = Path.GetFileName(path),

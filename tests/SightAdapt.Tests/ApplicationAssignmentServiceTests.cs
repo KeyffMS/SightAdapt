@@ -3,7 +3,7 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 namespace SightAdapt.Tests;
 
 [TestClass]
-public sealed class ApplicationProfileManagementTests
+public sealed class ApplicationAssignmentManagementTests
 {
     [TestMethod]
     public void AddOrEnableCreatesDefaultSoftInvertAssignment()
@@ -11,31 +11,31 @@ public sealed class ApplicationProfileManagementTests
         var settings = new SightAdaptSettings();
         var identity = CreateIdentity("Reader");
 
-        var result = ApplicationProfileManagementService.AddOrEnable(settings, identity);
+        var result = ApplicationAssignmentService.AddOrEnable(settings, identity);
 
         Assert.IsTrue(result.WasCreated);
         Assert.IsTrue(result.IsEnabled);
-        Assert.AreEqual(VisualProfilePolicy.NewAssignmentProfileId, result.Profile.VisualProfileId);
-        Assert.AreEqual(1, settings.Applications.Count);
+        Assert.AreEqual(VisualProfilePolicy.NewAssignmentProfileId, result.Assignment.VisualProfileId);
+        Assert.AreEqual(1, settings.Assignments.Count);
     }
 
     [TestMethod]
     public void AssignVisualProfileRequiresExistingProfile()
     {
         var settings = new SightAdaptSettings();
-        var assignment = ApplicationProfileManagementService
+        var assignment = ApplicationAssignmentService
             .AddOrEnable(settings, CreateIdentity("Reader"))
-            .Profile;
+            .Assignment;
         var custom = VisualProfileManagementService.Create(settings, "Reader colors");
 
-        ApplicationProfileManagementService.AssignVisualProfile(
+        ApplicationAssignmentService.AssignVisualProfile(
             settings,
             assignment,
             custom.Id);
 
         Assert.AreEqual(custom.Id, assignment.VisualProfileId);
         Assert.ThrowsException<SettingsValidationException>(() =>
-            ApplicationProfileManagementService.AssignVisualProfile(
+            ApplicationAssignmentService.AssignVisualProfile(
                 settings,
                 assignment,
                 "missing-profile"));
@@ -46,30 +46,30 @@ public sealed class ApplicationProfileManagementTests
     {
         var settings = new SightAdaptSettings();
         var identity = CreateIdentity("Reader");
-        var assignment = ApplicationProfileManagementService
+        var assignment = ApplicationAssignmentService
             .AddOrEnable(settings, identity)
-            .Profile;
+            .Assignment;
         var custom = VisualProfileManagementService.Create(settings, "Reader colors");
-        ApplicationProfileManagementService.AssignVisualProfile(settings, assignment, custom.Id);
+        ApplicationAssignmentService.AssignVisualProfile(settings, assignment, custom.Id);
 
-        var disabled = ApplicationProfileManagementService.Toggle(settings, identity);
-        var enabled = ApplicationProfileManagementService.Toggle(settings, identity);
+        var disabled = ApplicationAssignmentService.Toggle(settings, identity);
+        var enabled = ApplicationAssignmentService.Toggle(settings, identity);
 
         Assert.IsFalse(disabled.IsEnabled);
         Assert.IsTrue(enabled.IsEnabled);
-        Assert.AreEqual(custom.Id, enabled.Profile.VisualProfileId);
+        Assert.AreEqual(custom.Id, enabled.Assignment.VisualProfileId);
     }
 
     [TestMethod]
     public void DetachedAssignmentCannotBeMutatedOrRemoved()
     {
         var settings = new SightAdaptSettings();
-        var detached = new ApplicationProfile();
+        var detached = new ApplicationAssignment();
 
         Assert.ThrowsException<SettingsValidationException>(() =>
-            ApplicationProfileManagementService.SetEnabled(settings, detached, false));
+            ApplicationAssignmentService.SetEnabled(settings, detached, false));
         Assert.ThrowsException<SettingsValidationException>(() =>
-            ApplicationProfileManagementService.Remove(settings, detached));
+            ApplicationAssignmentService.Remove(settings, detached));
     }
 
     [TestMethod]
@@ -77,23 +77,23 @@ public sealed class ApplicationProfileManagementTests
     {
         var settings = new SightAdaptSettings();
         var custom = VisualProfileManagementService.Create(settings, "Reader colors");
-        var first = ApplicationProfileManagementService
+        var first = ApplicationAssignmentService
             .AddOrEnable(settings, CreateIdentity("Reader"))
-            .Profile;
-        var second = ApplicationProfileManagementService
+            .Assignment;
+        var second = ApplicationAssignmentService
             .AddOrEnable(settings, CreateIdentity("Notes"))
-            .Profile;
-        ApplicationProfileManagementService.AssignVisualProfile(settings, first, custom.Id);
-        ApplicationProfileManagementService.AssignVisualProfile(settings, second, custom.Id);
+            .Assignment;
+        ApplicationAssignmentService.AssignVisualProfile(settings, first, custom.Id);
+        ApplicationAssignmentService.AssignVisualProfile(settings, second, custom.Id);
 
-        var changed = ApplicationProfileManagementService.ReassignVisualProfile(
+        var changed = ApplicationAssignmentService.ReassignVisualProfile(
             settings,
             custom.Id,
-            VisualProfile.DefaultSoftInvertId);
+            VisualProfileCatalog.DefaultSoftInvertId);
 
         Assert.AreEqual(2, changed);
-        Assert.IsTrue(settings.Applications.All(
-            assignment => assignment.VisualProfileId == VisualProfile.DefaultSoftInvertId));
+        Assert.IsTrue(settings.Assignments.All(
+            assignment => assignment.VisualProfileId == VisualProfileCatalog.DefaultSoftInvertId));
     }
 
     private static ApplicationIdentity CreateIdentity(string name)

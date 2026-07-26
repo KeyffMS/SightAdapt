@@ -63,7 +63,7 @@ public sealed class ConfigurationGridCommitRegressionTests
                 @"C:\Apps\reader.exe");
             Assert.IsTrue(coordinator.Commit(settings =>
             {
-                ApplicationProfileManagementService.AddOrEnable(
+                ApplicationAssignmentService.AddOrEnable(
                     settings,
                     identity);
             }).Succeeded);
@@ -72,7 +72,7 @@ public sealed class ConfigurationGridCommitRegressionTests
             form.Show();
             Application.DoEvents();
 
-            var profilesGrid = FindControl<ApplicationProfilesGrid>(form);
+            var profilesGrid = FindControl<ApplicationAssignmentsGrid>(form);
             var grid = FindControl<DataGridView>(profilesGrid);
             Assert.AreEqual(1, grid.Rows.Count);
             Assert.AreEqual(identity.ExecutablePath, grid.Rows[0].Tag);
@@ -91,16 +91,16 @@ public sealed class ConfigurationGridCommitRegressionTests
                 .Cast<object>()
                 .OfType<ModernSelectorOption>()
                 .Single(candidate =>
-                    candidate.Id == VisualProfile.DefaultInvertId);
+                    candidate.Id == VisualProfileCatalog.DefaultInvertId);
 
             editor.SelectOptionFromInput(option);
             WaitFor(() =>
-                coordinator.Current.Applications.Single().VisualProfileId ==
-                VisualProfile.DefaultInvertId);
+                coordinator.Current.Assignments.Single().VisualProfileId ==
+                VisualProfileCatalog.DefaultInvertId);
 
             Assert.AreEqual(1, grid.Rows.Count);
             Assert.AreEqual(
-                VisualProfile.DefaultInvertId,
+                VisualProfileCatalog.DefaultInvertId,
                 grid.Rows[0].Cells["VisualProfile"].Value);
             Assert.AreEqual(identity.ExecutablePath, grid.Rows[0].Tag);
 
@@ -124,7 +124,7 @@ public sealed class ConfigurationGridCommitRegressionTests
             var coordinator = CreateCoordinator(directory);
             Assert.IsTrue(coordinator.Commit(settings =>
             {
-                ApplicationProfileManagementService.AddOrEnable(
+                ApplicationAssignmentService.AddOrEnable(
                     settings,
                     new ApplicationIdentity(
                         "Reader",
@@ -137,12 +137,12 @@ public sealed class ConfigurationGridCommitRegressionTests
             Application.DoEvents();
 
             var grid = FindControl<DataGridView>(
-                FindControl<ApplicationProfilesGrid>(form));
+                FindControl<ApplicationAssignmentsGrid>(form));
             Assert.AreEqual(1, grid.Rows.Count);
 
             Assert.IsTrue(coordinator.Commit(settings =>
             {
-                ApplicationProfileManagementService.AddOrEnable(
+                ApplicationAssignmentService.AddOrEnable(
                     settings,
                     new ApplicationIdentity(
                         "Writer",
@@ -186,8 +186,8 @@ public sealed class ConfigurationGridCommitRegressionTests
                 @"C:\Apps\writer.exe");
             Assert.IsTrue(coordinator.Commit(settings =>
             {
-                ApplicationProfileManagementService.AddOrEnable(settings, reader);
-                ApplicationProfileManagementService.AddOrEnable(settings, writer);
+                ApplicationAssignmentService.AddOrEnable(settings, reader);
+                ApplicationAssignmentService.AddOrEnable(settings, writer);
             }).Succeeded);
 
             using var form = new ConfigurationForm(coordinator, () => null);
@@ -195,7 +195,7 @@ public sealed class ConfigurationGridCommitRegressionTests
             Application.DoEvents();
 
             var grid = FindControl<DataGridView>(
-                FindControl<ApplicationProfilesGrid>(form));
+                FindControl<ApplicationAssignmentsGrid>(form));
             var readerRow = grid.Rows
                 .Cast<DataGridViewRow>()
                 .Single(row => string.Equals(
@@ -217,18 +217,18 @@ public sealed class ConfigurationGridCommitRegressionTests
                 .Single(candidate => candidate.Id == "screen");
             editor.SelectOptionFromInput(option);
 
-            WaitFor(() => coordinator.Current.Applications
+            WaitFor(() => coordinator.Current.Assignments
                 .Single(profile => profile.Matches(reader))
                 .OverlayScope == OverlayScope.Screen);
 
             Assert.AreEqual(
                 OverlayScope.Screen,
-                coordinator.Current.Applications
+                coordinator.Current.Assignments
                     .Single(profile => profile.Matches(reader))
                     .OverlayScope);
             Assert.AreEqual(
                 OverlayScope.ClientArea,
-                coordinator.Current.Applications
+                coordinator.Current.Assignments
                     .Single(profile => profile.Matches(writer))
                     .OverlayScope);
             Assert.AreEqual("screen", scopeCell.Value);

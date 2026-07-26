@@ -6,7 +6,7 @@ internal sealed class OverlayController :
     IRuntimeOverlay,
     IDisposable
 {
-    private readonly VisualTransformCatalog
+    private readonly VisualProfileCatalog
         _transformCatalog;
     private readonly IWin32MenuWindowTracker
         _menuWindowTracker;
@@ -20,7 +20,7 @@ internal sealed class OverlayController :
     private bool _disposed;
 
     public OverlayController(
-        VisualTransformCatalog transformCatalog)
+        VisualProfileCatalog transformCatalog)
         : this(
             transformCatalog,
             new Win32MenuWindowTracker())
@@ -28,7 +28,7 @@ internal sealed class OverlayController :
     }
 
     internal OverlayController(
-        VisualTransformCatalog transformCatalog,
+        VisualProfileCatalog transformCatalog,
         IWin32MenuWindowTracker menuWindowTracker)
     {
         _transformCatalog = transformCatalog ??
@@ -92,13 +92,13 @@ internal sealed class OverlayController :
         }
 
         var primaryTransform =
-            _transformCatalog.GetRequired(
+            _transformCatalog.GetRequiredTransform(
                 visualProfile.TransformId);
         var primaryColorEffect =
             primaryTransform.CreateColorEffect(
                 visualProfile);
         var menuTransform =
-            _transformCatalog.GetRequired(
+            _transformCatalog.GetRequiredTransform(
                 menuVisualProfile.TransformId);
         var menuColorEffect =
             menuTransform.CreateColorEffect(

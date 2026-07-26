@@ -298,7 +298,7 @@ internal sealed class VisualProfileManagerForm : Form
             var index = _profilesGrid.Rows.Add(
                 profile.Name,
                 VisualProfileManagementService.IsBuiltIn(profile) ? "Built-in" : "User-defined",
-                VisualTransformCatalog.Default.GetDisplayName(profile.TransformId),
+                VisualProfileCatalog.Default.GetTransformDisplayName(profile.TransformId),
                 VisualProfileManagementService.CountAssignments(Settings, profile));
             var row = _profilesGrid.Rows[index];
             row.Tag = profile;

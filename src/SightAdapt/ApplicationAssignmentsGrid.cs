@@ -3,7 +3,7 @@ using System.Drawing.Drawing2D;
 
 namespace SightAdapt;
 
-internal sealed class ApplicationProfileEnabledChangedEventArgs(
+internal sealed class ApplicationAssignmentEnabledChangedEventArgs(
     string executablePath,
     bool enabled) : EventArgs
 {
@@ -17,7 +17,7 @@ internal sealed class ApplicationProfileEnabledChangedEventArgs(
     public bool Enabled { get; } = enabled;
 }
 
-internal sealed class ApplicationProfileVisualProfileChangedEventArgs(
+internal sealed class ApplicationAssignmentVisualProfileChangedEventArgs(
     string executablePath,
     string visualProfileId) : EventArgs
 {
@@ -36,7 +36,7 @@ internal sealed class ApplicationProfileVisualProfileChangedEventArgs(
                 nameof(visualProfileId));
 }
 
-internal sealed class ApplicationProfileMenuVisualProfileChangedEventArgs(
+internal sealed class ApplicationAssignmentMenuVisualProfileChangedEventArgs(
     string executablePath,
     string? menuVisualProfileId) : EventArgs
 {
@@ -52,7 +52,7 @@ internal sealed class ApplicationProfileMenuVisualProfileChangedEventArgs(
             menuVisualProfileId);
 }
 
-internal sealed class ApplicationProfileOverlayScopeChangedEventArgs(
+internal sealed class ApplicationAssignmentOverlayScopeChangedEventArgs(
     string executablePath,
     OverlayScope overlayScope) : EventArgs
 {
@@ -70,7 +70,7 @@ internal sealed class ApplicationProfileOverlayScopeChangedEventArgs(
                 nameof(overlayScope));
 }
 
-internal sealed class ApplicationProfilesGrid : UserControl
+internal sealed class ApplicationAssignmentsGrid : UserControl
 {
     private const string EnabledColumnName = "Enabled";
     private const string ApplicationColumnName = "Application";
@@ -92,7 +92,7 @@ internal sealed class ApplicationProfilesGrid : UserControl
     private readonly Label _emptyStateLabel;
     private bool _binding;
 
-    public ApplicationProfilesGrid()
+    public ApplicationAssignmentsGrid()
     {
         BackColor = AppTheme.Surface;
         Dock = DockStyle.Fill;
@@ -104,13 +104,13 @@ internal sealed class ApplicationProfilesGrid : UserControl
         Controls.Add(_emptyStateLabel);
     }
 
-    public event EventHandler<ApplicationProfileEnabledChangedEventArgs>? ApplicationEnabledChanged;
+    public event EventHandler<ApplicationAssignmentEnabledChangedEventArgs>? ApplicationEnabledChanged;
 
-    public event EventHandler<ApplicationProfileVisualProfileChangedEventArgs>? VisualProfileChanged;
+    public event EventHandler<ApplicationAssignmentVisualProfileChangedEventArgs>? VisualProfileChanged;
 
-    public event EventHandler<ApplicationProfileMenuVisualProfileChangedEventArgs>? MenuVisualProfileChanged;
+    public event EventHandler<ApplicationAssignmentMenuVisualProfileChangedEventArgs>? MenuVisualProfileChanged;
 
-    public event EventHandler<ApplicationProfileOverlayScopeChangedEventArgs>? OverlayScopeChanged;
+    public event EventHandler<ApplicationAssignmentOverlayScopeChangedEventArgs>? OverlayScopeChanged;
 
     public event EventHandler? SelectedApplicationChanged;
 
@@ -126,7 +126,7 @@ internal sealed class ApplicationProfilesGrid : UserControl
     }
 
     public void Bind(
-        IReadOnlyList<ApplicationProfile> applications,
+        IReadOnlyList<ApplicationAssignment> applications,
         IReadOnlyList<VisualProfile> visualProfiles)
     {
         ArgumentNullException.ThrowIfNull(applications);
@@ -155,11 +155,11 @@ internal sealed class ApplicationProfilesGrid : UserControl
         SelectedApplicationChanged?.Invoke(this, EventArgs.Empty);
     }
 
-    public void UpdateApplication(ApplicationProfile application)
+    public void UpdateAssignment(ApplicationAssignment assignment)
     {
-        ArgumentNullException.ThrowIfNull(application);
+        ArgumentNullException.ThrowIfNull(assignment);
 
-        var row = FindRow(application.ExecutablePath);
+        var row = FindRow(assignment.ExecutablePath);
         if (row is null)
         {
             return;
@@ -168,17 +168,17 @@ internal sealed class ApplicationProfilesGrid : UserControl
         _binding = true;
         try
         {
-            row.Cells[EnabledColumnName].Value = application.Enabled;
-            row.Cells[ApplicationColumnName].Value = application.DisplayName;
-            row.Cells[VisualProfileColumnName].Value = application.VisualProfileId;
+            row.Cells[EnabledColumnName].Value = assignment.Enabled;
+            row.Cells[ApplicationColumnName].Value = assignment.DisplayName;
+            row.Cells[VisualProfileColumnName].Value = assignment.VisualProfileId;
             row.Cells[MenuVisualProfileColumnName].Value =
                 ApplicationMenuProfilePolicy.ToSelectorId(
-                    application.MenuVisualProfileId);
+                    assignment.MenuVisualProfileId);
             row.Cells[OverlayScopeColumnName].Value =
-                OverlayScopePolicy.ToId(application.OverlayScope);
-            row.Cells[ExecutableColumnName].Value = application.ExecutableName;
-            row.Cells[PathColumnName].Value = application.ExecutablePath;
-            row.Tag = application.ExecutablePath;
+                OverlayScopePolicy.ToId(assignment.OverlayScope);
+            row.Cells[ExecutableColumnName].Value = assignment.ExecutableName;
+            row.Cells[PathColumnName].Value = assignment.ExecutablePath;
+            row.Tag = assignment.ExecutablePath;
         }
         finally
         {
@@ -278,7 +278,7 @@ internal sealed class ApplicationProfilesGrid : UserControl
         return grid;
     }
 
-    private void AddRow(ApplicationProfile application, string? selectedPath)
+    private void AddRow(ApplicationAssignment application, string? selectedPath)
     {
         var index = _grid.Rows.Add(
             application.Enabled,
@@ -397,7 +397,7 @@ internal sealed class ApplicationProfilesGrid : UserControl
         {
             ApplicationEnabledChanged?.Invoke(
                 this,
-                new ApplicationProfileEnabledChangedEventArgs(
+                new ApplicationAssignmentEnabledChangedEventArgs(
                     executablePath,
                     enabled));
         }
@@ -406,7 +406,7 @@ internal sealed class ApplicationProfilesGrid : UserControl
         {
             VisualProfileChanged?.Invoke(
                 this,
-                new ApplicationProfileVisualProfileChangedEventArgs(
+                new ApplicationAssignmentVisualProfileChangedEventArgs(
                     executablePath,
                     profileId));
         }
@@ -415,7 +415,7 @@ internal sealed class ApplicationProfilesGrid : UserControl
         {
             MenuVisualProfileChanged?.Invoke(
                 this,
-                new ApplicationProfileMenuVisualProfileChangedEventArgs(
+                new ApplicationAssignmentMenuVisualProfileChangedEventArgs(
                     executablePath,
                     menuProfileId));
         }
@@ -424,7 +424,7 @@ internal sealed class ApplicationProfilesGrid : UserControl
         {
             OverlayScopeChanged?.Invoke(
                 this,
-                new ApplicationProfileOverlayScopeChangedEventArgs(
+                new ApplicationAssignmentOverlayScopeChangedEventArgs(
                     executablePath,
                     OverlayScopePolicy.ParseRequired(scopeId)));
         }
@@ -622,7 +622,7 @@ internal sealed class ApplicationProfilesGrid : UserControl
             ForeColor = AppTheme.TextSecondary,
             Font = AppTheme.CreateUiFont(10.5f),
             Padding = new Padding(32),
-            Text = "No application profiles yet.\n\n" +
+            Text = "No application assignments yet.\n\n" +
                    "Add the currently active application or select an executable file.",
             TextAlign = ContentAlignment.MiddleCenter,
             Visible = false,

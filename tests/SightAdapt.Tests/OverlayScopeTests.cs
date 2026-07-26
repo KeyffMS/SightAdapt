@@ -9,7 +9,7 @@ public sealed class OverlayScopeTests
     public void NewApplicationDefaultsToClientArea()
     {
         var settings = new SightAdaptSettings();
-        var result = ApplicationProfileManagementService.AddOrEnable(
+        var result = ApplicationAssignmentService.AddOrEnable(
             settings,
             new ApplicationIdentity(
                 "Reader",
@@ -17,23 +17,23 @@ public sealed class OverlayScopeTests
                 @"C:\Apps\reader.exe"));
 
         Assert.IsTrue(result.WasCreated);
-        Assert.AreEqual(OverlayScope.ClientArea, result.Profile.OverlayScope);
-        Assert.AreEqual("client-area", result.Profile.OverlayScopeId);
+        Assert.AreEqual(OverlayScope.ClientArea, result.Assignment.OverlayScope);
+        Assert.AreEqual("client-area", result.Assignment.OverlayScopeId);
     }
 
     [TestMethod]
     public void ApplicationScopeMutationUsesAssignmentAuthority()
     {
         var settings = new SightAdaptSettings();
-        var profile = ApplicationProfileManagementService.AddOrEnable(
+        var profile = ApplicationAssignmentService.AddOrEnable(
             settings,
             new ApplicationIdentity(
                 "Reader",
                 "reader.exe",
                 @"C:\Apps\reader.exe"))
-            .Profile;
+            .Assignment;
 
-        ApplicationProfileManagementService.SetOverlayScope(
+        ApplicationAssignmentService.SetOverlayScope(
             settings,
             profile,
             OverlayScope.AllScreens);
@@ -92,7 +92,7 @@ public sealed class OverlayScopeTests
     [TestMethod]
     public void InvalidPersistedScopeIsRecoveredBySettingsNormalization()
     {
-        var profile = new ApplicationProfile
+        var profile = new ApplicationAssignment
         {
             DisplayName = "Reader",
             ExecutableName = "reader.exe",
@@ -101,7 +101,7 @@ public sealed class OverlayScopeTests
         };
         var settings = new SightAdaptSettings
         {
-            Applications = [profile],
+            Assignments = [profile],
         };
 
         Assert.AreEqual("unknown-scope", profile.OverlayScopeId);
@@ -119,7 +119,7 @@ public sealed class OverlayScopeTests
     [TestMethod]
     public void WorkingCopyPreservesPerApplicationScope()
     {
-        var original = new ApplicationProfile
+        var original = new ApplicationAssignment
         {
             OverlayScopeId = "screen",
         };

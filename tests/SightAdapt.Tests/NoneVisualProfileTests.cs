@@ -10,9 +10,14 @@ public sealed class NoneVisualProfileTests
     {
         var settings = new SightAdaptSettings();
         var none = settings.VisualProfiles.Single(profile =>
-            profile.Id == VisualProfile.DefaultNoneId);
+            profile.Id == VisualProfileCatalog.DefaultNoneId);
 
-        Assert.AreEqual(VisualProfileDefaults.NoneName, none.Name);
+        Assert.AreEqual(
+            VisualProfileCatalog.Default
+                .GetRequiredBuiltInDefinition(
+                    VisualProfileCatalog.DefaultNoneId)
+                .DisplayName,
+            none.Name);
         Assert.AreEqual(NoneVisualTransform.TransformId, none.TransformId);
         Assert.IsFalse(none.SupportsTuning);
         Assert.IsTrue(VisualProfileManagementService.IsBuiltIn(none));
@@ -28,8 +33,8 @@ public sealed class NoneVisualProfileTests
     [TestMethod]
     public void NoneTransformProducesIdentityColorEffect()
     {
-        var profile = VisualProfile.CreateDefaultNone();
-        var transform = VisualTransformCatalog.Default.GetRequired(
+        var profile = VisualProfileCatalog.Default.CreateBuiltInProfile(VisualProfileCatalog.DefaultNoneId);
+        var transform = VisualProfileCatalog.Default.GetRequiredTransform(
             profile.TransformId);
 
         var effect = transform.CreateColorEffect(profile);
@@ -51,25 +56,25 @@ public sealed class NoneVisualProfileTests
     }
 
     [TestMethod]
-    public void ExplicitMenuProfileOverridesNoneApplicationProfile()
+    public void ExplicitMenuProfileOverridesNoneApplicationAssignment()
     {
         var settings = new SightAdaptSettings();
-        var assignment = ApplicationProfileManagementService
+        var assignment = ApplicationAssignmentService
             .AddOrEnable(
                 settings,
                 new ApplicationIdentity(
                     "Reader",
                     "reader.exe",
                     @"C:\Apps\reader.exe"))
-            .Profile;
-        ApplicationProfileManagementService.AssignVisualProfile(
+            .Assignment;
+        ApplicationAssignmentService.AssignVisualProfile(
             settings,
             assignment,
-            VisualProfile.DefaultNoneId);
-        ApplicationProfileManagementService.AssignMenuVisualProfile(
+            VisualProfileCatalog.DefaultNoneId);
+        ApplicationAssignmentService.AssignMenuVisualProfile(
             settings,
             assignment,
-            VisualProfile.DefaultInvertId);
+            VisualProfileCatalog.DefaultInvertId);
 
         var primary = ProfileResolver.ResolveVisualProfile(
             settings,
@@ -78,8 +83,8 @@ public sealed class NoneVisualProfileTests
             settings,
             assignment);
 
-        Assert.AreEqual(VisualProfile.DefaultNoneId, primary.Id);
-        Assert.AreEqual(VisualProfile.DefaultInvertId, menu.Id);
+        Assert.AreEqual(VisualProfileCatalog.DefaultNoneId, primary.Id);
+        Assert.AreEqual(VisualProfileCatalog.DefaultInvertId, menu.Id);
     }
 
     [TestMethod]
@@ -90,14 +95,14 @@ public sealed class NoneVisualProfileTests
             SchemaVersion = 5,
             VisualProfiles =
             [
-                VisualProfile.CreateDefaultInvert(),
-                VisualProfile.CreateDefaultSoftInvert(),
+                VisualProfileCatalog.Default.CreateBuiltInProfile(VisualProfileCatalog.DefaultInvertId),
+                VisualProfileCatalog.Default.CreateBuiltInProfile(VisualProfileCatalog.DefaultSoftInvertId),
             ],
         };
 
         Assert.IsTrue(SettingsStore.Normalize(settings));
         Assert.IsTrue(settings.VisualProfiles.Any(profile =>
-            profile.Id == VisualProfile.DefaultNoneId));
+            profile.Id == VisualProfileCatalog.DefaultNoneId));
         Assert.IsFalse(SettingsStore.Normalize(settings));
     }
 }

@@ -13,18 +13,20 @@ public sealed class ArchitectureComplianceTests
         // prove that no other top-level production file writes these collections.
         AssertPatternRestrictedTo(
             @"(?m)^(?!\s*string\?\s+VisualProfileId\s*=)\s*.*\bVisualProfileId\s*=",
-            "ApplicationProfile.cs",
-            "ApplicationProfileManagementService.cs",
-            "SettingsNormalizer.cs",
-            "OverlayController.cs");
+            "ApplicationAssignment.cs",
+            "ApplicationAssignmentService.cs",
+            "PersistedSettings.cs",
+            "SettingsAssignmentNormalizationPasses.cs");
         AssertPatternRestrictedTo(
             @"\.MenuVisualProfileId\s*=",
-            "ApplicationProfileManagementService.cs",
-            "SettingsNormalizer.cs");
+            "ApplicationAssignmentService.cs",
+            "PersistedSettings.cs",
+            "SettingsAssignmentNormalizationPasses.cs");
         AssertPatternRestrictedTo(
-            @"\.Applications\.(Add|Remove)\(",
-            "ApplicationProfileManagementService.cs",
-            "SettingsNormalizer.cs");
+            @"\.Assignments\.(Add|Remove)\(",
+            "ApplicationAssignmentService.cs",
+            "PersistedSettings.cs",
+            "SettingsAssignmentNormalizationPasses.cs");
     }
 
     [TestMethod]
@@ -42,6 +44,7 @@ public sealed class ArchitectureComplianceTests
         // Intentional exhaustive source scan for collection ownership.
         AssertPatternRestrictedTo(
             @"\.VisualProfiles\.(Add|Remove)\(",
+            "PersistedSettings.cs",
             "VisualProfileManagementService.cs");
     }
 
@@ -98,7 +101,7 @@ public sealed class ArchitectureComplianceTests
         Assert.IsFalse(
             File.Exists(Path.Combine(
                 SourceDirectory,
-                "ApplicationProfileToggleService.cs")));
+                "ApplicationAssignmentToggleService.cs")));
     }
 
     private static void AssertPatternRestrictedTo(

@@ -19,7 +19,7 @@ internal sealed class SightAdaptContext : ApplicationContext
         _settingsCoordinator = new SettingsCoordinator();
         _stateController = new ApplicationStateController();
         _overlayController = new OverlayController(
-            VisualTransformCatalog.Default);
+            VisualProfileCatalog.Default);
         _foregroundTracker = new ForegroundWindowTracker();
         _faultStateTimer = new System.Windows.Forms.Timer
         {
@@ -29,7 +29,7 @@ internal sealed class SightAdaptContext : ApplicationContext
         _tray = new TrayPresenter(
             _settingsCoordinator.Current.AutomaticMode,
             ToggleForActiveWindow,
-            ToggleActiveApplicationProfile,
+            ToggleActiveApplicationAssignment,
             SetAutomaticMode,
             ShowConfiguration,
             EmergencyDisable,
@@ -112,7 +112,7 @@ internal sealed class SightAdaptContext : ApplicationContext
         }
         else if (id == HotkeyWindow.ProfileToggleId)
         {
-            ToggleActiveApplicationProfile();
+            ToggleActiveApplicationAssignment();
         }
     }
 
@@ -121,9 +121,9 @@ internal sealed class SightAdaptContext : ApplicationContext
         _runtimeCoordinator.ToggleForActiveWindow();
     }
 
-    private void ToggleActiveApplicationProfile()
+    private void ToggleActiveApplicationAssignment()
     {
-        _runtimeCoordinator.ToggleActiveApplicationProfile();
+        _runtimeCoordinator.ToggleActiveApplicationAssignment();
     }
 
     private void SetAutomaticMode(bool enabled)

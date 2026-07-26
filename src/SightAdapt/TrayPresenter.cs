@@ -16,14 +16,14 @@ internal sealed class TrayPresenter : IDisposable
     public TrayPresenter(
         bool automaticMode,
         Action toggleForActiveWindow,
-        Action toggleActiveApplicationProfile,
+        Action toggleActiveApplicationAssignment,
         Action<bool> automaticModeChanged,
         Action showConfiguration,
         Action emergencyDisable,
         Action exit)
     {
         ArgumentNullException.ThrowIfNull(toggleForActiveWindow);
-        ArgumentNullException.ThrowIfNull(toggleActiveApplicationProfile);
+        ArgumentNullException.ThrowIfNull(toggleActiveApplicationAssignment);
         ArgumentNullException.ThrowIfNull(automaticModeChanged);
         ArgumentNullException.ThrowIfNull(showConfiguration);
         ArgumentNullException.ThrowIfNull(emergencyDisable);
@@ -48,7 +48,7 @@ internal sealed class TrayPresenter : IDisposable
 
         var toggleProfileItem = new ToolStripMenuItem(
             "Toggle automatic profile for current application");
-        toggleProfileItem.Click += (_, _) => toggleActiveApplicationProfile();
+        toggleProfileItem.Click += (_, _) => toggleActiveApplicationAssignment();
         AppTheme.StyleMenuItem(toggleProfileItem);
 
         _automaticModeItem = new ToolStripMenuItem("Automatic mode")

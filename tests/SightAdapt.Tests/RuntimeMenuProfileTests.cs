@@ -55,10 +55,10 @@ public sealed class RuntimeMenuProfileTests
 
         Assert.IsTrue(context.Overlay.IsActive);
         Assert.AreEqual(
-            VisualProfile.DefaultNoneId,
+            VisualProfileCatalog.DefaultNoneId,
             context.Overlay.PrimaryVisualProfileId);
         Assert.AreEqual(
-            VisualProfile.DefaultInvertId,
+            VisualProfileCatalog.DefaultInvertId,
             context.Overlay.MenuVisualProfileId);
     }
 
@@ -112,16 +112,16 @@ public sealed class RuntimeMenuProfileTests
             var result = Settings.Commit(settings =>
             {
                 var assignment =
-                    ApplicationProfileManagementService
+                    ApplicationAssignmentService
                         .AddOrEnable(
                             settings,
                             _identity)
-                        .Profile;
+                        .Assignment;
                 var primary =
                     VisualProfileManagementService.Create(
                         settings,
                         "Reader primary");
-                ApplicationProfileManagementService
+                ApplicationAssignmentService
                     .AssignVisualProfile(
                         settings,
                         assignment,
@@ -134,7 +134,7 @@ public sealed class RuntimeMenuProfileTests
                         .Create(
                             settings,
                             "Reader menus");
-                    ApplicationProfileManagementService
+                    ApplicationAssignmentService
                         .AssignMenuVisualProfile(
                             settings,
                             assignment,
@@ -155,21 +155,21 @@ public sealed class RuntimeMenuProfileTests
             var result = Settings.Commit(settings =>
             {
                 var assignment =
-                    ApplicationProfileManagementService
+                    ApplicationAssignmentService
                         .AddOrEnable(
                             settings,
                             _identity)
-                        .Profile;
-                ApplicationProfileManagementService
+                        .Assignment;
+                ApplicationAssignmentService
                     .AssignVisualProfile(
                         settings,
                         assignment,
-                        VisualProfile.DefaultNoneId);
-                ApplicationProfileManagementService
+                        VisualProfileCatalog.DefaultNoneId);
+                ApplicationAssignmentService
                     .AssignMenuVisualProfile(
                         settings,
                         assignment,
-                        VisualProfile.DefaultInvertId);
+                        VisualProfileCatalog.DefaultInvertId);
             });
 
             Assert.IsTrue(result.Succeeded);

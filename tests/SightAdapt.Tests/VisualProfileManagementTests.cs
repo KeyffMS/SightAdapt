@@ -30,7 +30,7 @@ public sealed class VisualProfileManagementTests
     {
         var settings = new SightAdaptSettings();
         var source = settings.VisualProfiles.Single(profile =>
-            profile.Id == VisualProfile.DefaultSoftInvertId);
+            profile.Id == VisualProfileCatalog.DefaultSoftInvertId);
         source.Brightness = 0.12f;
         source.Contrast = 1.35f;
         source.HueShiftDegrees = -20.0f;
@@ -64,7 +64,7 @@ public sealed class VisualProfileManagementTests
     {
         var settings = new SightAdaptSettings();
         var builtIn = settings.VisualProfiles.Single(profile =>
-            profile.Id == VisualProfile.DefaultSoftInvertId);
+            profile.Id == VisualProfileCatalog.DefaultSoftInvertId);
 
         Assert.ThrowsException<SettingsValidationException>(() =>
             VisualProfileManagementService.Rename(settings, builtIn, "Changed"));
@@ -76,7 +76,7 @@ public sealed class VisualProfileManagementTests
     public void DetachedProfilesCannotBeMutatedThroughLifecycleAuthority()
     {
         var settings = new SightAdaptSettings();
-        var detached = VisualProfile.CreateDefaultSoftInvert();
+        var detached = VisualProfileCatalog.Default.CreateBuiltInProfile(VisualProfileCatalog.DefaultSoftInvertId);
         detached.Id = "user-detached";
         detached.Name = "Detached";
 
@@ -93,7 +93,7 @@ public sealed class VisualProfileManagementTests
     {
         var settings = new SightAdaptSettings();
         var custom = VisualProfileManagementService.Create(settings, "Reader");
-        settings.Applications =
+        settings.Assignments =
         [
             CreateApplication("C:\\Apps\\Reader.exe", custom.Id),
             CreateApplication("C:\\Apps\\Notes.exe", custom.Id),
@@ -103,7 +103,7 @@ public sealed class VisualProfileManagementTests
 
         Assert.AreEqual(2, reassigned);
         Assert.IsFalse(settings.VisualProfiles.Contains(custom));
-        Assert.IsTrue(settings.Applications.All(application =>
+        Assert.IsTrue(settings.Assignments.All(application =>
             application.VisualProfileId == VisualProfilePolicy.DeletionFallbackProfileId));
     }
 
@@ -112,7 +112,7 @@ public sealed class VisualProfileManagementTests
     {
         var settings = new SightAdaptSettings();
         var custom = VisualProfileManagementService.Create(settings, "Reader");
-        settings.Applications =
+        settings.Assignments =
         [
             CreateApplication("C:\\Apps\\Reader.exe", custom.Id),
         ];
@@ -121,7 +121,7 @@ public sealed class VisualProfileManagementTests
             VisualProfileManagementService.Delete(settings, custom, "missing"));
 
         Assert.IsTrue(settings.VisualProfiles.Contains(custom));
-        Assert.AreEqual(custom.Id, settings.Applications[0].VisualProfileId);
+        Assert.AreEqual(custom.Id, settings.Assignments[0].VisualProfileId);
     }
 
     [TestMethod]
@@ -129,12 +129,12 @@ public sealed class VisualProfileManagementTests
     {
         var settings = new SightAdaptSettings();
         var custom = VisualProfileManagementService.Create(settings, "Reader");
-        settings.Applications =
+        settings.Assignments =
         [
             CreateApplication("C:\\Apps\\Reader.exe", custom.Id),
             CreateApplication(
                 "C:\\Apps\\Notes.exe",
-                VisualProfile.DefaultSoftInvertId),
+                VisualProfileCatalog.DefaultSoftInvertId),
         ];
 
         var count = VisualProfileManagementService.CountAssignments(settings, custom);
@@ -153,7 +153,7 @@ public sealed class VisualProfileManagementTests
         custom.OutputBlack = 0.14f;
         custom.OutputWhite = 0.86f;
         custom.Saturation = 0.45f;
-        settings.Applications =
+        settings.Assignments =
         [
             CreateApplication("C:\\Apps\\Reader.exe", custom.Id),
         ];
@@ -167,7 +167,7 @@ public sealed class VisualProfileManagementTests
         Assert.AreEqual(0.14f, restored.OutputBlack);
         Assert.AreEqual(0.86f, restored.OutputWhite);
         Assert.AreEqual(0.45f, restored.Saturation);
-        Assert.AreEqual(custom.Id, reloaded.Applications[0].VisualProfileId);
+        Assert.AreEqual(custom.Id, reloaded.Assignments[0].VisualProfileId);
     }
 
     [TestMethod]
@@ -210,7 +210,7 @@ public sealed class VisualProfileManagementTests
             first,
             "Reader copy");
         second.Brightness = -0.18f;
-        settings.Applications =
+        settings.Assignments =
         [
             CreateApplication("C:\\Apps\\Reader.exe", first.Id),
             CreateApplication("C:\\Apps\\Notes.exe", second.Id),
@@ -222,18 +222,18 @@ public sealed class VisualProfileManagementTests
         Assert.AreEqual(1, reassigned);
         Assert.AreEqual(
             VisualProfilePolicy.DeletionFallbackProfileId,
-            settings.Applications[0].VisualProfileId);
-        Assert.AreEqual(second.Id, settings.Applications[1].VisualProfileId);
+            settings.Assignments[0].VisualProfileId);
+        Assert.AreEqual(second.Id, settings.Assignments[1].VisualProfileId);
         Assert.AreEqual("Notes muted", second.Name);
         Assert.AreEqual(-0.18f, second.Brightness);
         Assert.IsTrue(settings.VisualProfiles.Contains(second));
     }
 
-    private static ApplicationProfile CreateApplication(
+    private static ApplicationAssignment CreateApplication(
         string path,
         string visualProfileId)
     {
-        return new ApplicationProfile
+        return new ApplicationAssignment
         {
             DisplayName = Path.GetFileNameWithoutExtension(path),
             ExecutableName = Path.GetFileName(path),
