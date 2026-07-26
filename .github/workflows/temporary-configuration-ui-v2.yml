@@ -33,7 +33,7 @@ jobs:
         with:
           dotnet-version: 8.0.x
 
-      - name: Reconstruct reviewed patch
+      - name: Fetch reviewed patch payload
         shell: pwsh
         run: |
           git fetch origin "+refs/heads/agent/0.5.0.50-configuration-ui:refs/remotes/origin/agent/0.5.0.50-configuration-ui"
@@ -46,32 +46,47 @@ jobs:
           import subprocess
           from pathlib import Path
 
-          source_ref = 'origin/agent/0.5.0.50-configuration-ui'
+          source_ref = 'c8f71fdc2a0e759f98a935eb69227cc9f16954ba'
           root = 'tools/0.5.0.50/configuration-ui'
-          paths = subprocess.check_output(
-              ['git', 'ls-tree', '-r', '--name-only', source_ref, root],
-              text=True,
-              encoding='utf-8').splitlines()
-          parts = sorted(
-              path for path in paths
-              if Path(path).name.startswith('payload.'))
-          if not parts:
-              raise RuntimeError('No reviewed configuration UI payload was found.')
+          names = [
+              'payload.00',
+              'payload.01',
+              'payload.02',
+              'payload.03',
+              'payload.03.01',
+              'payload.03.02',
+              'payload.04.00',
+              'payload.04.01',
+          ]
           payload = ''.join(
               subprocess.check_output(
-                  ['git', 'show', f'{source_ref}:{path}'],
+                  ['git', 'show', f'{source_ref}:{root}/{name}'],
                   text=True,
                   encoding='utf-8').strip()
-              for path in parts)
-          Path(os.environ['SIGHTADAPT_PATCH']).write_bytes(
-              gzip.decompress(base64.b64decode(payload)))
-          print(f'reconstructed {len(parts)} payload parts')
+              for name in names)
+          data = gzip.decompress(base64.b64decode(payload))
+          Path(os.environ['SIGHTADAPT_PATCH']).write_bytes(data)
+          print(f'reconstructed {len(names)} parts, {len(data)} patch bytes')
           '@ | python -
+          if (-not (Test-Path $patch)) { throw 'Patch reconstruction did not create a file.' }
+          Get-Item $patch | Format-List FullName,Length
 
+      - name: Apply reviewed patch
+        shell: pwsh
+        run: |
+          $patch = Join-Path $env:RUNNER_TEMP 'configuration-ui.patch'
           git fetch origin "+refs/heads/0.5.0.50-alpha:refs/remotes/origin/0.5.0.50-alpha"
           git reset --hard origin/0.5.0.50-alpha
           git apply --index --whitespace=error-all $patch
+          git diff --cached --check
+          if (-not (Test-Path 'src/SightAdapt/ConfigurationUseCases.cs')) { throw 'ConfigurationUseCases.cs is missing.' }
+          if (-not (Test-Path 'src/SightAdapt/ApplicationAssignmentRow.cs')) { throw 'ApplicationAssignmentRow.cs is missing.' }
+          if (-not (Test-Path 'src/SightAdapt/FormPresentation.cs')) { throw 'FormPresentation.cs is missing.' }
+          if (-not (Test-Path 'src/SightAdapt/ModernSelectorEditingControl.cs')) { throw 'ModernSelectorEditingControl.cs is missing.' }
 
+      - name: Correct automatic-mode result contract
+        shell: pwsh
+        run: |
           $useCasesPath = 'src/SightAdapt/ConfigurationUseCases.cs'
           $source = [IO.File]::ReadAllText($useCasesPath)
           $oldDeclaration = 'public SettingsCommitResult SetAutomaticMode(bool enabled)'
@@ -85,13 +100,10 @@ jobs:
             $source,
             [Text.UTF8Encoding]::new($false))
           git add $useCasesPath
-
           git diff --cached --check
-          if (-not (Test-Path 'src/SightAdapt/ConfigurationUseCases.cs')) { throw 'ConfigurationUseCases.cs is missing.' }
-          if (-not (Test-Path 'src/SightAdapt/ApplicationAssignmentRow.cs')) { throw 'ApplicationAssignmentRow.cs is missing.' }
-          if (-not (Test-Path 'src/SightAdapt/FormPresentation.cs')) { throw 'FormPresentation.cs is missing.' }
-          if (-not (Test-Path 'src/SightAdapt/ModernSelectorEditingControl.cs')) { throw 'ModernSelectorEditingControl.cs is missing.' }
-          if (-not (git diff --cached --name-only)) { throw 'The reviewed patch produced no changes.' }
+          $changed = git diff --cached --name-only
+          $changed | ForEach-Object { Write-Host $_ }
+          if (-not $changed) { throw 'The reviewed patch produced no changes.' }
 
       - name: Restore
         shell: pwsh
