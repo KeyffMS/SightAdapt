@@ -5,7 +5,7 @@ on:
     branches: ["0.5.0.50-alpha"]
 
 permissions:
-  contents: read
+  contents: write
   pull-requests: read
 
 concurrency:
@@ -13,7 +13,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  apply-validate-export:
+  apply-validate-publish-clean:
     if: >-
       github.event.pull_request.head.repo.full_name == github.repository &&
       github.head_ref == 'agent/0.5.0.50-quality-release'
@@ -26,6 +26,7 @@ jobs:
         with:
           ref: ${{ github.head_ref }}
           fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up .NET 8
         uses: actions/setup-dotnet@v4
@@ -69,8 +70,7 @@ jobs:
               "                OwnerType(call.Caller.DeclaringType) is not { } owner ||\n"
               "                !allowed.Contains(owner))")
           if source.count(negative) != 2:
-              raise RuntimeError(
-                  'Expected exactly two null-unsafe allowed-owner checks.')
+              raise RuntimeError('Expected exactly two null-unsafe allowed-owner checks.')
           source = source.replace(negative, negative_replacement)
 
           positive = (
@@ -81,8 +81,7 @@ jobs:
               "                OwnerType(call.Caller.DeclaringType) is { } owner &&\n"
               "                allowedCallers.Contains(owner))")
           if source.count(positive) != 1:
-              raise RuntimeError(
-                  'Expected exactly one null-unsafe caller-owner check.')
+              raise RuntimeError('Expected exactly one null-unsafe caller-owner check.')
           source = source.replace(positive, positive_replacement)
           path.write_text(source, encoding='utf-8', newline='\n')
           '@ | python -
@@ -92,7 +91,6 @@ jobs:
           if (-not (Test-Path 'tests/SightAdapt.Tests/TestSupport.cs')) { throw 'Expected validated marker is missing: tests/SightAdapt.Tests/TestSupport.cs' }
           if (-not (Test-Path 'tests/SightAdapt.Tests/ReleaseMetadataTests.cs')) { throw 'Expected validated marker is missing: tests/SightAdapt.Tests/ReleaseMetadataTests.cs' }
           if (-not (Test-Path 'tools/verify-release-metadata.ps1')) { throw 'Expected validated marker is missing: tools/verify-release-metadata.ps1' }
-          if (-not (git diff --cached --name-only)) { throw 'The reviewed patch produced no changes.' }
 
       - name: Verify release metadata
         shell: pwsh
@@ -134,12 +132,19 @@ jobs:
             -p:PublishSingleFile=true `
             --output $outputDirectory
 
-      - name: Prepare validated publication metadata
+      - name: Publish validated source to clean branch
         shell: pwsh
         run: |
-          git rev-parse "origin/0.5.0.50-alpha^{tree}" | Set-Content -Path (Join-Path $env:RUNNER_TEMP 'base-tree.txt') -Encoding ascii
-          git diff --cached --binary origin/0.5.0.50-alpha | Set-Content -Path (Join-Path $env:RUNNER_TEMP 'validated-quality-release.patch') -Encoding utf8
-          git diff --cached --name-status origin/0.5.0.50-alpha | Set-Content -Path (Join-Path $env:RUNNER_TEMP 'validated-files.txt') -Encoding utf8
+          git restore --staged .github/workflows/build.yml
+          git restore --source=origin/0.5.0.50-alpha --worktree .github/workflows/build.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git diff --cached --check
+          if (-not (git diff --cached --name-only | Select-String 'ReleaseMetadataTests.cs')) {
+            throw 'The validated quality source is not staged.'
+          }
+          git commit -m 'Finish semantic architecture gates and canonical 0.5.0.50 release metadata'
+          git push --force origin "HEAD:refs/heads/agent/0.5.0.50-quality-release-clean"
 
       - name: Upload diagnostics
         if: always()
@@ -153,27 +158,11 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
-      - name: Upload validated source and Windows candidate
+      - name: Upload Windows candidate
+        if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: SightAdapt-0.5.0.50-alpha-validated-${{ github.run_id }}
-          path: |
-            ${{ runner.temp }}/base-tree.txt
-            ${{ runner.temp }}/validated-quality-release.patch
-            ${{ runner.temp }}/validated-files.txt
-            ${{ runner.temp }}/quality-release-results/quality-release.trx
-            ${{ runner.temp }}/quality-release-publish/
-            .github/
-            docs/
-            src/
-            tests/
-            tools/
-            Directory.Build.props
-            .gitignore
-            CONTRIBUTING.md
-            LICENSE
-            README.md
-            SECURITY.md
+          name: SightAdapt-0.5.0.50-alpha-win-x64-${{ github.run_id }}
+          path: ${{ runner.temp }}/quality-release-publish/
           if-no-files-found: error
-          include-hidden-files: true
           retention-days: 14
