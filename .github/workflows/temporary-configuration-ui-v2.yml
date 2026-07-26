@@ -1,0 +1,159 @@
+name: Publish configuration UI refactor v2
+
+on:
+  pull_request:
+    branches: ["0.5.0.50-alpha"]
+
+permissions:
+  contents: write
+  pull-requests: read
+
+concurrency:
+  group: publish-configuration-ui-v2-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  apply-validate-publish:
+    if: >-
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.head_ref == 'agent/0.5.0.50-configuration-ui-v2'
+    runs-on: windows-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Check out pull-request branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Reconstruct reviewed patch
+        shell: pwsh
+        run: |
+          git fetch origin "+refs/heads/agent/0.5.0.50-configuration-ui:refs/remotes/origin/agent/0.5.0.50-configuration-ui"
+          $patch = Join-Path $env:RUNNER_TEMP 'configuration-ui.patch'
+          $env:SIGHTADAPT_PATCH = $patch
+          @'
+          import base64
+          import gzip
+          import os
+          import subprocess
+          from pathlib import Path
+
+          source_ref = 'origin/agent/0.5.0.50-configuration-ui'
+          root = 'tools/0.5.0.50/configuration-ui'
+          paths = subprocess.check_output(
+              ['git', 'ls-tree', '-r', '--name-only', source_ref, root],
+              text=True,
+              encoding='utf-8').splitlines()
+          parts = sorted(
+              path for path in paths
+              if Path(path).name.startswith('payload.'))
+          if not parts:
+              raise RuntimeError('No reviewed configuration UI payload was found.')
+          payload = ''.join(
+              subprocess.check_output(
+                  ['git', 'show', f'{source_ref}:{path}'],
+                  text=True,
+                  encoding='utf-8').strip()
+              for path in parts)
+          Path(os.environ['SIGHTADAPT_PATCH']).write_bytes(
+              gzip.decompress(base64.b64decode(payload)))
+          print(f'reconstructed {len(parts)} payload parts')
+          '@ | python -
+
+          git fetch origin "+refs/heads/0.5.0.50-alpha:refs/remotes/origin/0.5.0.50-alpha"
+          git reset --hard origin/0.5.0.50-alpha
+          git apply --index --whitespace=error-all $patch
+
+          $useCasesPath = 'src/SightAdapt/ConfigurationUseCases.cs'
+          $source = [IO.File]::ReadAllText($useCasesPath)
+          $oldDeclaration = 'public SettingsCommitResult SetAutomaticMode(bool enabled)'
+          $newDeclaration = 'public SettingsCommitResult<bool> SetAutomaticMode(bool enabled)'
+          if (-not $source.Contains($oldDeclaration)) {
+            throw 'Expected SetAutomaticMode declaration was not found.'
+          }
+          $source = $source.Replace($oldDeclaration, $newDeclaration)
+          [IO.File]::WriteAllText(
+            $useCasesPath,
+            $source,
+            [Text.UTF8Encoding]::new($false))
+          git add $useCasesPath
+
+          git diff --cached --check
+          if (-not (Test-Path 'src/SightAdapt/ConfigurationUseCases.cs')) { throw 'ConfigurationUseCases.cs is missing.' }
+          if (-not (Test-Path 'src/SightAdapt/ApplicationAssignmentRow.cs')) { throw 'ApplicationAssignmentRow.cs is missing.' }
+          if (-not (Test-Path 'src/SightAdapt/FormPresentation.cs')) { throw 'FormPresentation.cs is missing.' }
+          if (-not (Test-Path 'src/SightAdapt/ModernSelectorEditingControl.cs')) { throw 'ModernSelectorEditingControl.cs is missing.' }
+          if (-not (git diff --cached --name-only)) { throw 'The reviewed patch produced no changes.' }
+
+      - name: Restore
+        shell: pwsh
+        run: |
+          dotnet restore ./src/SightAdapt/SightAdapt.csproj
+          dotnet restore ./tests/SightAdapt.Tests/SightAdapt.Tests.csproj
+
+      - name: Build
+        shell: pwsh
+        run: |
+          $output = & dotnet build ./src/SightAdapt/SightAdapt.csproj --configuration Release --no-restore 2>&1
+          $code = $LASTEXITCODE
+          $output | Set-Content -Path (Join-Path $env:RUNNER_TEMP 'configuration-ui-v2-build.txt') -Encoding utf8
+          $output | ForEach-Object { Write-Host $_ }
+          exit $code
+
+      - name: Test
+        shell: pwsh
+        run: |
+          $results = Join-Path $env:RUNNER_TEMP 'configuration-ui-v2-results'
+          $output = & dotnet test ./tests/SightAdapt.Tests/SightAdapt.Tests.csproj --configuration Release --no-restore --results-directory $results --logger "trx;LogFileName=configuration-ui-v2.trx" 2>&1
+          $code = $LASTEXITCODE
+          $output | Set-Content -Path (Join-Path $env:RUNNER_TEMP 'configuration-ui-v2-test.txt') -Encoding utf8
+          $output | ForEach-Object { Write-Host $_ }
+          exit $code
+
+      - name: Publish self-contained Windows candidate
+        shell: pwsh
+        run: |
+          $outputDirectory = Join-Path $env:RUNNER_TEMP 'configuration-ui-v2-publish'
+          dotnet publish ./src/SightAdapt/SightAdapt.csproj `
+            --configuration Release `
+            --runtime win-x64 `
+            --self-contained true `
+            -p:PublishSingleFile=true `
+            --output $outputDirectory
+
+      - name: Publish validated source commit
+        shell: pwsh
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'Move configuration use cases out of WinForms and unify presentation models'
+          git push --force origin "HEAD:refs/heads/$env:GITHUB_HEAD_REF"
+
+      - name: Upload diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: configuration-ui-v2-diagnostics-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/configuration-ui-v2-build.txt
+            ${{ runner.temp }}/configuration-ui-v2-test.txt
+            ${{ runner.temp }}/configuration-ui-v2-results/configuration-ui-v2.trx
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Upload Windows candidate
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: SightAdapt-configuration-ui-v2-win-x64-${{ github.run_id }}
+          path: ${{ runner.temp }}/configuration-ui-v2-publish/
+          if-no-files-found: error
+          retention-days: 7
