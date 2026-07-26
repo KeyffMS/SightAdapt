@@ -17,8 +17,6 @@ jobs:
     if: github.head_ref == 'agent/0.5.0.50-runtime-contracts-v3'
     runs-on: windows-latest
     timeout-minutes: 30
-    env:
-      BASE_BRANCH: 0.5.0.50-alpha
     steps:
       - name: Check out pull-request branch
         uses: actions/checkout@v4
@@ -35,7 +33,6 @@ jobs:
       - name: Apply reviewed runtime patch
         shell: pwsh
         run: |
-          git fetch origin $env:BASE_BRANCH
           $patch = Join-Path $env:RUNNER_TEMP 'runtime-contracts.patch'
           $env:RUNTIME_PATCH = $patch
           @'
@@ -56,7 +53,6 @@ jobs:
           Remove-Item .github/workflows/temporary-runtime-contracts.yml
           Remove-Item tools/0.5.0.50/runtime-contracts -Recurse
           git diff --check
-          git status --short
 
       - name: Restore
         shell: pwsh
@@ -82,7 +78,6 @@ jobs:
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git reset "origin/$env:BASE_BRANCH"
           git add --all
           git diff --cached --check
           $changed = git diff --cached --name-only
@@ -91,7 +86,7 @@ jobs:
             throw 'The validated runtime source is not staged.'
           }
           git commit -m 'Use explicit runtime contracts and coherent settings snapshots'
-          git push --force origin "HEAD:refs/heads/$env:GITHUB_HEAD_REF"
+          git push origin "HEAD:refs/heads/$env:GITHUB_HEAD_REF"
 
       - name: Upload diagnostics
         if: always()
