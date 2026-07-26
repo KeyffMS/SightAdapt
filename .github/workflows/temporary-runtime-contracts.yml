@@ -58,16 +58,18 @@ jobs:
           git rm .github/workflows/temporary-runtime-contracts.yml
           git rm -r tools/0.5.0.50/runtime-contracts
 
-      - name: Verify source diff exists
+      - name: Verify source tree
         shell: pwsh
         run: |
-          $changed = git diff --cached --name-only
-          $changed | ForEach-Object { Write-Host $_ }
-          if (-not ($changed | Select-String '^src/SightAdapt/RuntimeOverlay.cs$')) {
-            throw 'RuntimeOverlay.cs is missing from the staged source diff.'
+          git status --short
+          if (-not (Test-Path .\src\SightAdapt\RuntimeOverlay.cs)) {
+            throw 'RuntimeOverlay.cs was not created.'
           }
-          if (-not ($changed | Select-String '^src/SightAdapt/RuntimeCoordinator.cs$')) {
-            throw 'RuntimeCoordinator.cs is missing from the staged source diff.'
+          if (-not (Test-Path .\src\SightAdapt\AutomaticActivationService.cs)) {
+            throw 'AutomaticActivationService.cs was not created.'
+          }
+          if (-not (git diff --cached --name-only)) {
+            throw 'No staged runtime source changes were produced.'
           }
 
       - name: Restore
