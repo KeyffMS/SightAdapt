@@ -37,8 +37,6 @@ internal sealed class VisualProfileManagerForm : Form
         RefreshProfiles();
     }
 
-    private SightAdaptSettings Settings => _settingsCoordinator.Current;
-
     internal int RefreshGeneration { get; private set; }
 
     public static void ShowManager(IWin32Window owner, SettingsCoordinator settingsCoordinator)
@@ -291,15 +289,16 @@ internal sealed class VisualProfileManagerForm : Form
             return;
         }
 
+        var settings = _settingsCoordinator.Current;
         selectedProfileId ??= GetSelectedProfile()?.Id;
         _profilesGrid.Rows.Clear();
-        foreach (var profile in Settings.VisualProfiles)
+        foreach (var profile in settings.VisualProfiles)
         {
             var index = _profilesGrid.Rows.Add(
                 profile.Name,
                 VisualProfileManagementService.IsBuiltIn(profile) ? "Built-in" : "User-defined",
                 VisualProfileCatalog.Default.GetTransformDisplayName(profile.TransformId),
-                VisualProfileManagementService.CountAssignments(Settings, profile));
+                VisualProfileManagementService.CountAssignments(settings, profile));
             var row = _profilesGrid.Rows[index];
             row.Tag = profile;
             if (string.Equals(profile.Id, selectedProfileId, StringComparison.OrdinalIgnoreCase))
@@ -309,9 +308,9 @@ internal sealed class VisualProfileManagerForm : Form
             }
         }
 
-        _profileCountLabel.Text = Settings.VisualProfiles.Count == 1
+        _profileCountLabel.Text = settings.VisualProfiles.Count == 1
             ? "1 PROFILE"
-            : $"{Settings.VisualProfiles.Count} PROFILES";
+            : $"{settings.VisualProfiles.Count} PROFILES";
         if (_profilesGrid.CurrentRow is null && _profilesGrid.Rows.Count > 0)
         {
             _profilesGrid.Rows[0].Selected = true;
@@ -341,8 +340,9 @@ internal sealed class VisualProfileManagerForm : Form
 
     private void CreateProfile()
     {
+        var settings = _settingsCoordinator.Current;
         var suggested = VisualProfileManagementService.CreateAvailableName(
-            Settings,
+            settings,
             VisualProfilePolicy.CustomProfileBaseName);
         if (!VisualProfileNameDialog.TryGetName(
                 this,
@@ -365,7 +365,10 @@ internal sealed class VisualProfileManagerForm : Form
             return;
         }
 
-        var suggested = VisualProfileManagementService.CreateAvailableName(Settings, source.Name + " copy");
+        var settings = _settingsCoordinator.Current;
+        var suggested = VisualProfileManagementService.CreateAvailableName(
+            settings,
+            source.Name + " copy");
         if (!VisualProfileNameDialog.TryGetName(
                 this,
                 "Duplicate profile",
@@ -436,11 +439,12 @@ internal sealed class VisualProfileManagerForm : Form
             return;
         }
 
+        var settings = _settingsCoordinator.Current;
         var fallback = ProfileResolver.FindVisualProfile(
-            Settings,
+            settings,
             VisualProfilePolicy.DeletionFallbackProfileId) ??
             throw new InvalidOperationException("The fallback profile is missing.");
-        var assignments = VisualProfileManagementService.CountAssignments(Settings, profile);
+        var assignments = VisualProfileManagementService.CountAssignments(settings, profile);
         var usage = assignments == 1
             ? "1 application uses this profile"
             : $"{assignments} applications use this profile";

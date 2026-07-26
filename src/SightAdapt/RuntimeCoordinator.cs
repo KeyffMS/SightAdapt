@@ -5,50 +5,14 @@ internal sealed record ApplicationAssignmentToggleNotification(
     bool WasCreated,
     bool IsEnabled);
 
-internal enum RuntimeActivationMode
-{
-    Manual,
-    Automatic,
-}
-
-internal interface IRuntimeOverlay
-{
-    bool IsActive { get; }
-
-    nint TargetWindow { get; }
-
-    void Activate(
-        nint targetWindow,
-        VisualProfile visualProfile,
-        OverlayScope overlayScope);
-
-    void Activate(
-        nint targetWindow,
-        VisualProfile visualProfile,
-        VisualProfile menuVisualProfile,
-        OverlayScope overlayScope)
-    {
-        ArgumentNullException.ThrowIfNull(
-            menuVisualProfile);
-        Activate(
-            targetWindow,
-            visualProfile,
-            overlayScope);
-    }
-
-    void Disable();
-}
-
 internal sealed class RuntimeCoordinator
 {
     private readonly SettingsCoordinator _settingsCoordinator;
     private readonly ApplicationStateController _stateController;
-    private readonly IRuntimeOverlay _overlay;
-    private readonly Func<nint> _resolveTargetWindow;
-    private readonly Func<nint, bool> _isSupportedTarget;
-    private readonly Func<nint, ApplicationIdentity?> _resolveIdentity;
-    private readonly Action<string> _showNotification;
-    private readonly Action<bool> _synchronizeAutomaticMode;
+    private readonly IRuntimeEnvironment _environment;
+    private readonly RuntimeOverlayActivator _overlayActivator;
+    private readonly AutomaticActivationService _automaticActivation;
+    private readonly Func<SightAdaptSettings> _readSettings;
     private bool _committingSettings;
 
     public RuntimeCoordinator(
@@ -60,77 +24,101 @@ internal sealed class RuntimeCoordinator
         Func<nint, ApplicationIdentity?> resolveIdentity,
         Action<string> showNotification,
         Action<bool> synchronizeAutomaticMode)
+        : this(
+            settingsCoordinator,
+            stateController,
+            overlay,
+            new DelegateRuntimeEnvironment(
+                resolveTargetWindow,
+                isSupportedTarget,
+                resolveIdentity,
+                showNotification,
+                synchronizeAutomaticMode),
+            readSettings: null)
+    {
+    }
+
+    internal RuntimeCoordinator(
+        SettingsCoordinator settingsCoordinator,
+        ApplicationStateController stateController,
+        IRuntimeOverlay overlay,
+        IRuntimeEnvironment environment,
+        Func<SightAdaptSettings>? readSettings)
     {
         _settingsCoordinator = settingsCoordinator ??
             throw new ArgumentNullException(nameof(settingsCoordinator));
         _stateController = stateController ??
             throw new ArgumentNullException(nameof(stateController));
-        _overlay = overlay ??
-            throw new ArgumentNullException(nameof(overlay));
-        _resolveTargetWindow = resolveTargetWindow ??
-            throw new ArgumentNullException(nameof(resolveTargetWindow));
-        _isSupportedTarget = isSupportedTarget ??
-            throw new ArgumentNullException(nameof(isSupportedTarget));
-        _resolveIdentity = resolveIdentity ??
-            throw new ArgumentNullException(nameof(resolveIdentity));
-        _showNotification = showNotification ??
-            throw new ArgumentNullException(nameof(showNotification));
-        _synchronizeAutomaticMode = synchronizeAutomaticMode ??
-            throw new ArgumentNullException(nameof(synchronizeAutomaticMode));
+        _environment = environment ??
+            throw new ArgumentNullException(nameof(environment));
+        _readSettings = readSettings ??
+            (() => _settingsCoordinator.Current);
+        _overlayActivator = new RuntimeOverlayActivator(
+            stateController,
+            overlay,
+            environment);
+        _automaticActivation = new AutomaticActivationService(
+            stateController,
+            _overlayActivator,
+            environment);
     }
-
-    private SightAdaptSettings Settings =>
-        _settingsCoordinator.Current;
 
     public void ToggleForActiveWindow()
     {
-        var target = _resolveTargetWindow();
-        if (target == nint.Zero)
+        var targetWindow =
+            _environment.ResolveTargetWindow();
+        if (targetWindow == nint.Zero)
         {
-            _showNotification(
-                "No supported application window is currently available.");
+            _environment.ShowNotification(
+                RuntimeMessages.NoSupportedWindow);
             return;
         }
 
-        if (_overlay.IsActive &&
-            _overlay.TargetWindow == target)
+        var settings = ReadSettings();
+        if (_overlayActivator.Overlay.IsActive &&
+            _overlayActivator.Overlay.TargetWindow == targetWindow)
         {
-            DisableOverlay();
+            _overlayActivator.Disable();
 
-            if (Settings.AutomaticMode &&
-                IsConfiguredApplication(target))
+            if (settings.AutomaticMode &&
+                _automaticActivation.IsConfigured(
+                    settings,
+                    targetWindow))
             {
-                _stateController.SuppressAutomaticFor(target);
+                _stateController.SuppressAutomaticFor(
+                    targetWindow);
             }
 
             return;
         }
 
-        var identity = _resolveIdentity(target);
+        var identity =
+            _environment.ResolveIdentity(targetWindow);
         var assignment = identity is null
             ? null
             : ProfileResolver.FindAssignment(
-                Settings,
+                settings,
                 identity);
 
         _stateController.ClearAutomaticSuppression();
-        ActivateOverlay(
-            target,
+        _overlayActivator.Activate(
+            settings,
+            targetWindow,
             RuntimeActivationMode.Manual,
             assignment);
     }
 
     public void ToggleActiveApplicationAssignment()
     {
-        var target = _resolveTargetWindow();
-        var identity = target == nint.Zero
+        var targetWindow =
+            _environment.ResolveTargetWindow();
+        var identity = targetWindow == nint.Zero
             ? null
-            : _resolveIdentity(target);
+            : _environment.ResolveIdentity(targetWindow);
         if (identity is null)
         {
-            _showNotification(
-                "The active application's executable path could not be read. " +
-                "Use the configuration panel to select its .exe file.");
+            _environment.ShowNotification(
+                RuntimeMessages.IdentityUnavailable);
             return;
         }
 
@@ -159,46 +147,48 @@ internal sealed class RuntimeCoordinator
         }
 
         var result = commit.Value;
+        var settings = ReadSettings();
         if (result.IsEnabled)
         {
-            ResumeAutomaticOperation();
+            _automaticActivation.Resume(settings);
         }
         else
         {
-            HandleSettingsChanged();
+            _automaticActivation.HandleSettingsChanged(settings);
         }
 
-        _showNotification(result.IsEnabled
-            ? result.WasCreated
-                ? $"{VisualProfilePolicy.NewAssignmentProfileName} " +
-                  $"profile added and enabled: {result.DisplayName}."
-                : $"Automatic profile enabled: {result.DisplayName}."
-            : $"Automatic profile disabled: {result.DisplayName}.");
+        _environment.ShowNotification(
+            RuntimeMessages.AssignmentToggled(result));
     }
 
     public void SetAutomaticMode(bool enabled)
     {
         var commit = CommitSettings(settings =>
-            AutomaticModeManagementService.Set(settings, enabled));
+            AutomaticModeManagementService.Set(
+                settings,
+                enabled));
 
+        var settings = ReadSettings();
         if (!commit.Succeeded)
         {
-            _synchronizeAutomaticMode(Settings.AutomaticMode);
+            _environment.SynchronizeAutomaticMode(
+                settings.AutomaticMode);
             ShowCommitError(commit.ErrorMessage);
             return;
         }
 
         if (enabled)
         {
-            ResumeAutomaticOperation();
+            _automaticActivation.Resume(settings);
         }
         else
         {
-            HandleSettingsChanged();
+            _automaticActivation.HandleSettingsChanged(settings);
         }
     }
 
-    public void HandleForegroundWindowChanged(nint candidate)
+    public void HandleForegroundWindowChanged(
+        nint candidate)
     {
         _stateController.ObserveForeground(candidate);
 
@@ -206,49 +196,29 @@ internal sealed class RuntimeCoordinator
                 ApplicationRunState.ManualActive &&
             _stateController.Current.TargetWindow != candidate)
         {
-            DisableOverlay();
+            _overlayActivator.Disable();
         }
 
-        EvaluateAutomaticForWindow(candidate);
+        _automaticActivation.Evaluate(
+            ReadSettings(),
+            candidate);
     }
 
     public void HandleSettingsChanged()
     {
+        HandleSettingsChanged(ReadSettings());
+    }
+
+    internal void HandleSettingsChanged(
+        IReadOnlySightAdaptSettings settings)
+    {
+        ArgumentNullException.ThrowIfNull(settings);
         if (_committingSettings)
         {
             return;
         }
 
-        if (_stateController.Current.Kind ==
-            ApplicationRunState.ManualActive)
-        {
-            RefreshManualOverlayFromSettings();
-            return;
-        }
-
-        if (!Settings.AutomaticMode)
-        {
-            _stateController.ClearAutomaticSuppression();
-
-            if (_stateController.Current.Kind ==
-                ApplicationRunState.AutomaticActive)
-            {
-                DisableOverlay();
-            }
-
-            return;
-        }
-
-        if (!_stateController.AllowsAutomaticActivation)
-        {
-            return;
-        }
-
-        var target = _resolveTargetWindow();
-        if (target != nint.Zero)
-        {
-            EvaluateAutomaticForWindow(target);
-        }
+        _automaticActivation.HandleSettingsChanged(settings);
     }
 
     public void HandleOverlayClosed()
@@ -261,32 +231,35 @@ internal sealed class RuntimeCoordinator
 
     public void EmergencyDisable()
     {
-        _overlay.Disable();
-        _stateController.SetEmergency(
-            "All overlays were disabled.");
+        _overlayActivator.EmergencyDisable();
 
         var commit = CommitSettings(settings =>
             AutomaticModeManagementService.Disable(settings));
 
         if (commit.Succeeded)
         {
-            _showNotification(
+            _environment.ShowNotification(
                 "All overlays were disabled. Automatic mode is off.");
+            return;
         }
-        else
-        {
-            _synchronizeAutomaticMode(Settings.AutomaticMode);
-            _showNotification(
-                "All overlays were disabled for this session, but " +
-                (commit.ErrorMessage ??
-                 "automatic mode could not be saved."));
-        }
+
+        var settings = ReadSettings();
+        _environment.SynchronizeAutomaticMode(
+            settings.AutomaticMode);
+        _environment.ShowNotification(
+            "All overlays were disabled for this session, but " +
+            (commit.ErrorMessage ??
+             "automatic mode could not be saved."));
     }
 
     public void DisableForExit()
     {
-        _overlay.Disable();
-        _stateController.SetInactive();
+        _overlayActivator.DisableForExit();
+    }
+
+    private SightAdaptSettings ReadSettings()
+    {
+        return _readSettings();
     }
 
     private SettingsCommitResult<T> CommitSettings<T>(
@@ -305,176 +278,11 @@ internal sealed class RuntimeCoordinator
         }
     }
 
-    private void ResumeAutomaticOperation()
-    {
-        if (_stateController.Current.Kind is
-            ApplicationRunState.Emergency or
-            ApplicationRunState.Fault)
-        {
-            _stateController.SetInactive();
-        }
-
-        _stateController.ClearAutomaticSuppression();
-
-        var target = _resolveTargetWindow();
-        if (target != nint.Zero)
-        {
-            EvaluateAutomaticForWindow(target);
-        }
-    }
-
-    private void ActivateOverlay(
-        nint target,
-        RuntimeActivationMode activationMode,
-        ApplicationAssignment? assignment = null)
-    {
-        try
-        {
-            var settings = Settings;
-            var visualProfile =
-                ProfileResolver.ResolveVisualProfile(
-                    settings,
-                    assignment);
-            var menuVisualProfile =
-                ProfileResolver.ResolveMenuVisualProfile(
-                    settings,
-                    assignment);
-            _overlay.Activate(
-                target,
-                visualProfile,
-                menuVisualProfile,
-                assignment?.OverlayScope ??
-                    OverlayScopePolicy.Default);
-
-            switch (activationMode)
-            {
-                case RuntimeActivationMode.Manual:
-                    _stateController.SetManualActive(
-                        target,
-                        visualProfile.Id);
-                    break;
-                case RuntimeActivationMode.Automatic:
-                    _stateController.SetAutomaticActive(
-                        target,
-                        visualProfile.Id);
-                    break;
-                default:
-                    throw new ArgumentOutOfRangeException(
-                        nameof(activationMode));
-            }
-        }
-        catch (Exception exception)
-        {
-            _overlay.Disable();
-
-            var message =
-                $"Could not create the overlay: {exception.Message}";
-            _stateController.SetFault(
-                message,
-                activationMode == RuntimeActivationMode.Automatic
-                    ? target
-                    : nint.Zero);
-            _showNotification(message);
-        }
-    }
-
-    private void DisableOverlay()
-    {
-        _overlay.Disable();
-        _stateController.SetInactive();
-    }
-
-    private void EvaluateAutomaticForWindow(nint target)
-    {
-        var currentState = _stateController.Current.Kind;
-        if (!Settings.AutomaticMode ||
-            !_stateController.AllowsAutomaticActivation ||
-            currentState == ApplicationRunState.ManualActive ||
-            !_isSupportedTarget(target))
-        {
-            return;
-        }
-
-        if (_stateController.IsAutomaticSuppressedFor(target))
-        {
-            if (currentState ==
-                ApplicationRunState.AutomaticActive)
-            {
-                DisableOverlay();
-                _stateController.SuppressAutomaticFor(target);
-            }
-
-            return;
-        }
-
-        var identity = _resolveIdentity(target);
-        if (identity is null)
-        {
-            if (currentState ==
-                ApplicationRunState.AutomaticActive)
-            {
-                DisableOverlay();
-            }
-
-            return;
-        }
-
-        var assignment =
-            ProfileResolver.FindEnabledAssignment(
-                Settings,
-                identity);
-
-        if (assignment is not null)
-        {
-            ActivateOverlay(
-                target,
-                RuntimeActivationMode.Automatic,
-                assignment);
-        }
-        else if (currentState ==
-                 ApplicationRunState.AutomaticActive)
-        {
-            DisableOverlay();
-        }
-    }
-
-    private bool IsConfiguredApplication(nint target)
-    {
-        var identity = _resolveIdentity(target);
-        return identity is not null &&
-            ProfileResolver.FindEnabledAssignment(
-                Settings,
-                identity) is not null;
-    }
-
-    private void RefreshManualOverlayFromSettings()
-    {
-        var target = _stateController.Current.TargetWindow;
-        if (target == nint.Zero ||
-            !_isSupportedTarget(target))
-        {
-            DisableOverlay();
-            return;
-        }
-
-        var identity = _resolveIdentity(target);
-        var assignment = identity is null
-            ? null
-            : ProfileResolver.FindAssignment(
-                Settings,
-                identity);
-
-        ActivateOverlay(
-            target,
-            RuntimeActivationMode.Manual,
-            assignment);
-    }
-
     private void ShowCommitError(string? message)
     {
-        _showNotification(
+        _environment.ShowNotification(
             string.IsNullOrWhiteSpace(message)
-                ? "Settings could not be changed."
+                ? RuntimeMessages.SettingsChangeFailed
                 : message);
     }
 }
