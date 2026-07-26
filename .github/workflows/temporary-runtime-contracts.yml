@@ -25,12 +25,20 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Detect publication state
+        id: state
+        shell: pwsh
+        run: |
+          $needsApply = -not (Test-Path .\src\SightAdapt\RuntimeOverlay.cs)
+          "needs_apply=$($needsApply.ToString().ToLowerInvariant())" >> $env:GITHUB_OUTPUT
+
       - name: Set up .NET 8
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 8.0.x
 
       - name: Apply reviewed runtime patch
+        if: steps.state.outputs.needs_apply == 'true'
         shell: pwsh
         run: |
           $patch = Join-Path $env:RUNNER_TEMP 'runtime-contracts.patch'
@@ -50,7 +58,6 @@ jobs:
               gzip.decompress(base64.b64decode(payload)))
           '@ | python -
           git apply --whitespace=error-all $patch
-          Remove-Item .github/workflows/temporary-runtime-contracts.yml
           Remove-Item tools/0.5.0.50/runtime-contracts -Recurse
           git diff --check
 
@@ -74,6 +81,7 @@ jobs:
           --logger "trx;LogFileName=runtime-contracts.trx"
 
       - name: Publish validated source branch
+        if: steps.state.outputs.needs_apply == 'true'
         shell: pwsh
         run: |
           git config user.name 'github-actions[bot]'
