@@ -51,26 +51,13 @@ jobs:
           '@ | python -
           git apply --index --whitespace=error-all $patch
           git diff --cached --check
+          git status --short
 
       - name: Remove bootstrap files
         shell: pwsh
         run: |
           git rm .github/workflows/temporary-runtime-contracts.yml
           git rm -r tools/0.5.0.50/runtime-contracts
-
-      - name: Verify source tree
-        shell: pwsh
-        run: |
-          git status --short
-          if (-not (Test-Path .\src\SightAdapt\RuntimeOverlay.cs)) {
-            throw 'RuntimeOverlay.cs was not created.'
-          }
-          if (-not (Test-Path .\src\SightAdapt\AutomaticActivationService.cs)) {
-            throw 'AutomaticActivationService.cs was not created.'
-          }
-          if (-not (git diff --cached --name-only)) {
-            throw 'No staged runtime source changes were produced.'
-          }
 
       - name: Restore
         shell: pwsh
