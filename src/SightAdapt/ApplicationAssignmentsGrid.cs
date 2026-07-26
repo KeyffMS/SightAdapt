@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using System.Drawing.Drawing2D;
 
 namespace SightAdapt;
@@ -446,14 +445,24 @@ internal sealed class ApplicationAssignmentsGrid : UserControl
             eventArgs.Context,
             columnName);
 
-        Debug.WriteLine(CreateDataErrorDiagnostic(
-            eventArgs.Exception,
-            eventArgs.Context,
-            eventArgs.RowIndex,
-            eventArgs.ColumnIndex,
-            columnName,
-            executablePath,
-            recovered));
+        Diagnostics.Report(
+            nameof(ApplicationAssignmentsGrid),
+            "Handle selector data error",
+            recovered
+                ? DiagnosticSeverity.Warning
+                : DiagnosticSeverity.Error,
+            recovered
+                ? DiagnosticFailurePolicy.Recovered
+                : DiagnosticFailurePolicy.None,
+            CreateDataErrorDiagnostic(
+                eventArgs.Exception,
+                eventArgs.Context,
+                eventArgs.RowIndex,
+                eventArgs.ColumnIndex,
+                columnName,
+                executablePath,
+                recovered),
+            eventArgs.Exception);
         eventArgs.ThrowException = !recovered;
     }
 

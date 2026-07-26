@@ -24,7 +24,7 @@ internal sealed class SightAdaptContext : ApplicationContext
         _foregroundTracker = new ForegroundWindowTracker();
         _faultStateTimer = new System.Windows.Forms.Timer
         {
-            Interval = 5000,
+            Interval = RuntimeTimingPolicy.Default.FaultRecoveryMilliseconds,
         };
 
         _tray = new TrayPresenter(
@@ -213,7 +213,7 @@ internal sealed class SightAdaptContext : ApplicationContext
         ArgumentNullException.ThrowIfNull(settings);
         var title = state.TargetWindow == nint.Zero
             ? null
-            : NativeMethods.GetWindowTitle(
+            : NativeWindowApi.Default.GetWindowTitle(
                 state.TargetWindow);
         var profileName = ProfileResolver.ResolveVisualProfileName(
             settings,

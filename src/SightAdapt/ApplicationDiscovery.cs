@@ -1,5 +1,5 @@
-using System.ComponentModel;
 using System.Diagnostics;
+using System.ComponentModel;
 
 namespace SightAdapt;
 
@@ -13,7 +13,7 @@ internal static class ApplicationDiscovery
     {
         identity = null!;
 
-        if (!NativeMethods.TryGetProcessIdentityKey(
+        if (!NativeProcessApi.Default.TryGetProcessIdentityKey(
                 window,
                 out var processKey))
         {
@@ -25,7 +25,7 @@ internal static class ApplicationDiscovery
             return true;
         }
 
-        if (!NativeMethods.TryGetProcessPath(
+        if (!NativeProcessApi.Default.TryGetProcessPath(
                 processKey,
                 out var executablePath))
         {
@@ -45,9 +45,13 @@ internal static class ApplicationDiscovery
             UnauthorizedAccessException)
         {
             IdentityCache.Remove(processKey);
-            Debug.WriteLine(
-                $"SightAdapt could not resolve application identity: " +
-                $"{exception}");
+            Diagnostics.Report(
+                nameof(ApplicationDiscovery),
+                "Resolve application identity",
+                DiagnosticSeverity.Warning,
+                DiagnosticFailurePolicy.Recovered,
+                "Application identity could not be resolved.",
+                exception);
             return false;
         }
     }
@@ -113,9 +117,13 @@ internal static class ApplicationDiscovery
             UnauthorizedAccessException or
             Win32Exception)
         {
-            Debug.WriteLine(
-                $"SightAdapt could not read executable metadata: " +
-                $"{exception}");
+            Diagnostics.Report(
+                nameof(ApplicationDiscovery),
+                "Read executable metadata",
+                DiagnosticSeverity.Warning,
+                DiagnosticFailurePolicy.Recovered,
+                "Executable metadata could not be read; the file name will be used.",
+                exception);
         }
 
         return Path.GetFileNameWithoutExtension(

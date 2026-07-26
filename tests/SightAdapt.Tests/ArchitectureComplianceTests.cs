@@ -1,3 +1,5 @@
+using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
@@ -93,6 +95,61 @@ public sealed class ArchitectureComplianceTests
             0,
             violations.Length,
             $"Empty catch blocks found in: {string.Join(", ", violations)}");
+    }
+
+
+    [TestMethod]
+    public void RawNativeImportsStayInInteropBoundary()
+    {
+        var violations = typeof(ProductInfo).Assembly
+            .GetTypes()
+            .SelectMany(type => type.GetMethods(
+                BindingFlags.Public |
+                BindingFlags.NonPublic |
+                BindingFlags.Static |
+                BindingFlags.Instance))
+            .Where(method => method.GetCustomAttribute<DllImportAttribute>() is not null)
+            .Where(method => method.DeclaringType?.FullName?.StartsWith(
+                "SightAdapt.NativeInterop+",
+                StringComparison.Ordinal) != true)
+            .Select(method =>
+                $"{method.DeclaringType?.FullName}.{method.Name}")
+            .OrderBy(name => name)
+            .ToArray();
+
+        Assert.AreEqual(
+            0,
+            violations.Length,
+            "Raw DllImport declarations found outside NativeInterop: " +
+            string.Join(", ", violations));
+    }
+
+    [TestMethod]
+    public void DirectDebugWritesStayInDiagnosticSink()
+    {
+        var violations = Directory
+            .EnumerateFiles(
+                SourceDirectory,
+                "*.cs",
+                SearchOption.AllDirectories)
+            .Where(path => !string.Equals(
+                Path.GetFileName(path),
+                "Diagnostics.cs",
+                StringComparison.OrdinalIgnoreCase))
+            .Where(path => File.ReadAllText(path).Contains(
+                "Debug.WriteLine",
+                StringComparison.Ordinal))
+            .Select(path => Path.GetRelativePath(
+                SourceDirectory,
+                path))
+            .OrderBy(path => path)
+            .ToArray();
+
+        Assert.AreEqual(
+            0,
+            violations.Length,
+            "Direct Debug.WriteLine calls found outside Diagnostics: " +
+            string.Join(", ", violations));
     }
 
     [TestMethod]

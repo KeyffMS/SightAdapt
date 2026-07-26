@@ -1,5 +1,4 @@
 using System.ComponentModel;
-using System.Diagnostics;
 using System.Runtime.InteropServices;
 
 namespace SightAdapt;
@@ -57,11 +56,21 @@ internal static class NativeCall
         bool succeeded,
         string operation)
     {
-        return TryTransient(
-            succeeded,
+        ArgumentException.ThrowIfNullOrWhiteSpace(operation);
+        if (succeeded)
+        {
+            return true;
+        }
+
+        var errorCode = Marshal.GetLastWin32Error();
+        Diagnostics.Report(
+            nameof(NativeCall),
             operation,
-            Marshal.GetLastWin32Error,
-            ReportFailure);
+            DiagnosticSeverity.Warning,
+            DiagnosticFailurePolicy.Transient,
+            FormatFailure(operation, errorCode),
+            nativeErrorCode: errorCode);
+        return false;
     }
 
     internal static bool TryTransient(
@@ -88,11 +97,20 @@ internal static class NativeCall
         bool succeeded,
         string operation)
     {
-        BestEffort(
-            succeeded,
+        ArgumentException.ThrowIfNullOrWhiteSpace(operation);
+        if (succeeded)
+        {
+            return;
+        }
+
+        var errorCode = Marshal.GetLastWin32Error();
+        Diagnostics.Report(
+            nameof(NativeCall),
             operation,
-            Marshal.GetLastWin32Error,
-            ReportFailure);
+            DiagnosticSeverity.Warning,
+            DiagnosticFailurePolicy.BestEffort,
+            FormatFailure(operation, errorCode),
+            nativeErrorCode: errorCode);
     }
 
     internal static void BestEffort(
@@ -127,9 +145,15 @@ internal static class NativeCall
         string operation,
         int errorCode)
     {
-        return new Win32Exception(
-            errorCode,
-            FormatFailure(operation, errorCode));
+        var message = FormatFailure(operation, errorCode);
+        Diagnostics.Report(
+            nameof(NativeCall),
+            operation,
+            DiagnosticSeverity.Error,
+            DiagnosticFailurePolicy.Critical,
+            message,
+            nativeErrorCode: errorCode);
+        return new Win32Exception(errorCode, message);
     }
 
     private static void ValidateArguments(
@@ -140,9 +164,4 @@ internal static class NativeCall
         ArgumentNullException.ThrowIfNull(getLastError);
     }
 
-    private static void ReportFailure(
-        string message)
-    {
-        Debug.WriteLine($"SightAdapt native call: {message}");
-    }
 }

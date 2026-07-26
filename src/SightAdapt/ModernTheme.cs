@@ -123,15 +123,15 @@ internal static class AppTheme
     private static void EnableDarkTitleBar(nint handle)
     {
         var enabled = 1;
-        if (NativeMethods.DwmSetWindowAttribute(
+        if (NativeDwmApi.Default.SetWindowAttribute(
                 handle,
-                NativeMethods.DwmwaUseImmersiveDarkMode,
+                NativeConstants.DwmwaUseImmersiveDarkMode,
                 ref enabled,
                 sizeof(int)) != 0)
         {
-            NativeMethods.DwmSetWindowAttribute(
+            NativeDwmApi.Default.SetWindowAttribute(
                 handle,
-                NativeMethods.DwmwaUseImmersiveDarkModeBefore20H1,
+                NativeConstants.DwmwaUseImmersiveDarkModeBefore20H1,
                 ref enabled,
                 sizeof(int));
         }

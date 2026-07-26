@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
 
@@ -139,9 +138,13 @@ internal sealed class SettingsStore
             catch (Exception cleanupException)
                 when (primaryException is not null)
             {
-                Debug.WriteLine(
-                    "SightAdapt could not remove the temporary settings " +
-                    $"file after a save failure: {cleanupException}");
+                Diagnostics.Report(
+                    nameof(SettingsStore),
+                    "Remove temporary settings file",
+                    DiagnosticSeverity.Warning,
+                    DiagnosticFailurePolicy.BestEffort,
+                    "The temporary settings file could not be removed after a save failure.",
+                    cleanupException);
             }
         }
     }
