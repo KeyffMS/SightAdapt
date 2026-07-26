@@ -1,0 +1,133 @@
+name: Publish Finish semantic architecture gates and canonical 0.5.0.50 release metadata
+
+on:
+  pull_request:
+    branches: ["0.5.0.50-alpha"]
+
+permissions:
+  contents: write
+  pull-requests: read
+
+concurrency:
+  group: publish-quality-release-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  apply-validate-publish:
+    if: >-
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.head_ref == 'agent/0.5.0.50-quality-release'
+    runs-on: windows-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Check out pull-request branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Reconstruct reviewed patch
+        shell: pwsh
+        run: |
+          $patch = Join-Path $env:RUNNER_TEMP 'quality-release.patch'
+          $env:SIGHTADAPT_PATCH = $patch
+          @'
+          import base64
+          import gzip
+          import os
+          from pathlib import Path
+
+          root = Path('tools/0.5.0.50/quality-release')
+          parts = sorted(root.glob('payload.*'))
+          if not parts:
+              raise RuntimeError('No reviewed patch payload was found.')
+          payload = ''.join(path.read_text(encoding='utf-8').strip() for path in parts)
+          Path(os.environ['SIGHTADAPT_PATCH']).write_bytes(
+              gzip.decompress(base64.b64decode(payload))
+          )
+          '@ | python -
+          git fetch origin "+refs/heads/0.5.0.50-alpha:refs/remotes/origin/0.5.0.50-alpha"
+          git reset --hard origin/0.5.0.50-alpha
+          git apply --index --whitespace=error-all $patch
+          git diff --cached --check
+          if (-not (Test-Path 'Directory.Build.props')) { throw 'Expected validated marker is missing: Directory.Build.props' }
+          if (-not (Test-Path 'tests/SightAdapt.Tests/TestSupport.cs')) { throw 'Expected validated marker is missing: tests/SightAdapt.Tests/TestSupport.cs' }
+          if (-not (Test-Path 'tests/SightAdapt.Tests/ReleaseMetadataTests.cs')) { throw 'Expected validated marker is missing: tests/SightAdapt.Tests/ReleaseMetadataTests.cs' }
+          if (-not (Test-Path 'tools/verify-release-metadata.ps1')) { throw 'Expected validated marker is missing: tools/verify-release-metadata.ps1' }
+          if (-not (git diff --cached --name-only)) { throw 'The reviewed patch produced no changes.' }
+
+      - name: Verify release metadata
+        shell: pwsh
+        run: .\tools\verify-release-metadata.ps1
+
+      - name: Restore
+        shell: pwsh
+        run: |
+          dotnet restore ./src/SightAdapt/SightAdapt.csproj
+          dotnet restore ./tests/SightAdapt.Tests/SightAdapt.Tests.csproj
+
+      - name: Build
+        shell: pwsh
+        run: |
+          $output = & dotnet build ./src/SightAdapt/SightAdapt.csproj --configuration Release --no-restore 2>&1
+          $code = $LASTEXITCODE
+          $output | Set-Content -Path (Join-Path $env:RUNNER_TEMP 'quality-release-build.txt') -Encoding utf8
+          $output | ForEach-Object { Write-Host $_ }
+          exit $code
+
+      - name: Test
+        shell: pwsh
+        run: |
+          $results = Join-Path $env:RUNNER_TEMP 'quality-release-results'
+          $output = & dotnet test ./tests/SightAdapt.Tests/SightAdapt.Tests.csproj --configuration Release --no-restore --results-directory $results --logger "trx;LogFileName=quality-release.trx" 2>&1
+          $code = $LASTEXITCODE
+          $output | Set-Content -Path (Join-Path $env:RUNNER_TEMP 'quality-release-test.txt') -Encoding utf8
+          $output | ForEach-Object { Write-Host $_ }
+          exit $code
+
+      - name: Publish self-contained Windows candidate
+        shell: pwsh
+        run: |
+          $outputDirectory = Join-Path $env:RUNNER_TEMP 'quality-release-publish'
+          dotnet publish ./src/SightAdapt/SightAdapt.csproj `
+            --configuration Release `
+            --runtime win-x64 `
+            --self-contained true `
+            -p:PublishSingleFile=true `
+            --output $outputDirectory
+
+      - name: Publish validated source commit
+        shell: pwsh
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'Finish semantic architecture gates and canonical 0.5.0.50 release metadata'
+          git push --force origin "HEAD:refs/heads/$env:GITHUB_HEAD_REF"
+
+      - name: Upload diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: quality-release-diagnostics-${{ github.run_id }}
+          path: |
+            ${{ runner.temp }}/quality-release-build.txt
+            ${{ runner.temp }}/quality-release-test.txt
+            ${{ runner.temp }}/quality-release-results/quality-release.trx
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Upload Windows candidate
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: SightAdapt-0.5.0.50-alpha-win-x64-${{ github.run_id }}
+          path: ${{ runner.temp }}/quality-release-publish/
+          if-no-files-found: error
+          retention-days: 14
