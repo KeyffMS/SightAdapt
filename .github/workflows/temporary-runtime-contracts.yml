@@ -1,8 +1,12 @@
-name: Temporary runtime contracts validation
+name: Temporary runtime contracts validation v2
 
 on:
   pull_request:
     branches: ["0.5.0.50-alpha"]
+
+concurrency:
+  group: runtime-contracts-v2-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
 
 permissions:
   contents: write
@@ -10,7 +14,7 @@ permissions:
 
 jobs:
   apply-and-validate:
-    if: github.head_ref == 'agent/0.5.0.50-runtime-contracts'
+    if: github.head_ref == 'agent/0.5.0.50-runtime-contracts-v2'
     runs-on: windows-latest
     timeout-minutes: 30
     steps:
@@ -54,6 +58,18 @@ jobs:
           git rm .github/workflows/temporary-runtime-contracts.yml
           git rm -r tools/0.5.0.50/runtime-contracts
 
+      - name: Verify source diff exists
+        shell: pwsh
+        run: |
+          $changed = git diff --cached --name-only
+          $changed | ForEach-Object { Write-Host $_ }
+          if (-not ($changed | Select-String '^src/SightAdapt/RuntimeOverlay.cs$')) {
+            throw 'RuntimeOverlay.cs is missing from the staged source diff.'
+          }
+          if (-not ($changed | Select-String '^src/SightAdapt/RuntimeCoordinator.cs$')) {
+            throw 'RuntimeCoordinator.cs is missing from the staged source diff.'
+          }
+
       - name: Restore
         shell: pwsh
         run: |
@@ -62,12 +78,7 @@ jobs:
 
       - name: Build
         shell: pwsh
-        run: |
-          $output = & dotnet build .\src\SightAdapt\SightAdapt.csproj --configuration Release --no-restore 2>&1
-          $exitCode = $LASTEXITCODE
-          $output | Set-Content -Path "$env:RUNNER_TEMP\runtime-build.txt" -Encoding utf8
-          $output | ForEach-Object { Write-Host $_ }
-          exit $exitCode
+        run: dotnet build .\src\SightAdapt\SightAdapt.csproj --configuration Release --no-restore
 
       - name: Test
         shell: pwsh
@@ -83,7 +94,6 @@ jobs:
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add --all
           git diff --cached --check
           git commit -m 'Use explicit runtime contracts and coherent settings snapshots'
           git push origin "HEAD:refs/heads/$env:GITHUB_HEAD_REF"
@@ -92,9 +102,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: runtime-contracts-${{ github.run_id }}
-          path: |
-            ${{ runner.temp }}\runtime-build.txt
-            ${{ runner.temp }}\runtime-results\runtime-contracts.trx
+          name: runtime-contracts-v2-${{ github.run_id }}
+          path: ${{ runner.temp }}\runtime-results\runtime-contracts.trx
           if-no-files-found: ignore
           retention-days: 3
