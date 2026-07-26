@@ -1,0 +1,33 @@
+name: Temporary 0.5.0.50 source snapshot
+
+on:
+  pull_request:
+    branches: ["0.5.0.50-alpha"]
+
+permissions:
+  contents: read
+
+jobs:
+  snapshot:
+    if: github.head_ref == 'agent/0.5.0.50-source-snapshot'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Upload source snapshot
+        uses: actions/upload-artifact@v4
+        with:
+          name: SightAdapt-0.5.0.50-source
+          path: |
+            .github
+            docs
+            src
+            tests
+            .gitignore
+            CONTRIBUTING.md
+            LICENSE
+            README.md
+            SECURITY.md
+          if-no-files-found: error
+          retention-days: 1
+          include-hidden-files: true
