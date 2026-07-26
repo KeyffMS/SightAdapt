@@ -2,7 +2,7 @@ namespace SightAdapt;
 
 internal sealed class VisualProfileManagerForm : Form
 {
-    private readonly SettingsCoordinator _settingsCoordinator;
+    private readonly VisualProfileUseCases _useCases;
     private readonly DataGridView _profilesGrid;
     private readonly Label _profileCountLabel;
     private readonly ModernButton _duplicateButton;
@@ -11,10 +11,20 @@ internal sealed class VisualProfileManagerForm : Form
     private readonly ModernButton _deleteButton;
     private bool _committingLocalChange;
 
-    internal VisualProfileManagerForm(SettingsCoordinator settingsCoordinator)
+    internal VisualProfileManagerForm(
+        SettingsCoordinator settingsCoordinator)
+        : this(new VisualProfileUseCases(
+            settingsCoordinator ??
+            throw new ArgumentNullException(
+                nameof(settingsCoordinator))))
     {
-        _settingsCoordinator = settingsCoordinator ??
-            throw new ArgumentNullException(nameof(settingsCoordinator));
+    }
+
+    internal VisualProfileManagerForm(
+        VisualProfileUseCases useCases)
+    {
+        _useCases = useCases ??
+            throw new ArgumentNullException(nameof(useCases));
 
         Text = $"{ProductInfo.DisplayName} · Visual profiles";
         StartPosition = FormStartPosition.CenterParent;
@@ -24,16 +34,16 @@ internal sealed class VisualProfileManagerForm : Form
         BackColor = AppTheme.WindowBackground;
         AppTheme.ApplyTo(this);
 
-        _profileCountLabel = CreateCountLabel();
+        _profileCountLabel = FormPresentation.CreateCountLabel();
         _profilesGrid = CreateProfilesGrid();
-        _duplicateButton = CreateActionButton("Duplicate", ModernButtonStyle.Secondary, DuplicateSelectedProfile);
-        _renameButton = CreateActionButton("Rename", ModernButtonStyle.Secondary, RenameSelectedProfile);
-        _editButton = CreateActionButton("Edit parameters", ModernButtonStyle.Secondary, EditSelectedProfile, 145);
-        _deleteButton = CreateActionButton("Delete", ModernButtonStyle.Danger, DeleteSelectedProfile);
+        _duplicateButton = FormPresentation.CreateActionButton("Duplicate", ModernButtonStyle.Secondary, DuplicateSelectedProfile);
+        _renameButton = FormPresentation.CreateActionButton("Rename", ModernButtonStyle.Secondary, RenameSelectedProfile);
+        _editButton = FormPresentation.CreateActionButton("Edit parameters", ModernButtonStyle.Secondary, EditSelectedProfile, 145);
+        _deleteButton = FormPresentation.CreateActionButton("Delete", ModernButtonStyle.Danger, DeleteSelectedProfile);
 
         Controls.Add(CreateRootLayout());
-        _settingsCoordinator.Changed += SettingsChanged;
-        FormClosed += (_, _) => _settingsCoordinator.Changed -= SettingsChanged;
+        _useCases.Changed += SettingsChanged;
+        FormClosed += (_, _) => _useCases.Changed -= SettingsChanged;
         RefreshProfiles();
     }
 
@@ -80,13 +90,13 @@ internal sealed class VisualProfileManagerForm : Form
         layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         layout.RowStyles.Add(new RowStyle(SizeType.Percent, 58));
         layout.RowStyles.Add(new RowStyle(SizeType.Percent, 42));
-        layout.Controls.Add(CreateLabel(
+        layout.Controls.Add(FormPresentation.CreateHeaderLabel(
             "Visual profiles",
             18f,
             FontStyle.Bold,
             AppTheme.TextPrimary,
             ContentAlignment.BottomLeft), 0, 0);
-        layout.Controls.Add(CreateLabel(
+        layout.Controls.Add(FormPresentation.CreateHeaderLabel(
             "Create independent editable profiles and assign them to different applications.",
             9.3f,
             FontStyle.Regular,
@@ -109,10 +119,10 @@ internal sealed class VisualProfileManagerForm : Form
             SelectionMode = DataGridViewSelectionMode.FullRowSelect,
         };
         AppTheme.StyleGrid(grid);
-        grid.Columns.Add(CreateTextColumn("Name", "PROFILE", 240, fill: true));
-        grid.Columns.Add(CreateTextColumn("Type", "TYPE", 130));
-        grid.Columns.Add(CreateTextColumn("Transform", "TRANSFORM", 150));
-        grid.Columns.Add(CreateTextColumn("Assignments", "APPLICATIONS", 135));
+        grid.Columns.Add(FormPresentation.CreateReadOnlyTextColumn("Name", "PROFILE", 240, fill: true));
+        grid.Columns.Add(FormPresentation.CreateReadOnlyTextColumn("Type", "TYPE", 130));
+        grid.Columns.Add(FormPresentation.CreateReadOnlyTextColumn("Transform", "TRANSFORM", 150));
+        grid.Columns.Add(FormPresentation.CreateReadOnlyTextColumn("Assignments", "APPLICATIONS", 135));
         grid.SelectionChanged += (_, _) => UpdateActions();
         grid.CellDoubleClick += (_, eventArgs) =>
         {
@@ -169,7 +179,11 @@ internal sealed class VisualProfileManagerForm : Form
 
     private Control CreateActionBar()
     {
-        var create = CreateActionButton("Create profile", ModernButtonStyle.Primary, CreateProfile, 135);
+        var create = FormPresentation.CreateActionButton(
+            "Create profile",
+            ModernButtonStyle.Primary,
+            CreateProfile,
+            135);
         var close = new ModernButton
         {
             DialogResult = DialogResult.Cancel,
@@ -214,74 +228,6 @@ internal sealed class VisualProfileManagerForm : Form
         return layout;
     }
 
-    private static Label CreateCountLabel()
-    {
-        return new Label
-        {
-            Anchor = AnchorStyles.Right,
-            AutoSize = true,
-            ForeColor = AppTheme.TextSecondary,
-            Font = AppTheme.CreateUiFont(9f, FontStyle.Bold),
-            Margin = new Padding(0, 0, 18, 0),
-            TextAlign = ContentAlignment.MiddleRight,
-        };
-    }
-
-    private static Label CreateLabel(
-        string text,
-        float size,
-        FontStyle style,
-        Color color,
-        ContentAlignment alignment)
-    {
-        return new Label
-        {
-            AutoEllipsis = true,
-            AutoSize = true,
-            Dock = DockStyle.Fill,
-            ForeColor = color,
-            Font = AppTheme.CreateUiFont(size, style),
-            Text = text,
-            TextAlign = alignment,
-        };
-    }
-
-    private static DataGridViewTextBoxColumn CreateTextColumn(
-        string name,
-        string header,
-        int width,
-        bool fill = false)
-    {
-        return new DataGridViewTextBoxColumn
-        {
-            Name = name,
-            HeaderText = header,
-            AutoSizeMode = fill
-                ? DataGridViewAutoSizeColumnMode.Fill
-                : DataGridViewAutoSizeColumnMode.None,
-            Width = width,
-            MinimumWidth = Math.Min(width, 120),
-            SortMode = DataGridViewColumnSortMode.NotSortable,
-        };
-    }
-
-    private static ModernButton CreateActionButton(
-        string text,
-        ModernButtonStyle style,
-        Action action,
-        int minimumWidth = 110)
-    {
-        var button = new ModernButton
-        {
-            Text = text,
-            VisualStyle = style,
-            MinimumSize = new Size(minimumWidth, 40),
-            Margin = new Padding(0, 0, 8, 0),
-        };
-        button.Click += (_, _) => action();
-        return button;
-    }
-
     private void RefreshProfiles(string? selectedProfileId = null)
     {
         if (IsDisposed)
@@ -289,7 +235,7 @@ internal sealed class VisualProfileManagerForm : Form
             return;
         }
 
-        var settings = _settingsCoordinator.Current;
+        var settings = _useCases.Snapshot;
         selectedProfileId ??= GetSelectedProfile()?.Id;
         _profilesGrid.Rows.Clear();
         foreach (var profile in settings.VisualProfiles)
@@ -340,9 +286,7 @@ internal sealed class VisualProfileManagerForm : Form
 
     private void CreateProfile()
     {
-        var settings = _settingsCoordinator.Current;
-        var suggested = VisualProfileManagementService.CreateAvailableName(
-            settings,
+        var suggested = _useCases.CreateAvailableName(
             VisualProfilePolicy.CustomProfileBaseName);
         if (!VisualProfileNameDialog.TryGetName(
                 this,
@@ -354,7 +298,7 @@ internal sealed class VisualProfileManagerForm : Form
             return;
         }
 
-        Commit(settings => VisualProfileManagementService.Create(settings, name).Id);
+        Commit(useCases => useCases.Create(name));
     }
 
     private void DuplicateSelectedProfile()
@@ -365,9 +309,7 @@ internal sealed class VisualProfileManagerForm : Form
             return;
         }
 
-        var settings = _settingsCoordinator.Current;
-        var suggested = VisualProfileManagementService.CreateAvailableName(
-            settings,
+        var suggested = _useCases.CreateAvailableName(
             source.Name + " copy");
         if (!VisualProfileNameDialog.TryGetName(
                 this,
@@ -380,11 +322,8 @@ internal sealed class VisualProfileManagerForm : Form
         }
 
         var sourceId = source.Id;
-        Commit(settings =>
-        {
-            var current = ProfileResolver.RequireVisualProfile(settings, sourceId);
-            return VisualProfileManagementService.Duplicate(settings, current, name).Id;
-        });
+        Commit(useCases =>
+            useCases.Duplicate(sourceId, name));
     }
 
     private void RenameSelectedProfile()
@@ -402,11 +341,8 @@ internal sealed class VisualProfileManagerForm : Form
         }
 
         var profileId = profile.Id;
-        Commit(settings =>
-        {
-            VisualProfileManagementService.Rename(settings, ProfileResolver.RequireVisualProfile(settings, profileId), name);
-            return profileId;
-        });
+        Commit(useCases =>
+            useCases.Rename(profileId, name));
     }
 
     private void EditSelectedProfile()
@@ -424,11 +360,8 @@ internal sealed class VisualProfileManagerForm : Form
         }
 
         var profileId = profile.Id;
-        Commit(settings =>
-        {
-            VisualProfileManagementService.UpdateTuning(settings, ProfileResolver.RequireVisualProfile(settings, profileId), values);
-            return profileId;
-        });
+        Commit(useCases =>
+            useCases.UpdateTuning(profileId, values));
     }
 
     private void DeleteSelectedProfile()
@@ -439,7 +372,7 @@ internal sealed class VisualProfileManagerForm : Form
             return;
         }
 
-        var settings = _settingsCoordinator.Current;
+        var settings = _useCases.Snapshot;
         var fallback = ProfileResolver.FindVisualProfile(
             settings,
             VisualProfilePolicy.DeletionFallbackProfileId) ??
@@ -461,22 +394,21 @@ internal sealed class VisualProfileManagerForm : Form
 
         var profileId = profile.Id;
         var fallbackId = fallback.Id;
-        Commit(settings =>
-        {
-            VisualProfileManagementService.Delete(settings, ProfileResolver.RequireVisualProfile(settings, profileId), fallbackId);
-            return fallbackId;
-        });
+        Commit(useCases =>
+            useCases.Delete(profileId, fallbackId));
     }
 
-    internal void Commit(Func<SightAdaptSettings, string> mutation)
+    internal void Commit(
+        Func<VisualProfileUseCases,
+            SettingsCommitResult<string>> command)
     {
-        ArgumentNullException.ThrowIfNull(mutation);
+        ArgumentNullException.ThrowIfNull(command);
 
         SettingsCommitResult<string> result;
         _committingLocalChange = true;
         try
         {
-            result = _settingsCoordinator.Commit(mutation);
+            result = command(_useCases);
         }
         finally
         {
@@ -505,6 +437,5 @@ internal sealed class VisualProfileManagerForm : Form
             RefreshProfiles();
         }
     }
-
 
 }
