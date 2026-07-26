@@ -28,48 +28,59 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Fetch reviewed patch payload
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $log = Join-Path $env:RUNNER_TEMP 'configuration-ui-v2-reconstruct.txt'
+          Start-Transcript -Path $log -Force
+          try {
+            git fetch origin "+refs/heads/agent/0.5.0.50-configuration-ui:refs/remotes/origin/agent/0.5.0.50-configuration-ui"
+            if ($LASTEXITCODE -ne 0) { throw 'Fetching the source payload branch failed.' }
+
+            $patch = Join-Path $env:RUNNER_TEMP 'configuration-ui.patch'
+            $env:SIGHTADAPT_PATCH = $patch
+            @'
+            import base64
+            import gzip
+            import os
+            import subprocess
+            from pathlib import Path
+
+            source_ref = 'c8f71fdc2a0e759f98a935eb69227cc9f16954ba'
+            root = 'tools/0.5.0.50/configuration-ui'
+            names = [
+                'payload.00',
+                'payload.01',
+                'payload.02',
+                'payload.03',
+                'payload.03.01',
+                'payload.03.02',
+                'payload.04.00',
+                'payload.04.01',
+            ]
+            payload = ''.join(
+                subprocess.check_output(
+                    ['git', 'show', f'{source_ref}:{root}/{name}'],
+                    text=True,
+                    encoding='utf-8').strip()
+                for name in names)
+            data = gzip.decompress(base64.b64decode(payload))
+            Path(os.environ['SIGHTADAPT_PATCH']).write_bytes(data)
+            print(f'reconstructed {len(names)} parts, {len(data)} patch bytes')
+            '@ | python -
+            if ($LASTEXITCODE -ne 0) { throw 'Decoding the reviewed patch failed.' }
+            if (-not (Test-Path $patch)) { throw 'Patch reconstruction did not create a file.' }
+            Get-Item $patch | Format-List FullName,Length
+          }
+          finally {
+            Stop-Transcript
+          }
+
       - name: Set up .NET 8
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 8.0.x
-
-      - name: Fetch reviewed patch payload
-        shell: pwsh
-        run: |
-          git fetch origin "+refs/heads/agent/0.5.0.50-configuration-ui:refs/remotes/origin/agent/0.5.0.50-configuration-ui"
-          $patch = Join-Path $env:RUNNER_TEMP 'configuration-ui.patch'
-          $env:SIGHTADAPT_PATCH = $patch
-          @'
-          import base64
-          import gzip
-          import os
-          import subprocess
-          from pathlib import Path
-
-          source_ref = 'c8f71fdc2a0e759f98a935eb69227cc9f16954ba'
-          root = 'tools/0.5.0.50/configuration-ui'
-          names = [
-              'payload.00',
-              'payload.01',
-              'payload.02',
-              'payload.03',
-              'payload.03.01',
-              'payload.03.02',
-              'payload.04.00',
-              'payload.04.01',
-          ]
-          payload = ''.join(
-              subprocess.check_output(
-                  ['git', 'show', f'{source_ref}:{root}/{name}'],
-                  text=True,
-                  encoding='utf-8').strip()
-              for name in names)
-          data = gzip.decompress(base64.b64decode(payload))
-          Path(os.environ['SIGHTADAPT_PATCH']).write_bytes(data)
-          print(f'reconstructed {len(names)} parts, {len(data)} patch bytes')
-          '@ | python -
-          if (-not (Test-Path $patch)) { throw 'Patch reconstruction did not create a file.' }
-          Get-Item $patch | Format-List FullName,Length
 
       - name: Apply reviewed patch
         shell: pwsh
@@ -101,9 +112,7 @@ jobs:
             [Text.UTF8Encoding]::new($false))
           git add $useCasesPath
           git diff --cached --check
-          $changed = git diff --cached --name-only
-          $changed | ForEach-Object { Write-Host $_ }
-          if (-not $changed) { throw 'The reviewed patch produced no changes.' }
+          if (-not (git diff --cached --name-only)) { throw 'The reviewed patch produced no changes.' }
 
       - name: Restore
         shell: pwsh
@@ -155,6 +164,7 @@ jobs:
         with:
           name: configuration-ui-v2-diagnostics-${{ github.run_id }}
           path: |
+            ${{ runner.temp }}/configuration-ui-v2-reconstruct.txt
             ${{ runner.temp }}/configuration-ui-v2-build.txt
             ${{ runner.temp }}/configuration-ui-v2-test.txt
             ${{ runner.temp }}/configuration-ui-v2-results/configuration-ui-v2.trx
