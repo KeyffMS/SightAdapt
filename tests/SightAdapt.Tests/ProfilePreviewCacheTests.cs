@@ -13,7 +13,7 @@ public sealed class ProfilePreviewCacheTests
         RunOnSta(() =>
         {
             var profile =
-                VisualProfile.CreateDefaultSoftInvert();
+                VisualProfileCatalog.Default.CreateBuiltInProfile(VisualProfileCatalog.DefaultSoftInvertId);
             using var preview = new ColorProfilePreview
             {
                 Profile = profile,
@@ -44,7 +44,7 @@ public sealed class ProfilePreviewCacheTests
         RunOnSta(() =>
         {
             var profile =
-                VisualProfile.CreateDefaultSoftInvert();
+                VisualProfileCatalog.Default.CreateBuiltInProfile(VisualProfileCatalog.DefaultSoftInvertId);
             var preview = new OutputLimitPreview
             {
                 Profile = profile,

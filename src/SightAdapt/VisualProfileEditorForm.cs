@@ -31,14 +31,14 @@ internal sealed class VisualProfileEditorForm : Form
             Dock = DockStyle.Fill,
             Margin = Padding.Empty,
             Profile = _workingProfile,
-            TransformCatalog = VisualTransformCatalog.Default,
+            TransformCatalog = VisualProfileCatalog.Default,
         };
         _outputPreview = new OutputLimitPreview
         {
             Dock = DockStyle.Fill,
             Margin = Padding.Empty,
             Profile = _workingProfile,
-            TransformCatalog = VisualTransformCatalog.Default,
+            TransformCatalog = VisualProfileCatalog.Default,
         };
         _adjustments = VisualAdjustmentDefinitions.All
             .Select(definition => new VisualAdjustmentBinding(
@@ -341,7 +341,8 @@ internal sealed class VisualProfileEditorForm : Form
             ModernButtonStyle.Secondary,
             160);
         reset.AccessibleDescription =
-            "Restore the canonical Soft invert tuning values.";
+            $"Restore the canonical {VisualProfileCatalog.Default.GetTransformDisplayName(
+                SoftInvertVisualTransform.TransformId)} tuning values.";
         reset.Click += (_, _) => ResetValues();
 
         var cancel = CreateButton("Cancel", ModernButtonStyle.Ghost, 100);

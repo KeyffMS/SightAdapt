@@ -10,7 +10,7 @@ public sealed class ProfileResolverLookupTests
     {
         var settings = CreateSettings();
         var assignment =
-            settings.Applications.Single();
+            settings.Assignments.Single();
 
         Assert.AreSame(
             assignment,
@@ -44,7 +44,7 @@ public sealed class ProfileResolverLookupTests
     {
         var settings = CreateSettings();
         var profile = settings.VisualProfiles.Single(candidate =>
-            candidate.Id == VisualProfile.DefaultSoftInvertId);
+            candidate.Id == VisualProfileCatalog.DefaultSoftInvertId);
 
         Assert.AreSame(
             profile,
@@ -84,13 +84,13 @@ public sealed class ProfileResolverLookupTests
     private static SightAdaptSettings CreateSettings()
     {
         var settings = new SightAdaptSettings();
-        settings.Applications.Add(new ApplicationProfile
+        settings.Assignments.Add(new ApplicationAssignment
         {
             DisplayName = "Reader",
             ExecutableName = "Reader.exe",
             ExecutablePath = @"C:\Apps\Reader.exe",
             VisualProfileId =
-                VisualProfile.DefaultSoftInvertId,
+                VisualProfileCatalog.DefaultSoftInvertId,
         });
         return settings;
     }

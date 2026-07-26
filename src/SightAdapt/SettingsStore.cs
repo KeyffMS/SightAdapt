@@ -54,16 +54,18 @@ internal sealed class SettingsStore
         {
             using var stream =
                 File.OpenRead(SettingsPath);
-            var settings =
-                JsonSerializer
-                    .Deserialize<SightAdaptSettings>(
-                        stream,
-                        _serializerOptions) ??
-                new SightAdaptSettings();
+            var persisted = JsonSerializer
+                .Deserialize<PersistedSightAdaptSettings>(
+                    stream,
+                    _serializerOptions);
+            var materialized =
+                PersistedSettingsMapper.ToDomain(persisted);
+            var normalized = SettingsNormalizer.Normalize(
+                materialized.Settings);
 
             SettingsWereMigrated =
-                SettingsNormalizer.Normalize(settings);
-            return settings;
+                materialized.WasMigrated || normalized;
+            return materialized.Settings;
         }
         catch (JsonException exception)
         {
@@ -93,6 +95,8 @@ internal sealed class SettingsStore
         ArgumentNullException.ThrowIfNull(settings);
 
         SettingsNormalizer.Normalize(settings);
+        var persisted =
+            PersistedSettingsMapper.FromDomain(settings);
 
         var directory =
             Path.GetDirectoryName(SettingsPath) ??
@@ -106,10 +110,9 @@ internal sealed class SettingsStore
 
         try
         {
-            var json =
-                JsonSerializer.Serialize(
-                    settings,
-                    _serializerOptions);
+            var json = JsonSerializer.Serialize(
+                persisted,
+                _serializerOptions);
             File.WriteAllText(
                 temporaryPath,
                 json,

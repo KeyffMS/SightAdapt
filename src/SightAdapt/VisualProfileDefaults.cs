@@ -10,10 +10,6 @@ internal readonly record struct VisualProfileTuning(
 
 internal static class VisualProfileDefaults
 {
-    public const string NoneName = "None";
-    public const string ExactInvertName = "Exact invert";
-    public const string SoftInvertName = "Soft invert";
-
     public const float ExactOutputBlack = 0.0f;
     public const float ExactOutputWhite = 1.0f;
     public const float ExactBrightness = 0.0f;
@@ -44,122 +40,8 @@ internal static class VisualProfileDefaults
         SoftSaturation,
         SoftHueShiftDegrees);
 
-    public static VisualProfile CreateNone()
-    {
-        var profile = new VisualProfile
-        {
-            Id = VisualProfile.DefaultNoneId,
-            Name = NoneName,
-            TransformId = NoneVisualTransform.TransformId,
-        };
-        ApplyTuning(profile, ExactInvertTuning);
-        return profile;
-    }
-
-    public static VisualProfile CreateExactInvert()
-    {
-        var profile = new VisualProfile
-        {
-            Id = VisualProfile.DefaultInvertId,
-            Name = ExactInvertName,
-            TransformId = InvertVisualTransform.TransformId,
-        };
-        ApplyTuning(profile, ExactInvertTuning);
-        return profile;
-    }
-
-    public static VisualProfile CreateSoftInvert()
-    {
-        var profile = new VisualProfile
-        {
-            Id = VisualProfile.DefaultSoftInvertId,
-            Name = SoftInvertName,
-            TransformId = SoftInvertVisualTransform.TransformId,
-        };
-        ApplyTuning(profile, SoftInvertTuning);
-        return profile;
-    }
-
-    public static bool CanonicalizeNone(VisualProfile profile)
-    {
-        ArgumentNullException.ThrowIfNull(profile);
-
-        var changed = !string.Equals(
-                profile.Id,
-                VisualProfile.DefaultNoneId,
-                StringComparison.Ordinal) ||
-            !string.Equals(
-                profile.Name,
-                NoneName,
-                StringComparison.Ordinal) ||
-            !string.Equals(
-                profile.TransformId,
-                NoneVisualTransform.TransformId,
-                StringComparison.Ordinal);
-
-        profile.Id = VisualProfile.DefaultNoneId;
-        profile.Name = NoneName;
-        profile.TransformId = NoneVisualTransform.TransformId;
-        return ApplyTuningIfChanged(profile, ExactInvertTuning) || changed;
-    }
-
-    public static bool CanonicalizeExactInvert(VisualProfile profile)
-    {
-        ArgumentNullException.ThrowIfNull(profile);
-
-        var changed = !string.Equals(
-                profile.Id,
-                VisualProfile.DefaultInvertId,
-                StringComparison.Ordinal) ||
-            !string.Equals(profile.Name, ExactInvertName, StringComparison.Ordinal) ||
-            !string.Equals(
-                profile.TransformId,
-                InvertVisualTransform.TransformId,
-                StringComparison.Ordinal);
-
-        profile.Id = VisualProfile.DefaultInvertId;
-        profile.Name = ExactInvertName;
-        profile.TransformId = InvertVisualTransform.TransformId;
-        return ApplyTuningIfChanged(profile, ExactInvertTuning) || changed;
-    }
-
-    public static bool CanonicalizeSoftInvert(VisualProfile profile)
-    {
-        ArgumentNullException.ThrowIfNull(profile);
-
-        var changed = !string.Equals(
-                profile.Id,
-                VisualProfile.DefaultSoftInvertId,
-                StringComparison.Ordinal) ||
-            !string.Equals(profile.Name, SoftInvertName, StringComparison.Ordinal) ||
-            !string.Equals(
-                profile.TransformId,
-                SoftInvertVisualTransform.TransformId,
-                StringComparison.Ordinal);
-
-        profile.Id = VisualProfile.DefaultSoftInvertId;
-        profile.Name = SoftInvertName;
-        profile.TransformId = SoftInvertVisualTransform.TransformId;
-        return ApplyTuningIfChanged(
-            profile,
-            NormalizeSoftInvertTuning(profile)) || changed;
-    }
-
-    public static bool NormalizeTuningForTransform(VisualProfile profile)
-    {
-        ArgumentNullException.ThrowIfNull(profile);
-
-        var tuning = string.Equals(
-            profile.TransformId,
-            SoftInvertVisualTransform.TransformId,
-            StringComparison.OrdinalIgnoreCase)
-                ? NormalizeSoftInvertTuning(profile)
-                : ExactInvertTuning;
-
-        return ApplyTuningIfChanged(profile, tuning);
-    }
-
-    public static VisualProfileTuning NormalizeSoftInvertTuning(VisualProfile profile)
+    public static VisualProfileTuning NormalizeSoftInvertTuning(
+        VisualProfile profile)
     {
         ArgumentNullException.ThrowIfNull(profile);
 
@@ -210,10 +92,12 @@ internal static class VisualProfileDefaults
         profile.HueShiftDegrees = tuning.HueShiftDegrees;
     }
 
-    private static bool ApplyTuningIfChanged(
+    internal static bool ApplyTuningIfChanged(
         VisualProfile profile,
         VisualProfileTuning tuning)
     {
+        ArgumentNullException.ThrowIfNull(profile);
+
         var changed = profile.OutputBlack != tuning.OutputBlack ||
             profile.OutputWhite != tuning.OutputWhite ||
             profile.Brightness != tuning.Brightness ||

@@ -17,9 +17,9 @@ public sealed class MutationPersistenceRegressionTests
             "Reader",
             "Reader.exe",
             Path.Combine(@"C:\Apps", "Reader.exe"));
-        var assignment = ApplicationProfileManagementService
+        var assignment = ApplicationAssignmentService
             .AddOrEnable(settings, identity)
-            .Profile;
+            .Assignment;
         var profile = VisualProfileManagementService.Create(
             settings,
             "Reader colors");
@@ -27,7 +27,7 @@ public sealed class MutationPersistenceRegressionTests
         values.Brightness = 0.18f;
         values.Contrast = 1.25f;
 
-        ApplicationProfileManagementService.AssignVisualProfile(
+        ApplicationAssignmentService.AssignVisualProfile(
             settings,
             assignment,
             profile.Id);
@@ -38,7 +38,7 @@ public sealed class MutationPersistenceRegressionTests
         var restored = store.Load();
         var restoredProfile = restored.VisualProfiles.Single(
             candidate => candidate.Id == profile.Id);
-        var restoredAssignment = restored.Applications.Single();
+        var restoredAssignment = restored.Assignments.Single();
 
         Assert.IsFalse(restored.AutomaticMode);
         Assert.AreEqual(profile.Id, restoredAssignment.VisualProfileId);
@@ -60,10 +60,10 @@ public sealed class MutationPersistenceRegressionTests
                 $"App {index}",
                 $"App{index}.exe",
                 Path.Combine(@"C:\Apps", $"App{index}.exe"));
-            var assignment = ApplicationProfileManagementService
+            var assignment = ApplicationAssignmentService
                 .AddOrEnable(settings, identity)
-                .Profile;
-            ApplicationProfileManagementService.AssignVisualProfile(
+                .Assignment;
+            ApplicationAssignmentService.AssignVisualProfile(
                 settings,
                 assignment,
                 profile.Id);
@@ -75,9 +75,9 @@ public sealed class MutationPersistenceRegressionTests
         }
 
         Assert.AreEqual(3, settings.VisualProfiles.Count);
-        Assert.AreEqual(20, settings.Applications.Count);
-        Assert.IsTrue(settings.Applications.All(assignment =>
-            assignment.VisualProfileId == VisualProfile.DefaultSoftInvertId));
+        Assert.AreEqual(20, settings.Assignments.Count);
+        Assert.IsTrue(settings.Assignments.All(assignment =>
+            assignment.VisualProfileId == VisualProfileCatalog.DefaultSoftInvertId));
         Assert.IsFalse(SettingsStore.Normalize(settings));
     }
 

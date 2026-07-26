@@ -39,11 +39,12 @@ CreateWorkingCopy
       ↓
 Domain-service mutation
       ↓
-SettingsStore.Save
-      ↓
 SettingsNormalizer.Normalize
+(explicit idempotent passes)
       ↓
-atomic file replacement
+PersistedSettingsMapper.FromDomain
+      ↓
+SettingsStore atomic file replacement
       ↓
 Current.ReplaceWith
       ↓
@@ -58,9 +59,10 @@ A failed mutation or failed write does not replace committed settings and does n
 |---|---|
 | Settings transaction and published snapshots | `SettingsCoordinator` |
 | Settings JSON persistence and atomic replacement | `SettingsStore` |
-| Migration, scope canonicalization, normalization, recovery, and reference repair | `SettingsNormalizer` |
+| Persisted JSON DTOs and legacy-field migration | `PersistedSettingsMapper` |
+| Schema, profile, assignment and reference normalization | explicit `ISettingsNormalizationPass` implementations |
 | Runtime use-case orchestration | `RuntimeCoordinator` |
-| Application assignment mutations and overlay scope | `ApplicationProfileManagementService` |
+| Application assignment mutations and overlay scope | `ApplicationAssignmentService` |
 | Visual-profile lifecycle and tuning | `VisualProfileManagementService` |
 | Automatic-mode mutation | `AutomaticModeManagementService` |
 | Runtime mode, target, profile, suppression, and message | `ApplicationStateController` |
@@ -73,7 +75,7 @@ A failed mutation or failed write does not replace committed settings and does n
 | Native call failure classification and diagnostics | `NativeCall` |
 | Native target kind, rendering, geometry refresh, and transition grace | `MagnifierOverlay` |
 | Notification-area presentation | `TrayPresenter` |
-| Application-table presentation and edit mechanics | `ApplicationProfilesGrid` |
+| Application-table presentation and edit mechanics | `ApplicationAssignmentsGrid` |
 | Configuration use cases and dialogs | `ConfigurationForm` |
 | Selector editing contract | `ModernSelectorEditingControl` |
 
@@ -81,15 +83,16 @@ A failed mutation or failed write does not replace committed settings and does n
 
 | Data or rule | Source of truth |
 |---|---|
-| Persisted automatic mode, applications, assignments, scopes, and profiles | `SightAdaptSettings` committed through `SettingsCoordinator` |
+| Persisted JSON shape and legacy compatibility | `PersistedSightAdaptSettings` and `PersistedSettingsMapper` |
+| Committed automatic mode, assignments, scopes, and profiles | `SightAdaptSettings` committed through `SettingsCoordinator` |
 | Runtime mode, target, active profile, suppression, and message | `ApplicationStateController.Current` |
 | Actual overlay resource and target | `OverlayController` and active `MagnifierOverlay` |
-| Per-application overlay scope | `ApplicationProfile.OverlayScopeId` |
-| Optional native-menu profile reference and inheritance sentinel | `ApplicationProfile.MenuVisualProfileId` and `ApplicationMenuProfilePolicy` |
+| Per-application overlay scope | `ApplicationAssignment.OverlayScopeId` |
+| Optional native-menu profile reference and inheritance sentinel | `ApplicationAssignment.MenuVisualProfileId` and `ApplicationMenuProfilePolicy` |
 | Scope enum values, canonical identifiers, aliases, default, and display names | `OverlayScopePolicy` definition table |
-| Profile IDs, fallback, user-ID, and name rules | `VisualProfilePolicy` |
-| Canonical profile values | `VisualProfileDefaults` |
-| Supported transforms and tuning capability | `VisualTransformCatalog` |
+| Built-in profile IDs, names, transforms, ordering, tuning capability and canonicalization | `VisualProfileCatalog` definition table |
+| Assignment defaults, fallbacks, user-ID and user-name rules | `VisualProfilePolicy` |
+| Canonical tuning values and numeric normalization | `VisualProfileDefaults` |
 | Parameter ranges | `VisualProfileLimits` |
 | Product name, version, milestone, repository, author, and license | project and assembly metadata exposed through `ProductInfo` |
 
@@ -136,7 +139,7 @@ Native menu detection, menu-overlay creation, and cross-filter refresh are subor
 
 ## Configuration grid boundary
 
-`ApplicationProfilesGrid` owns columns, rows, selectors, status painting, selection, empty state, stable executable-path keys, separate typed change events, row updates, and failed-cell restoration. It does not know about persistence or dialogs.
+`ApplicationAssignmentsGrid` owns columns, rows, selectors, status painting, selection, empty state, stable executable-path keys, separate typed change events, row updates, and failed-cell restoration. It does not know about persistence or dialogs.
 
 `ConfigurationForm` resolves current committed assignments and translates typed grid events into domain-service mutations wrapped by `SettingsCoordinator.Commit`. It suppresses only its own synchronous full refresh during a grid-originated commit.
 

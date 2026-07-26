@@ -1,6 +1,6 @@
 namespace SightAdapt;
 
-internal sealed record ApplicationProfileToggleNotification(
+internal sealed record ApplicationAssignmentToggleNotification(
     string DisplayName,
     bool WasCreated,
     bool IsEnabled);
@@ -120,7 +120,7 @@ internal sealed class RuntimeCoordinator
             assignment);
     }
 
-    public void ToggleActiveApplicationProfile()
+    public void ToggleActiveApplicationAssignment()
     {
         var target = _resolveTargetWindow();
         var identity = target == nint.Zero
@@ -137,7 +137,7 @@ internal sealed class RuntimeCoordinator
         var commit = CommitSettings(settings =>
         {
             var result =
-                ApplicationProfileManagementService.Toggle(
+                ApplicationAssignmentService.Toggle(
                     settings,
                     identity);
 
@@ -146,7 +146,7 @@ internal sealed class RuntimeCoordinator
                 AutomaticModeManagementService.Enable(settings);
             }
 
-            return new ApplicationProfileToggleNotification(
+            return new ApplicationAssignmentToggleNotification(
                 identity.DisplayName,
                 result.WasCreated,
                 result.IsEnabled);
@@ -170,8 +170,8 @@ internal sealed class RuntimeCoordinator
 
         _showNotification(result.IsEnabled
             ? result.WasCreated
-                ? $"Soft invert profile added and enabled: " +
-                  $"{result.DisplayName}."
+                ? $"{VisualProfilePolicy.NewAssignmentProfileName} " +
+                  $"profile added and enabled: {result.DisplayName}."
                 : $"Automatic profile enabled: {result.DisplayName}."
             : $"Automatic profile disabled: {result.DisplayName}.");
     }
@@ -326,7 +326,7 @@ internal sealed class RuntimeCoordinator
     private void ActivateOverlay(
         nint target,
         RuntimeActivationMode activationMode,
-        ApplicationProfile? assignment = null)
+        ApplicationAssignment? assignment = null)
     {
         try
         {

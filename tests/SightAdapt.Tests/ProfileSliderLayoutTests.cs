@@ -79,7 +79,7 @@ public sealed class ProfileSliderLayoutTests
         RunOnSta(() =>
         {
             using var editor = new VisualProfileEditorForm(
-                VisualProfile.CreateDefaultSoftInvert());
+                VisualProfileCatalog.Default.CreateBuiltInProfile(VisualProfileCatalog.DefaultSoftInvertId));
             var sliders = FindControls<ModernProfileSlider>(editor)
                 .ToDictionary(
                     slider => slider.AccessibleName ??

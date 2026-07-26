@@ -44,7 +44,7 @@ public sealed class RuntimeCoordinatorTests
             ApplicationRunState.AutomaticActive,
             context.State.Current.Kind);
         Assert.AreEqual(
-            VisualProfile.DefaultSoftInvertId,
+            VisualProfileCatalog.DefaultSoftInvertId,
             context.State.Current.VisualProfileId);
     }
 
@@ -55,7 +55,7 @@ public sealed class RuntimeCoordinatorTests
         context.AddDisabledAssignment();
         context.WireSettingsChanged();
 
-        context.Coordinator.ToggleActiveApplicationProfile();
+        context.Coordinator.ToggleActiveApplicationAssignment();
 
         Assert.AreEqual(1, context.Overlay.ActivationCount);
         Assert.IsTrue(context.Overlay.IsActive);
@@ -100,7 +100,7 @@ public sealed class RuntimeCoordinatorTests
         };
         context.Overlay.Activate(
             context.Target,
-            VisualProfile.CreateDefaultSoftInvert(),
+            VisualProfileCatalog.Default.CreateBuiltInProfile(VisualProfileCatalog.DefaultSoftInvertId),
             OverlayScope.ClientArea);
 
         context.Coordinator.EmergencyDisable();
@@ -172,7 +172,7 @@ public sealed class RuntimeCoordinatorTests
         public void AddEnabledAssignment()
         {
             var result = Settings.Commit(settings =>
-                ApplicationProfileManagementService.AddOrEnable(
+                ApplicationAssignmentService.AddOrEnable(
                     settings,
                     _identity));
             Assert.IsTrue(result.Succeeded);
@@ -183,10 +183,10 @@ public sealed class RuntimeCoordinatorTests
             var result = Settings.Commit(settings =>
             {
                 var assignment =
-                    ApplicationProfileManagementService.AddOrEnable(
+                    ApplicationAssignmentService.AddOrEnable(
                         settings,
-                        _identity).Profile;
-                ApplicationProfileManagementService.SetEnabled(
+                        _identity).Assignment;
+                ApplicationAssignmentService.SetEnabled(
                     settings,
                     assignment,
                     enabled: false);

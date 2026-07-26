@@ -7,14 +7,14 @@ namespace SightAdapt.Tests;
 public sealed class MenuVisualProfileTests
 {
     [TestMethod]
-    public void UnsetMenuProfileInheritsApplicationProfile()
+    public void UnsetMenuProfileInheritsApplicationAssignment()
     {
         var settings = new SightAdaptSettings();
         var assignment = AddAssignment(settings);
         var primary = VisualProfileManagementService.Create(
             settings,
             "Reader primary");
-        ApplicationProfileManagementService
+        ApplicationAssignmentService
             .AssignVisualProfile(
                 settings,
                 assignment,
@@ -29,7 +29,7 @@ public sealed class MenuVisualProfileTests
     }
 
     [TestMethod]
-    public void ExplicitMenuProfileOverridesApplicationProfile()
+    public void ExplicitMenuProfileOverridesApplicationAssignment()
     {
         var settings = new SightAdaptSettings();
         var assignment = AddAssignment(settings);
@@ -39,12 +39,12 @@ public sealed class MenuVisualProfileTests
         var menu = VisualProfileManagementService.Create(
             settings,
             "Reader menus");
-        ApplicationProfileManagementService
+        ApplicationAssignmentService
             .AssignVisualProfile(
                 settings,
                 assignment,
                 primary.Id);
-        ApplicationProfileManagementService
+        ApplicationAssignmentService
             .AssignMenuVisualProfile(
                 settings,
                 assignment,
@@ -66,13 +66,13 @@ public sealed class MenuVisualProfileTests
         var menu = VisualProfileManagementService.Create(
             settings,
             "Reader menus");
-        ApplicationProfileManagementService
+        ApplicationAssignmentService
             .AssignMenuVisualProfile(
                 settings,
                 assignment,
                 menu.Id);
 
-        ApplicationProfileManagementService
+        ApplicationAssignmentService
             .AssignMenuVisualProfile(
                 settings,
                 assignment,
@@ -89,7 +89,7 @@ public sealed class MenuVisualProfileTests
 
         Assert.ThrowsException<
             SettingsValidationException>(() =>
-                ApplicationProfileManagementService
+                ApplicationAssignmentService
                     .AssignMenuVisualProfile(
                         settings,
                         assignment,
@@ -104,30 +104,30 @@ public sealed class MenuVisualProfileTests
         var custom = VisualProfileManagementService.Create(
             settings,
             "Reader shared");
-        ApplicationProfileManagementService
+        ApplicationAssignmentService
             .AssignVisualProfile(
                 settings,
                 assignment,
                 custom.Id);
-        ApplicationProfileManagementService
+        ApplicationAssignmentService
             .AssignMenuVisualProfile(
                 settings,
                 assignment,
                 custom.Id);
 
         var changed =
-            ApplicationProfileManagementService
+            ApplicationAssignmentService
                 .ReassignVisualProfile(
                     settings,
                     custom.Id,
-                    VisualProfile.DefaultSoftInvertId);
+                    VisualProfileCatalog.DefaultSoftInvertId);
 
         Assert.AreEqual(1, changed);
         Assert.AreEqual(
-            VisualProfile.DefaultSoftInvertId,
+            VisualProfileCatalog.DefaultSoftInvertId,
             assignment.VisualProfileId);
         Assert.AreEqual(
-            VisualProfile.DefaultSoftInvertId,
+            VisualProfileCatalog.DefaultSoftInvertId,
             assignment.MenuVisualProfileId);
     }
 
@@ -136,16 +136,16 @@ public sealed class MenuVisualProfileTests
     {
         var settings = new SightAdaptSettings
         {
-            Applications =
+            Assignments =
             [
-                new ApplicationProfile
+                new ApplicationAssignment
                 {
                     DisplayName = "Reader",
                     ExecutableName = "reader.exe",
                     ExecutablePath =
                         "C:\\Apps\\reader.exe",
                     VisualProfileId =
-                        VisualProfile.DefaultSoftInvertId,
+                        VisualProfileCatalog.DefaultSoftInvertId,
                     MenuVisualProfileId =
                         "missing-profile",
                 },
@@ -156,7 +156,7 @@ public sealed class MenuVisualProfileTests
 
         Assert.IsTrue(changed);
         Assert.IsNull(
-            settings.Applications[0]
+            settings.Assignments[0]
                 .MenuVisualProfileId);
     }
 
@@ -174,7 +174,7 @@ public sealed class MenuVisualProfileTests
         var menu = VisualProfileManagementService.Create(
             settings,
             "Reader menus");
-        ApplicationProfileManagementService
+        ApplicationAssignmentService
             .AssignMenuVisualProfile(
                 settings,
                 assignment,
@@ -189,7 +189,7 @@ public sealed class MenuVisualProfileTests
             $"\"menuVisualProfileId\": \"{menu.Id}\"");
         Assert.AreEqual(
             menu.Id,
-            reloaded.Applications[0]
+            reloaded.Assignments[0]
                 .MenuVisualProfileId);
     }
 
@@ -197,11 +197,11 @@ public sealed class MenuVisualProfileTests
     public void MenuSelectorDataErrorsUseSelectorRecoveryPolicy()
     {
         Assert.IsTrue(
-            ApplicationProfilesGrid
+            ApplicationAssignmentsGrid
                 .IsExpectedSelectorDataError(
                     new ArgumentException(),
                     DataGridViewDataErrorContexts.Formatting,
-                    ApplicationProfilesGrid
+                    ApplicationAssignmentsGrid
                         .MenuVisualProfileColumnName));
     }
 
@@ -237,7 +237,7 @@ public sealed class MenuVisualProfileTests
             SightAdaptSettings.CurrentSchemaVersion,
             settings.SchemaVersion);
         Assert.IsNull(
-            settings.Applications[0]
+            settings.Assignments[0]
                 .MenuVisualProfileId);
     }
 
@@ -260,17 +260,17 @@ public sealed class MenuVisualProfileTests
                 .FromSelectorId(" user-menu "));
     }
 
-    private static ApplicationProfile AddAssignment(
+    private static ApplicationAssignment AddAssignment(
         SightAdaptSettings settings)
     {
-        return ApplicationProfileManagementService
+        return ApplicationAssignmentService
             .AddOrEnable(
                 settings,
                 new ApplicationIdentity(
                     "Reader",
                     "reader.exe",
                     "C:\\Apps\\reader.exe"))
-            .Profile;
+            .Assignment;
     }
 
     private sealed class TemporaryDirectory : IDisposable

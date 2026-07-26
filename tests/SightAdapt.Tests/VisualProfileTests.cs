@@ -14,8 +14,8 @@ public sealed class VisualProfileTests
         var effect =
             new InvertVisualTransform()
                 .CreateColorEffect(
-                    VisualProfile
-                        .CreateDefaultInvert());
+                    VisualProfileCatalog.Default.CreateBuiltInProfile(
+                    VisualProfileCatalog.DefaultInvertId));
 
         Assert.AreEqual(-1.0f, effect.M00);
         Assert.AreEqual(-1.0f, effect.M11);
@@ -32,13 +32,13 @@ public sealed class VisualProfileTests
     {
         Assert.AreEqual(
             "Exact invert",
-            VisualProfile
-                .CreateDefaultInvert()
+            VisualProfileCatalog.Default.CreateBuiltInProfile(
+                    VisualProfileCatalog.DefaultInvertId)
                 .ToString());
         Assert.AreEqual(
             "Soft invert",
-            VisualProfile
-                .CreateDefaultSoftInvert()
+            VisualProfileCatalog.Default.CreateBuiltInProfile(
+                    VisualProfileCatalog.DefaultSoftInvertId)
                 .ToString());
     }
 
@@ -49,8 +49,8 @@ public sealed class VisualProfileTests
             new StableModernSelectorComboBoxColumn();
         var profiles = new[]
         {
-            VisualProfile.CreateDefaultInvert(),
-            VisualProfile.CreateDefaultSoftInvert(),
+            VisualProfileCatalog.Default.CreateBuiltInProfile(VisualProfileCatalog.DefaultInvertId),
+            VisualProfileCatalog.Default.CreateBuiltInProfile(VisualProfileCatalog.DefaultSoftInvertId),
         };
 
         column.SetProfiles(profiles);
@@ -78,8 +78,8 @@ public sealed class VisualProfileTests
         var effect =
             new SoftInvertVisualTransform()
                 .CreateColorEffect(
-                    VisualProfile
-                        .CreateDefaultSoftInvert());
+                    VisualProfileCatalog.Default.CreateBuiltInProfile(
+                    VisualProfileCatalog.DefaultSoftInvertId));
 
         Assert.AreEqual(
             -0.84f,
@@ -111,7 +111,7 @@ public sealed class VisualProfileTests
     public void SoftInvertComposesContrastAndBrightness()
     {
         var profile =
-            VisualProfile.CreateDefaultSoftInvert();
+            VisualProfileCatalog.Default.CreateBuiltInProfile(VisualProfileCatalog.DefaultSoftInvertId);
         profile.OutputBlack = 0.0f;
         profile.OutputWhite = 1.0f;
         profile.Contrast = 1.5f;
@@ -135,23 +135,23 @@ public sealed class VisualProfileTests
     public void CatalogIsCapabilitySourceOfTruth()
     {
         Assert.IsTrue(
-            VisualTransformCatalog.Default.IsSupported(
+            VisualProfileCatalog.Default.IsSupportedTransform(
                 InvertVisualTransform.TransformId));
         Assert.IsTrue(
-            VisualTransformCatalog.Default.IsSupported(
+            VisualProfileCatalog.Default.IsSupportedTransform(
                 SoftInvertVisualTransform.TransformId));
         Assert.IsFalse(
-            VisualTransformCatalog.Default.IsSupported(
+            VisualProfileCatalog.Default.IsSupportedTransform(
                 "missing"));
         Assert.IsFalse(
-            VisualTransformCatalog.Default.SupportsTuning(
+            VisualProfileCatalog.Default.SupportsTuning(
                 InvertVisualTransform.TransformId));
         Assert.IsTrue(
-            VisualTransformCatalog.Default.SupportsTuning(
+            VisualProfileCatalog.Default.SupportsTuning(
                 SoftInvertVisualTransform.TransformId));
         Assert.AreEqual(
             "Soft invert",
-            VisualTransformCatalog.Default.GetDisplayName(
+            VisualProfileCatalog.Default.GetTransformDisplayName(
                 SoftInvertVisualTransform.TransformId));
     }
 
@@ -159,8 +159,8 @@ public sealed class VisualProfileTests
     public void CatalogContainsSoftInvertTransform()
     {
         var transform =
-            VisualTransformCatalog.Default
-                .GetRequired(
+            VisualProfileCatalog.Default
+                .GetRequiredTransform(
                     SoftInvertVisualTransform.TransformId);
 
         Assert.IsInstanceOfType<
@@ -172,8 +172,8 @@ public sealed class VisualProfileTests
     {
         Assert.ThrowsException<
             InvalidOperationException>(
-            () => VisualTransformCatalog.Default
-                .GetRequired("missing"));
+            () => VisualProfileCatalog.Default
+                .GetRequiredTransform("missing"));
     }
 
     [TestMethod]
@@ -220,7 +220,7 @@ public sealed class VisualProfileTests
 
         Assert.IsNotNull(assignment);
         Assert.AreEqual(
-            VisualProfile.DefaultSoftInvertId,
+            VisualProfileCatalog.DefaultSoftInvertId,
             assignment.VisualProfileId);
     }
 
@@ -230,7 +230,7 @@ public sealed class VisualProfileTests
         var profile =
             ProfileResolver.ResolveVisualProfile(
                 new SightAdaptSettings(),
-                new ApplicationProfile
+                new ApplicationAssignment
                 {
                     VisualProfileId =
                         "missing-profile",
@@ -249,7 +249,7 @@ public sealed class VisualProfileTests
             new SightAdaptSettings();
 
         var result =
-            ApplicationProfileManagementService
+            ApplicationAssignmentService
                 .Toggle(
                     settings,
                     CreateIdentity());
@@ -259,14 +259,14 @@ public sealed class VisualProfileTests
         Assert.AreEqual(
             VisualProfilePolicy
                 .NewAssignmentProfileId,
-            result.Profile.VisualProfileId);
+            result.Assignment.VisualProfileId);
     }
 
     [TestMethod]
     public void ProfileTogglePreservesCustomProfile()
     {
         var customProfile =
-            VisualProfile.CreateDefaultSoftInvert();
+            VisualProfileCatalog.Default.CreateBuiltInProfile(VisualProfileCatalog.DefaultSoftInvertId);
         customProfile.Id = "custom-profile";
         customProfile.Name = "Custom profile";
         var settings =
@@ -274,7 +274,7 @@ public sealed class VisualProfileTests
                 enabled: true);
         settings.VisualProfiles.Add(
             customProfile);
-        settings.Applications[0]
+        settings.Assignments[0]
             .VisualProfileId =
             customProfile.Id;
         var identity = new ApplicationIdentity(
@@ -283,20 +283,20 @@ public sealed class VisualProfileTests
             "C:\\Apps\\Reader.exe");
 
         var disabled =
-            ApplicationProfileManagementService
+            ApplicationAssignmentService
                 .Toggle(settings, identity);
         var enabled =
-            ApplicationProfileManagementService
+            ApplicationAssignmentService
                 .Toggle(settings, identity);
 
         Assert.IsFalse(disabled.IsEnabled);
         Assert.IsTrue(enabled.IsEnabled);
         Assert.AreEqual(
             customProfile.Id,
-            enabled.Profile.VisualProfileId);
+            enabled.Assignment.VisualProfileId);
         Assert.AreEqual(
             "Reader updated",
-            enabled.Profile.DisplayName);
+            enabled.Assignment.DisplayName);
     }
 
     [TestMethod]
@@ -305,12 +305,12 @@ public sealed class VisualProfileTests
         var settings =
             CreateSettingsWithAssignment(
                 enabled: true);
-        settings.Applications[0]
+        settings.Assignments[0]
             .VisualProfileId =
             "missing-profile";
 
         var result =
-            ApplicationProfileManagementService
+            ApplicationAssignmentService
                 .Toggle(
                     settings,
                     CreateIdentity());
@@ -319,7 +319,7 @@ public sealed class VisualProfileTests
         Assert.AreEqual(
             VisualProfilePolicy
                 .MissingReferenceFallbackProfileId,
-            result.Profile.VisualProfileId);
+            result.Assignment.VisualProfileId);
     }
 
     private static SightAdaptSettings
@@ -327,9 +327,9 @@ public sealed class VisualProfileTests
     {
         return new SightAdaptSettings
         {
-            Applications =
+            Assignments =
             [
-                new ApplicationProfile
+                new ApplicationAssignment
                 {
                     DisplayName = "Reader",
                     ExecutableName =
@@ -338,7 +338,7 @@ public sealed class VisualProfileTests
                         "C:\\Apps\\Reader.exe",
                     Enabled = enabled,
                     VisualProfileId =
-                        VisualProfile
+                        VisualProfileCatalog
                             .DefaultSoftInvertId,
                 },
             ],

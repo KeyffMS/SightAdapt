@@ -33,12 +33,12 @@ internal sealed class OutputLimitPreview : Control
     private readonly Font _captionFont;
     private readonly Font _sampleFont;
     private VisualProfile? _profile;
-    private VisualTransformCatalog _transformCatalog =
-        VisualTransformCatalog.Default;
+    private VisualProfileCatalog _transformCatalog =
+        VisualProfileCatalog.Default;
     private Bitmap? _cachedBitmap;
     private ProfilePreviewKey? _cachedProfileKey;
     private Size _cachedSize;
-    private VisualTransformCatalog? _cachedCatalog;
+    private VisualProfileCatalog? _cachedCatalog;
 
     public OutputLimitPreview()
     {
@@ -67,7 +67,7 @@ internal sealed class OutputLimitPreview : Control
         }
     }
 
-    public VisualTransformCatalog TransformCatalog
+    public VisualProfileCatalog TransformCatalog
     {
         get => _transformCatalog;
         set
@@ -157,7 +157,7 @@ internal sealed class OutputLimitPreview : Control
         graphics.Clear(BackColor);
 
         var effect = _transformCatalog
-            .GetRequired(profile.TransformId)
+            .GetRequiredTransform(profile.TransformId)
             .CreateColorEffect(profile);
         var sourceForeground = Color.Black;
         var sourceBackground = Color.White;
@@ -264,12 +264,12 @@ internal sealed class ColorProfilePreview : Control
 
     private readonly Font _labelFont;
     private VisualProfile? _profile;
-    private VisualTransformCatalog _transformCatalog =
-        VisualTransformCatalog.Default;
+    private VisualProfileCatalog _transformCatalog =
+        VisualProfileCatalog.Default;
     private Bitmap? _cachedBitmap;
     private ProfilePreviewKey? _cachedProfileKey;
     private Size _cachedSize;
-    private VisualTransformCatalog? _cachedCatalog;
+    private VisualProfileCatalog? _cachedCatalog;
 
     public ColorProfilePreview()
     {
@@ -297,7 +297,7 @@ internal sealed class ColorProfilePreview : Control
         }
     }
 
-    public VisualTransformCatalog TransformCatalog
+    public VisualProfileCatalog TransformCatalog
     {
         get => _transformCatalog;
         set
@@ -382,7 +382,7 @@ internal sealed class ColorProfilePreview : Control
             Height,
             PixelFormat.Format32bppPArgb);
         var effect = _transformCatalog
-            .GetRequired(profile.TransformId)
+            .GetRequiredTransform(profile.TransformId)
             .CreateColorEffect(profile);
         const int labelWidth = 96;
         const int gap = 5;

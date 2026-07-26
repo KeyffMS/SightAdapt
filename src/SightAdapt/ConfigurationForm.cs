@@ -12,7 +12,7 @@ internal sealed class ConfigurationForm : Form
     private readonly ToggleSwitch _automaticModeSwitch;
     private readonly Label _automaticModeStateLabel;
     private readonly Label _profileCountLabel;
-    private readonly ApplicationProfilesGrid _profilesGrid;
+    private readonly ApplicationAssignmentsGrid _profilesGrid;
     private readonly ModernButton _editVisualProfileButton;
     private bool _refreshing;
     private bool _committingGridValue;
@@ -53,7 +53,7 @@ internal sealed class ConfigurationForm : Form
             160,
             EditSelectedVisualProfile);
         _editVisualProfileButton.Enabled = false;
-        _profilesGrid = new ApplicationProfilesGrid();
+        _profilesGrid = new ApplicationAssignmentsGrid();
         _profilesGrid.ApplicationEnabledChanged += ProfilesGridEnabledChanged;
         _profilesGrid.VisualProfileChanged += ProfilesGridVisualProfileChanged;
         _profilesGrid.MenuVisualProfileChanged += ProfilesGridMenuVisualProfileChanged;
@@ -84,10 +84,10 @@ internal sealed class ConfigurationForm : Form
             _automaticModeSwitch.Checked = Settings.AutomaticMode;
             UpdateAutomaticModeState();
             _profilesGrid.Bind(
-                Settings.Applications,
+                Settings.Assignments,
                 Settings.VisualProfiles);
 
-            var count = Settings.Applications.Count;
+            var count = Settings.Assignments.Count;
             _profileCountLabel.Text = count == 1
                 ? "1 PROFILE"
                 : $"{count} PROFILES";
@@ -509,12 +509,12 @@ internal sealed class ConfigurationForm : Form
 
     private void ProfilesGridEnabledChanged(
         object? sender,
-        ApplicationProfileEnabledChangedEventArgs eventArgs)
+        ApplicationAssignmentEnabledChangedEventArgs eventArgs)
     {
         CommitGridChange(
             eventArgs.ExecutablePath,
             (settings, profile) =>
-                ApplicationProfileManagementService.SetEnabled(
+                ApplicationAssignmentService.SetEnabled(
                     settings,
                     profile,
                     eventArgs.Enabled));
@@ -522,12 +522,12 @@ internal sealed class ConfigurationForm : Form
 
     private void ProfilesGridVisualProfileChanged(
         object? sender,
-        ApplicationProfileVisualProfileChangedEventArgs eventArgs)
+        ApplicationAssignmentVisualProfileChangedEventArgs eventArgs)
     {
         CommitGridChange(
             eventArgs.ExecutablePath,
             (settings, profile) =>
-                ApplicationProfileManagementService.AssignVisualProfile(
+                ApplicationAssignmentService.AssignVisualProfile(
                     settings,
                     profile,
                     eventArgs.VisualProfileId));
@@ -535,12 +535,12 @@ internal sealed class ConfigurationForm : Form
 
     private void ProfilesGridMenuVisualProfileChanged(
         object? sender,
-        ApplicationProfileMenuVisualProfileChangedEventArgs eventArgs)
+        ApplicationAssignmentMenuVisualProfileChangedEventArgs eventArgs)
     {
         CommitGridChange(
             eventArgs.ExecutablePath,
             (settings, profile) =>
-                ApplicationProfileManagementService.AssignMenuVisualProfile(
+                ApplicationAssignmentService.AssignMenuVisualProfile(
                     settings,
                     profile,
                     eventArgs.MenuVisualProfileId));
@@ -548,12 +548,12 @@ internal sealed class ConfigurationForm : Form
 
     private void ProfilesGridOverlayScopeChanged(
         object? sender,
-        ApplicationProfileOverlayScopeChangedEventArgs eventArgs)
+        ApplicationAssignmentOverlayScopeChangedEventArgs eventArgs)
     {
         CommitGridChange(
             eventArgs.ExecutablePath,
             (settings, profile) =>
-                ApplicationProfileManagementService.SetOverlayScope(
+                ApplicationAssignmentService.SetOverlayScope(
                     settings,
                     profile,
                     eventArgs.OverlayScope));
@@ -561,7 +561,7 @@ internal sealed class ConfigurationForm : Form
 
     private void CommitGridChange(
         string executablePath,
-        Action<SightAdaptSettings, ApplicationProfile> mutation)
+        Action<SightAdaptSettings, ApplicationAssignment> mutation)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(executablePath);
         ArgumentNullException.ThrowIfNull(mutation);
@@ -601,7 +601,7 @@ internal sealed class ConfigurationForm : Form
 
     private void UpdateSelectedProfileActions()
     {
-        var assignment = GetSelectedApplicationProfile();
+        var assignment = GetSelectedApplicationAssignment();
         var visualProfile = assignment is null
             ? null
             : ProfileResolver.ResolveVisualProfile(Settings, assignment);
@@ -613,7 +613,7 @@ internal sealed class ConfigurationForm : Form
 
     private void EditSelectedVisualProfile()
     {
-        var assignment = GetSelectedApplicationProfile();
+        var assignment = GetSelectedApplicationAssignment();
         if (assignment is null)
         {
             return;
@@ -657,7 +657,7 @@ internal sealed class ConfigurationForm : Form
         _showVisualProfileManager(this, _settingsCoordinator);
     }
 
-    private ApplicationProfile? GetSelectedApplicationProfile()
+    private ApplicationAssignment? GetSelectedApplicationAssignment()
     {
         var executablePath = _profilesGrid.SelectedExecutablePath;
         if (string.IsNullOrWhiteSpace(executablePath))
@@ -723,7 +723,7 @@ internal sealed class ConfigurationForm : Form
     {
         var result = _settingsCoordinator.Commit(settings =>
         {
-            var assignment = ApplicationProfileManagementService.AddOrEnable(settings, identity);
+            var assignment = ApplicationAssignmentService.AddOrEnable(settings, identity);
             AutomaticModeManagementService.Enable(settings);
             return assignment.WasCreated;
         });
@@ -736,7 +736,8 @@ internal sealed class ConfigurationForm : Form
         MessageBox.Show(
             this,
             result.Value
-                ? $"{identity.DisplayName} was added with the Soft invert visual profile."
+                ? $"{identity.DisplayName} was added with the " +
+                  $"{VisualProfilePolicy.NewAssignmentProfileName} visual profile."
                 : $"{identity.DisplayName} is already configured and was enabled.",
             ProductInfo.DisplayName,
             MessageBoxButtons.OK,
@@ -745,7 +746,7 @@ internal sealed class ConfigurationForm : Form
 
     private void RemoveSelectedProfile()
     {
-        var profile = GetSelectedApplicationProfile();
+        var profile = GetSelectedApplicationAssignment();
         if (profile is null ||
             MessageBox.Show(
                 this,
@@ -760,7 +761,7 @@ internal sealed class ConfigurationForm : Form
 
         var path = profile.ExecutablePath;
         var result = _settingsCoordinator.Commit(settings =>
-            ApplicationProfileManagementService.Remove(settings, ProfileResolver.RequireAssignmentByExecutablePath(settings, path)));
+            ApplicationAssignmentService.Remove(settings, ProfileResolver.RequireAssignmentByExecutablePath(settings, path)));
         if (!result.Succeeded)
         {
             ShowCommitError(result.ErrorMessage);
