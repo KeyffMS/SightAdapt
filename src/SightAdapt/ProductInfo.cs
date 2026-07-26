@@ -48,6 +48,9 @@ internal static class ProductInfo
     public static string RepositoryDisplay { get; } =
         CreateRepositoryDisplay(RepositoryUrl);
 
+    public static int SettingsSchemaVersion { get; } =
+        GetIntegerMetadata("SettingsSchema");
+
     internal static string CreateVersionLabel(
         string? version)
     {
@@ -111,6 +114,20 @@ internal static class ProductInfo
                 key,
                 StringComparison.Ordinal))
             ?.Value ?? fallback;
+    }
+
+
+    private static int GetIntegerMetadata(string key)
+    {
+        var value = GetMetadata(key, string.Empty);
+        return int.TryParse(
+                value,
+                System.Globalization.NumberStyles.None,
+                System.Globalization.CultureInfo.InvariantCulture,
+                out var parsed) && parsed > 0
+            ? parsed
+            : throw new InvalidOperationException(
+                $"Assembly metadata '{key}' must be a positive integer.");
     }
 
     private static string CreateRepositoryDisplay(string repositoryUrl)

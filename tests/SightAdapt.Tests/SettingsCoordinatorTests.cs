@@ -9,7 +9,7 @@ public sealed class SettingsCoordinatorTests
     public void SuccessfulCommitPublishesPersistedSnapshot()
     {
         using var temporaryDirectory =
-            new TemporaryDirectory();
+            new TestWorkspace();
         var settingsPath = Path.Combine(
             temporaryDirectory.Path,
             "settings.json");
@@ -42,7 +42,7 @@ public sealed class SettingsCoordinatorTests
     public void CurrentReturnsDefensiveSnapshot()
     {
         using var temporaryDirectory =
-            new TemporaryDirectory();
+            new TestWorkspace();
         var coordinator =
             new SettingsCoordinator(
                 new SettingsStore(Path.Combine(
@@ -78,7 +78,7 @@ public sealed class SettingsCoordinatorTests
     public void FailedPersistenceDoesNotPublishCandidateState()
     {
         using var temporaryDirectory =
-            new TemporaryDirectory();
+            new TestWorkspace();
         var blockingFile = Path.Combine(
             temporaryDirectory.Path,
             "not-a-directory");
@@ -110,7 +110,7 @@ public sealed class SettingsCoordinatorTests
     public void FailedDomainMutationDoesNotPublishPartialChanges()
     {
         using var temporaryDirectory =
-            new TemporaryDirectory();
+            new TestWorkspace();
         var coordinator =
             new SettingsCoordinator(
                 new SettingsStore(Path.Combine(
@@ -141,7 +141,7 @@ public sealed class SettingsCoordinatorTests
     public void ValidationFailureDoesNotExposeGenericValue()
     {
         using var temporaryDirectory =
-            new TemporaryDirectory();
+            new TestWorkspace();
         var coordinator =
             new SettingsCoordinator(
                 new SettingsStore(Path.Combine(
@@ -165,7 +165,7 @@ public sealed class SettingsCoordinatorTests
     public void UnexpectedMutationFailureIsReportedAndRethrown()
     {
         using var temporaryDirectory =
-            new TemporaryDirectory();
+            new TestWorkspace();
         Exception? reported = null;
         var coordinator =
             new SettingsCoordinator(
@@ -193,7 +193,7 @@ public sealed class SettingsCoordinatorTests
     public void CommitReturnsValueFromPublishedCandidate()
     {
         using var temporaryDirectory =
-            new TemporaryDirectory();
+            new TestWorkspace();
         var coordinator =
             new SettingsCoordinator(
                 new SettingsStore(Path.Combine(
@@ -215,28 +215,4 @@ public sealed class SettingsCoordinatorTests
                     profile.Id == profileId));
     }
 
-    private sealed class TemporaryDirectory :
-        IDisposable
-    {
-        public TemporaryDirectory()
-        {
-            Path = System.IO.Path.Combine(
-                System.IO.Path.GetTempPath(),
-                "SightAdapt.Tests",
-                Guid.NewGuid().ToString("N"));
-            Directory.CreateDirectory(Path);
-        }
-
-        public string Path { get; }
-
-        public void Dispose()
-        {
-            if (Directory.Exists(Path))
-            {
-                Directory.Delete(
-                    Path,
-                    true);
-            }
-        }
-    }
 }

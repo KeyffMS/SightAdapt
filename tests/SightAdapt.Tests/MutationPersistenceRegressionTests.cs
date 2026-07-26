@@ -8,7 +8,7 @@ public sealed class MutationPersistenceRegressionTests
     [TestMethod]
     public void AssignmentTuningAndModeMutationsSurviveRoundTrip()
     {
-        using var temporaryDirectory = new TemporaryDirectory();
+        using var temporaryDirectory = new TestWorkspace();
         var store = new SettingsStore(Path.Combine(
             temporaryDirectory.Path,
             "settings.json"));
@@ -81,25 +81,4 @@ public sealed class MutationPersistenceRegressionTests
         Assert.IsFalse(SettingsStore.Normalize(settings));
     }
 
-    private sealed class TemporaryDirectory : IDisposable
-    {
-        public TemporaryDirectory()
-        {
-            Path = System.IO.Path.Combine(
-                System.IO.Path.GetTempPath(),
-                "SightAdapt.Tests",
-                Guid.NewGuid().ToString("N"));
-            Directory.CreateDirectory(Path);
-        }
-
-        public string Path { get; }
-
-        public void Dispose()
-        {
-            if (Directory.Exists(Path))
-            {
-                Directory.Delete(Path, true);
-            }
-        }
-    }
 }

@@ -8,7 +8,7 @@ public sealed class SettingsStoreTests
     [TestMethod]
     public void MigratesLegacyEffectToVisualProfileAssignment()
     {
-        using var temporaryDirectory = new TemporaryDirectory();
+        using var temporaryDirectory = new TestWorkspace();
         var settingsPath = Path.Combine(temporaryDirectory.Path, "settings.json");
         File.WriteAllText(
             settingsPath,
@@ -45,7 +45,7 @@ public sealed class SettingsStoreTests
     [TestMethod]
     public void SaveWritesCurrentSchemaWithoutLegacyEffect()
     {
-        using var temporaryDirectory = new TemporaryDirectory();
+        using var temporaryDirectory = new TestWorkspace();
         var settingsPath = Path.Combine(temporaryDirectory.Path, "settings.json");
         var store = new SettingsStore(settingsPath);
         var settings = new SightAdaptSettings
@@ -79,7 +79,7 @@ public sealed class SettingsStoreTests
     [TestMethod]
     public void LoadKeepsCanonicalOverlayScopeWithoutMigration()
     {
-        using var temporaryDirectory = new TemporaryDirectory();
+        using var temporaryDirectory = new TestWorkspace();
         var settingsPath = Path.Combine(temporaryDirectory.Path, "settings.json");
         File.WriteAllText(
             settingsPath,
@@ -109,7 +109,7 @@ public sealed class SettingsStoreTests
     [TestMethod]
     public void LoadCanonicalizesOverlayScopeAliasAndReportsMigration()
     {
-        using var temporaryDirectory = new TemporaryDirectory();
+        using var temporaryDirectory = new TestWorkspace();
         var settingsPath = Path.Combine(temporaryDirectory.Path, "settings.json");
         File.WriteAllText(
             settingsPath,
@@ -144,7 +144,7 @@ public sealed class SettingsStoreTests
     [TestMethod]
     public void LoadRepairsInvalidOverlayScopeAndReportsMigration()
     {
-        using var temporaryDirectory = new TemporaryDirectory();
+        using var temporaryDirectory = new TestWorkspace();
         var settingsPath = Path.Combine(temporaryDirectory.Path, "settings.json");
         File.WriteAllText(
             settingsPath,
@@ -227,7 +227,7 @@ public sealed class SettingsStoreTests
     [TestMethod]
     public void SchemaTwoSettingsGainSoftInvertWithoutChangingExistingAssignment()
     {
-        using var temporaryDirectory = new TemporaryDirectory();
+        using var temporaryDirectory = new TestWorkspace();
         var settingsPath = Path.Combine(temporaryDirectory.Path, "settings.json");
         File.WriteAllText(
             settingsPath,
@@ -266,7 +266,7 @@ public sealed class SettingsStoreTests
     [TestMethod]
     public void LoadRepairsNullValuesAndMissingExecutableMetadata()
     {
-        using var temporaryDirectory = new TemporaryDirectory();
+        using var temporaryDirectory = new TestWorkspace();
         var settingsPath = Path.Combine(temporaryDirectory.Path, "settings.json");
         File.WriteAllText(
             settingsPath,
@@ -449,7 +449,7 @@ public sealed class SettingsStoreTests
     [TestMethod]
     public void MultipleCustomProfilesAndAssignmentsRoundTripIndependently()
     {
-        using var temporaryDirectory = new TemporaryDirectory();
+        using var temporaryDirectory = new TestWorkspace();
         var settingsPath = Path.Combine(temporaryDirectory.Path, "settings.json");
         var store = new SettingsStore(settingsPath);
         var settings = new SightAdaptSettings();
@@ -497,25 +497,4 @@ public sealed class SettingsStoreTests
         };
     }
 
-    private sealed class TemporaryDirectory : IDisposable
-    {
-        public TemporaryDirectory()
-        {
-            Path = System.IO.Path.Combine(
-                System.IO.Path.GetTempPath(),
-                "SightAdapt.Tests",
-                Guid.NewGuid().ToString("N"));
-            Directory.CreateDirectory(Path);
-        }
-
-        public string Path { get; }
-
-        public void Dispose()
-        {
-            if (Directory.Exists(Path))
-            {
-                Directory.Delete(Path, true);
-            }
-        }
-    }
 }

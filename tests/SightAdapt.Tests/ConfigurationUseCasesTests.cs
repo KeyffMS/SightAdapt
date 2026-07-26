@@ -8,7 +8,7 @@ public sealed class ConfigurationUseCasesTests
     [TestMethod]
     public void AssignmentChangeIsCommittedThroughConfigurationAuthority()
     {
-        using var directory = new TemporaryDirectory();
+        using var directory = new TestWorkspace();
         var coordinator = new SettingsCoordinator(
             new SettingsStore(Path.Combine(
                 directory.Path,
@@ -37,7 +37,7 @@ public sealed class ConfigurationUseCasesTests
     [TestMethod]
     public void VisualProfileCommandsUseDedicatedUseCaseAuthority()
     {
-        using var directory = new TemporaryDirectory();
+        using var directory = new TestWorkspace();
         var coordinator = new SettingsCoordinator(
             new SettingsStore(Path.Combine(
                 directory.Path,
@@ -58,25 +58,4 @@ public sealed class ConfigurationUseCasesTests
                 profile => profile.Id == created.Value).Name);
     }
 
-    private sealed class TemporaryDirectory : IDisposable
-    {
-        public TemporaryDirectory()
-        {
-            Path = System.IO.Path.Combine(
-                System.IO.Path.GetTempPath(),
-                "SightAdapt.Tests",
-                Guid.NewGuid().ToString("N"));
-            Directory.CreateDirectory(Path);
-        }
-
-        public string Path { get; }
-
-        public void Dispose()
-        {
-            if (Directory.Exists(Path))
-            {
-                Directory.Delete(Path, recursive: true);
-            }
-        }
-    }
 }

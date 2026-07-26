@@ -9,12 +9,11 @@ public sealed class ConfigurationProfileManagerRefreshTests
     [TestMethod]
     public void ClosingManagerWithoutChangesDoesNotRefreshConfiguration()
     {
-        RunOnSta(() =>
+        StaTest.Run(() =>
         {
-            using var temporaryDirectory =
-                new TemporaryDirectory();
-            var coordinator = CreateCoordinator(
-                temporaryDirectory.Path);
+            using var workspace =
+                new TestWorkspace("configuration-manager-refresh");
+            var coordinator = workspace.CreateSettingsCoordinator();
             var managerCalls = 0;
             using var form = new ConfigurationForm(
                 coordinator,
@@ -40,12 +39,11 @@ public sealed class ConfigurationProfileManagerRefreshTests
     [TestMethod]
     public void ManagerMutationRefreshesConfigurationExactlyOnce()
     {
-        RunOnSta(() =>
+        StaTest.Run(() =>
         {
-            using var temporaryDirectory =
-                new TemporaryDirectory();
-            var coordinator = CreateCoordinator(
-                temporaryDirectory.Path);
+            using var workspace =
+                new TestWorkspace("configuration-manager-refresh");
+            var coordinator = workspace.CreateSettingsCoordinator();
             using var form = new ConfigurationForm(
                 coordinator,
                 () => null,
@@ -71,63 +69,4 @@ public sealed class ConfigurationProfileManagerRefreshTests
         });
     }
 
-    private static SettingsCoordinator CreateCoordinator(
-        string directory)
-    {
-        return new SettingsCoordinator(
-            new SettingsStore(
-                Path.Combine(
-                    directory,
-                    "settings.json")));
-    }
-
-    private static void RunOnSta(Action action)
-    {
-        Exception? failure = null;
-        var thread = new Thread(() =>
-        {
-            try
-            {
-                action();
-            }
-            catch (Exception exception)
-            {
-                failure = exception;
-            }
-        });
-        thread.SetApartmentState(ApartmentState.STA);
-        thread.Start();
-
-        Assert.IsTrue(
-            thread.Join(TimeSpan.FromSeconds(10)),
-            "The configuration refresh test did not finish in time.");
-        if (failure is not null)
-        {
-            Assert.Fail(failure.ToString());
-        }
-    }
-
-    private sealed class TemporaryDirectory : IDisposable
-    {
-        public TemporaryDirectory()
-        {
-            Path = System.IO.Path.Combine(
-                System.IO.Path.GetTempPath(),
-                "SightAdapt.Tests",
-                Guid.NewGuid().ToString("N"));
-            Directory.CreateDirectory(Path);
-        }
-
-        public string Path { get; }
-
-        public void Dispose()
-        {
-            if (Directory.Exists(Path))
-            {
-                Directory.Delete(
-                    Path,
-                    recursive: true);
-            }
-        }
-    }
 }

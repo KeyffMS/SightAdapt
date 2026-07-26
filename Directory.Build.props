@@ -1,0 +1,15 @@
+<Project>
+  <PropertyGroup>
+    <SightAdaptProductVersion>0.5.0.50-alpha</SightAdaptProductVersion>
+    <SightAdaptFileVersion>0.5.0.50</SightAdaptFileVersion>
+    <SightAdaptAssemblyVersion>0.5.0.0</SightAdaptAssemblyVersion>
+    <SightAdaptMilestone>0.5.0.50 Alpha</SightAdaptMilestone>
+    <SightAdaptSettingsSchema>5</SightAdaptSettingsSchema>
+    <SightAdaptArtifactName>SightAdapt-$(SightAdaptProductVersion)-win-x64</SightAdaptArtifactName>
+
+    <Version>$(SightAdaptProductVersion)</Version>
+    <AssemblyVersion>$(SightAdaptAssemblyVersion)</AssemblyVersion>
+    <FileVersion>$(SightAdaptFileVersion)</FileVersion>
+    <InformationalVersion>$(SightAdaptProductVersion)</InformationalVersion>
+  </PropertyGroup>
+</Project>

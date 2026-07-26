@@ -13,7 +13,8 @@ internal interface IReadOnlySightAdaptSettings
 
 internal sealed class SightAdaptSettings : IReadOnlySightAdaptSettings
 {
-    public const int CurrentSchemaVersion = 5;
+    public static int CurrentSchemaVersion =>
+        ProductInfo.SettingsSchemaVersion;
 
     public int SchemaVersion { get; set; } = CurrentSchemaVersion;
 

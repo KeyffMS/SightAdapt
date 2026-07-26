@@ -45,7 +45,7 @@ public sealed class ThemeTokenTests
     [TestMethod]
     public void GridUsesAlternateSurfaceThemeToken()
     {
-        RunOnSta(() =>
+        StaTest.Run(() =>
         {
             using var grid = new DataGridView();
             AppTheme.StyleGrid(grid);
@@ -81,29 +81,4 @@ public sealed class ThemeTokenTests
                 null));
     }
 
-    private static void RunOnSta(Action action)
-    {
-        Exception? failure = null;
-        var thread = new Thread(() =>
-        {
-            try
-            {
-                action();
-            }
-            catch (Exception exception)
-            {
-                failure = exception;
-            }
-        });
-        thread.SetApartmentState(ApartmentState.STA);
-        thread.Start();
-
-        Assert.IsTrue(
-            thread.Join(TimeSpan.FromSeconds(10)),
-            "The theme test did not finish in time.");
-        if (failure is not null)
-        {
-            Assert.Fail(failure.ToString());
-        }
-    }
 }

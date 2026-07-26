@@ -164,7 +164,7 @@ public sealed class MenuVisualProfileTests
     public void ExplicitMenuProfileRoundTripsThroughSettingsStore()
     {
         using var temporaryDirectory =
-            new TemporaryDirectory();
+            new TestWorkspace();
         var settingsPath = Path.Combine(
             temporaryDirectory.Path,
             "settings.json");
@@ -209,7 +209,7 @@ public sealed class MenuVisualProfileTests
     public void SchemaFourSettingsGainMenuProfileInheritance()
     {
         using var temporaryDirectory =
-            new TemporaryDirectory();
+            new TestWorkspace();
         var settingsPath = Path.Combine(
             temporaryDirectory.Path,
             "settings.json");
@@ -273,25 +273,4 @@ public sealed class MenuVisualProfileTests
             .Assignment;
     }
 
-    private sealed class TemporaryDirectory : IDisposable
-    {
-        public TemporaryDirectory()
-        {
-            Path = System.IO.Path.Combine(
-                System.IO.Path.GetTempPath(),
-                "SightAdapt.Tests",
-                Guid.NewGuid().ToString("N"));
-            Directory.CreateDirectory(Path);
-        }
-
-        public string Path { get; }
-
-        public void Dispose()
-        {
-            if (Directory.Exists(Path))
-            {
-                Directory.Delete(Path, true);
-            }
-        }
-    }
 }

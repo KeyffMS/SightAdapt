@@ -145,7 +145,7 @@ public sealed class VisualProfileManagementTests
     [TestMethod]
     public void CustomProfilePersistsAcrossSettingsRoundTrip()
     {
-        using var temporaryDirectory = new TemporaryDirectory();
+        using var temporaryDirectory = new TestWorkspace();
         var settingsPath = Path.Combine(temporaryDirectory.Path, "settings.json");
         var store = new SettingsStore(settingsPath);
         var settings = new SightAdaptSettings();
@@ -242,25 +242,4 @@ public sealed class VisualProfileManagementTests
         };
     }
 
-    private sealed class TemporaryDirectory : IDisposable
-    {
-        public TemporaryDirectory()
-        {
-            Path = System.IO.Path.Combine(
-                System.IO.Path.GetTempPath(),
-                "SightAdapt.Tests",
-                Guid.NewGuid().ToString("N"));
-            Directory.CreateDirectory(Path);
-        }
-
-        public string Path { get; }
-
-        public void Dispose()
-        {
-            if (Directory.Exists(Path))
-            {
-                Directory.Delete(Path, true);
-            }
-        }
-    }
 }

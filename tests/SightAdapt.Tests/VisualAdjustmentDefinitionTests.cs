@@ -36,7 +36,7 @@ public sealed class VisualAdjustmentDefinitionTests
     [TestMethod]
     public void DefinitionsCreateConfiguredSliders()
     {
-        RunOnSta(() =>
+        StaTest.Run(() =>
         {
             foreach (var definition in
                      VisualAdjustmentDefinitions.All)
@@ -94,7 +94,7 @@ public sealed class VisualAdjustmentDefinitionTests
     [TestMethod]
     public void EditorRendersEveryDeclaredAdjustment()
     {
-        RunOnSta(() =>
+        StaTest.Run(() =>
         {
             using var editor = new VisualProfileEditorForm(
                 VisualProfileCatalog.Default.CreateBuiltInProfile(VisualProfileCatalog.DefaultSoftInvertId));
@@ -130,29 +130,4 @@ public sealed class VisualAdjustmentDefinitionTests
         }
     }
 
-    private static void RunOnSta(Action action)
-    {
-        Exception? failure = null;
-        var thread = new Thread(() =>
-        {
-            try
-            {
-                action();
-            }
-            catch (Exception exception)
-            {
-                failure = exception;
-            }
-        });
-        thread.SetApartmentState(ApartmentState.STA);
-        thread.Start();
-
-        Assert.IsTrue(
-            thread.Join(TimeSpan.FromSeconds(10)),
-            "The visual-adjustment test did not finish in time.");
-        if (failure is not null)
-        {
-            Assert.Fail(failure.ToString());
-        }
-    }
 }
