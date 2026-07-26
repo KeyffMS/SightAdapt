@@ -1,10 +1,15 @@
 name: Build and test SightAdapt
 
 on:
+  workflow_dispatch:
   push:
-    branches: [main, "release/**"]
+    branches: [main, "0.5.0.50-alpha", "release/**"]
   pull_request:
-    branches: [main]
+    branches: [main, "0.5.0.50-alpha"]
+
+concurrency:
+  group: sightadapt-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -12,6 +17,7 @@ permissions:
 jobs:
   build:
     runs-on: windows-latest
+    timeout-minutes: 30
 
     steps:
       - name: Check out repository
@@ -40,20 +46,21 @@ jobs:
       - name: Test
         shell: pwsh
         run: |
-          $output = & dotnet test tests/SightAdapt.Tests/SightAdapt.Tests.csproj --configuration Release --no-restore 2>&1
+          $output = & dotnet test tests/SightAdapt.Tests/SightAdapt.Tests.csproj --configuration Release --no-restore --results-directory TestResults --logger "trx;LogFileName=SightAdapt.trx" 2>&1
           $exitCode = $LASTEXITCODE
           $output | Set-Content -Path test-output.txt -Encoding utf8
           $output | ForEach-Object { Write-Host $_ }
           exit $exitCode
 
-      - name: Upload build diagnostics
+      - name: Upload build and test diagnostics
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: SightAdapt-build-diagnostics
+          name: SightAdapt-build-diagnostics-${{ github.run_id }}
           path: |
             build-output.txt
             test-output.txt
+            TestResults/SightAdapt.trx
           if-no-files-found: warn
           retention-days: 7
 
@@ -69,6 +76,7 @@ jobs:
       - name: Upload Windows alpha
         uses: actions/upload-artifact@v4
         with:
-          name: SightAdapt-0.5-Alpha-win-x64
+          name: SightAdapt-0.5-Alpha-win-x64-${{ github.run_id }}
           path: artifacts/win-x64/
           if-no-files-found: error
+          retention-days: 7
