@@ -1,55 +1,102 @@
-name: Temporary PR 71 source snapshot
+name: Temporary finalize PR 71
 
 on:
   pull_request:
     branches: ["0.5.0.50-alpha"]
 
 permissions:
-  contents: read
+  contents: write
+  pull-requests: read
 
 jobs:
-  snapshot:
+  finalize:
     if: github.head_ref == 'agent/0.5.0.50-domain-settings'
     runs-on: windows-latest
     timeout-minutes: 30
     steps:
-      - name: Check out repository
+      - name: Check out pull-request branch
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Set up .NET 8
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 8.0.x
+
+      - name: Complete assignment terminology
+        shell: pwsh
+        run: |
+          @'
+          from pathlib import Path
+
+          path = Path('src/SightAdapt/ConfigurationForm.cs')
+          text = path.read_text(encoding='utf-8')
+          replacements = {
+              '_profileCountLabel': '_applicationCountLabel',
+              '_profilesGrid': '_assignmentsGrid',
+              'CreateProfileCountLabel': 'CreateApplicationCountLabel',
+              'ProfilesGridEnabledChanged': 'AssignmentsGridEnabledChanged',
+              'ProfilesGridVisualProfileChanged': 'AssignmentsGridVisualProfileChanged',
+              'ProfilesGridMenuVisualProfileChanged': 'AssignmentsGridMenuVisualProfileChanged',
+              'ProfilesGridOverlayScopeChanged': 'AssignmentsGridOverlayScopeChanged',
+              '.UpdateApplication(': '.UpdateAssignment(',
+              '"1 PROFILE"': '"1 APPLICATION"',
+              '$"{count} PROFILES"': '$"{count} APPLICATIONS"',
+          }
+          for source, target in replacements.items():
+              text = text.replace(source, target)
+          path.write_text(text, encoding='utf-8', newline='\n')
+
+          path = Path('src/SightAdapt/ApplicationAssignmentsGrid.cs')
+          text = path.read_text(encoding='utf-8')
+          text = text.replace(
+              'public void UpdateApplication(ApplicationAssignment application)',
+              'public void UpdateAssignment(ApplicationAssignment assignment)')
+          start = text.index('public void UpdateAssignment(')
+          end = text.index('\n\n\n    private DataGridView CreateGrid()', start)
+          block = text[start:end]
+          block = block.replace(
+              'ArgumentNullException.ThrowIfNull(application);',
+              'ArgumentNullException.ThrowIfNull(assignment);',
+              1)
+          block = block.replace('application.', 'assignment.')
+          text = text[:start] + block + text[end:]
+          text = text.replace(
+              '"No application profiles yet.\\n\\n"',
+              '"No application assignments yet.\\n\\n"')
+          path.write_text(text, encoding='utf-8', newline='\n')
+          '@ | python -
+          git diff --check
+
       - name: Restore
         shell: pwsh
         run: |
           dotnet restore .\src\SightAdapt\SightAdapt.csproj
           dotnet restore .\tests\SightAdapt.Tests\SightAdapt.Tests.csproj
+
       - name: Build
         shell: pwsh
         run: dotnet build .\src\SightAdapt\SightAdapt.csproj --configuration Release --no-restore
+
       - name: Test
         shell: pwsh
         run: >-
           dotnet test .\tests\SightAdapt.Tests\SightAdapt.Tests.csproj
           --configuration Release
           --no-restore
-          --results-directory TestResults
+          --results-directory "$env:RUNNER_TEMP\pr71-results"
           --logger "trx;LogFileName=pr71.trx"
-      - name: Upload source and results
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: pr71-source-and-results
-          path: |
-            .github
-            docs
-            src
-            tests
-            .gitignore
-            CONTRIBUTING.md
-            LICENSE
-            README.md
-            SECURITY.md
-          if-no-files-found: error
-          retention-days: 2
-          include-hidden-files: true
+
+      - name: Publish finalized branch
+        shell: pwsh
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm .github/workflows/temporary-snapshot-pr71.yml
+          git add --all
+          git diff --cached --check
+          git commit -m 'Complete application-assignment terminology'
+          git push origin "HEAD:refs/heads/$env:GITHUB_HEAD_REF"
