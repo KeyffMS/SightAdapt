@@ -203,37 +203,15 @@ public sealed class RuntimeMenuProfileTests
             private set;
         }
 
-        public void Activate(
-            nint targetWindow,
-            VisualProfile visualProfile,
-            OverlayScope overlayScope)
+        public void Activate(OverlayActivationRequest request)
         {
-            Activate(
-                targetWindow,
-                visualProfile,
-                visualProfile,
-                overlayScope);
-        }
+            ArgumentNullException.ThrowIfNull(request);
 
-        public void Activate(
-            nint targetWindow,
-            VisualProfile visualProfile,
-            VisualProfile menuVisualProfile,
-            OverlayScope overlayScope)
-        {
-            ArgumentNullException.ThrowIfNull(
-                visualProfile);
-            ArgumentNullException.ThrowIfNull(
-                menuVisualProfile);
-            Assert.IsTrue(
-                OverlayScopePolicy.IsSupported(
-                    overlayScope));
-
-            TargetWindow = targetWindow;
+            TargetWindow = request.TargetWindow;
             PrimaryVisualProfileId =
-                visualProfile.Id;
+                request.VisualProfile.Id;
             MenuVisualProfileId =
-                menuVisualProfile.Id;
+                request.MenuVisualProfile.Id;
             IsActive = true;
         }
 

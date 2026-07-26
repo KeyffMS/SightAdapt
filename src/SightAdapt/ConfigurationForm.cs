@@ -59,15 +59,13 @@ internal sealed class ConfigurationForm : Form
         _assignmentsGrid.MenuVisualProfileChanged += AssignmentsGridMenuVisualProfileChanged;
         _assignmentsGrid.OverlayScopeChanged += AssignmentsGridOverlayScopeChanged;
         _assignmentsGrid.SelectedApplicationChanged += (_, _) =>
-            UpdateSelectedProfileActions();
+            UpdateSelectedProfileActions(_settingsCoordinator.Current);
 
         Controls.Add(CreateRootLayout());
         _settingsCoordinator.Changed += SettingsChanged;
         FormClosed += (_, _) => _settingsCoordinator.Changed -= SettingsChanged;
         RefreshProfiles();
     }
-
-    private SightAdaptSettings Settings => _settingsCoordinator.Current;
 
     internal int RefreshGeneration { get; private set; }
 
@@ -78,16 +76,17 @@ internal sealed class ConfigurationForm : Form
             return;
         }
 
+        var settings = _settingsCoordinator.Current;
         _refreshing = true;
         try
         {
-            _automaticModeSwitch.Checked = Settings.AutomaticMode;
-            UpdateAutomaticModeState();
+            _automaticModeSwitch.Checked = settings.AutomaticMode;
+            UpdateAutomaticModeState(settings.AutomaticMode);
             _assignmentsGrid.Bind(
-                Settings.Assignments,
-                Settings.VisualProfiles);
+                settings.Assignments,
+                settings.VisualProfiles);
 
-            var count = Settings.Assignments.Count;
+            var count = settings.Assignments.Count;
             _applicationCountLabel.Text = count == 1
                 ? "1 APPLICATION"
                 : $"{count} APPLICATIONS";
@@ -496,13 +495,15 @@ internal sealed class ConfigurationForm : Form
         }
     }
 
-    private void UpdateAutomaticModeState()
+    private void UpdateAutomaticModeState(bool automaticMode)
     {
-        _automaticModeStateLabel.Text = Settings.AutomaticMode ? "ACTIVE" : "PAUSED";
-        _automaticModeStateLabel.BackColor = Settings.AutomaticMode
+        _automaticModeStateLabel.Text = automaticMode
+            ? "ACTIVE"
+            : "PAUSED";
+        _automaticModeStateLabel.BackColor = automaticMode
             ? AppTheme.SuccessSoft
             : AppTheme.SurfaceRaised;
-        _automaticModeStateLabel.ForeColor = Settings.AutomaticMode
+        _automaticModeStateLabel.ForeColor = automaticMode
             ? AppTheme.Success
             : AppTheme.TextSecondary;
     }
@@ -566,9 +567,10 @@ internal sealed class ConfigurationForm : Form
         ArgumentException.ThrowIfNullOrWhiteSpace(executablePath);
         ArgumentNullException.ThrowIfNull(mutation);
 
-        var displayedProfile =
+        var displayedSettings = _settingsCoordinator.Current;
+        var displayedAssignment =
             ProfileResolver.RequireAssignmentByExecutablePath(
-                Settings,
+                displayedSettings,
                 executablePath);
         SettingsCommitResult result;
 
@@ -588,23 +590,35 @@ internal sealed class ConfigurationForm : Form
         if (!result.Succeeded)
         {
             ShowCommitError(result.ErrorMessage);
-            _assignmentsGrid.UpdateAssignment(displayedProfile);
+            _assignmentsGrid.UpdateAssignment(displayedAssignment);
             return;
         }
 
+        var committedSettings = _settingsCoordinator.Current;
         _assignmentsGrid.UpdateAssignment(
             ProfileResolver.RequireAssignmentByExecutablePath(
-                Settings,
+                committedSettings,
                 executablePath));
-        UpdateSelectedProfileActions();
+        UpdateSelectedProfileActions(committedSettings);
     }
 
     private void UpdateSelectedProfileActions()
     {
-        var assignment = GetSelectedApplicationAssignment();
+        UpdateSelectedProfileActions(
+            _settingsCoordinator.Current);
+    }
+
+    private void UpdateSelectedProfileActions(
+        IReadOnlySightAdaptSettings settings)
+    {
+        ArgumentNullException.ThrowIfNull(settings);
+        var assignment =
+            GetSelectedApplicationAssignment(settings);
         var visualProfile = assignment is null
             ? null
-            : ProfileResolver.ResolveVisualProfile(Settings, assignment);
+            : ProfileResolver.ResolveVisualProfile(
+                settings,
+                assignment);
         _editVisualProfileButton.Enabled = visualProfile?.SupportsTuning == true;
         _editVisualProfileButton.Text = visualProfile?.SupportsTuning == true
             ? $"Edit {visualProfile.Name}"
@@ -613,13 +627,15 @@ internal sealed class ConfigurationForm : Form
 
     private void EditSelectedVisualProfile()
     {
-        var assignment = GetSelectedApplicationAssignment();
+        var settings = _settingsCoordinator.Current;
+        var assignment =
+            GetSelectedApplicationAssignment(settings);
         if (assignment is null)
         {
             return;
         }
 
-        var profile = ProfileResolver.ResolveVisualProfile(Settings, assignment);
+        var profile = ProfileResolver.ResolveVisualProfile(settings, assignment);
         if (!profile.SupportsTuning)
         {
             MessageBox.Show(
@@ -657,8 +673,10 @@ internal sealed class ConfigurationForm : Form
         _showVisualProfileManager(this, _settingsCoordinator);
     }
 
-    private ApplicationAssignment? GetSelectedApplicationAssignment()
+    private ApplicationAssignment? GetSelectedApplicationAssignment(
+        IReadOnlySightAdaptSettings settings)
     {
+        ArgumentNullException.ThrowIfNull(settings);
         var executablePath = _assignmentsGrid.SelectedExecutablePath;
         if (string.IsNullOrWhiteSpace(executablePath))
         {
@@ -666,7 +684,7 @@ internal sealed class ConfigurationForm : Form
         }
 
         return ProfileResolver.FindAssignmentByExecutablePath(
-            Settings,
+            settings,
             executablePath);
     }
 
@@ -746,7 +764,9 @@ internal sealed class ConfigurationForm : Form
 
     private void RemoveSelectedProfile()
     {
-        var profile = GetSelectedApplicationAssignment();
+        var settings = _settingsCoordinator.Current;
+        var profile =
+            GetSelectedApplicationAssignment(settings);
         if (profile is null ||
             MessageBox.Show(
                 this,

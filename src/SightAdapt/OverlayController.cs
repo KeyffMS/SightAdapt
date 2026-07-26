@@ -51,46 +51,15 @@ internal sealed class OverlayController :
             ? _overlay!.TargetHandle
             : nint.Zero;
 
-    public void Activate(
-        nint targetWindow,
-        VisualProfile visualProfile,
-        OverlayScope overlayScope)
-    {
-        Activate(
-            targetWindow,
-            visualProfile,
-            visualProfile,
-            overlayScope);
-    }
-
-    public void Activate(
-        nint targetWindow,
-        VisualProfile visualProfile,
-        VisualProfile menuVisualProfile,
-        OverlayScope overlayScope)
+    public void Activate(OverlayActivationRequest request)
     {
         ObjectDisposedException.ThrowIf(
             _disposed,
             this);
-        ArgumentNullException.ThrowIfNull(
-            visualProfile);
-        ArgumentNullException.ThrowIfNull(
-            menuVisualProfile);
+        ArgumentNullException.ThrowIfNull(request);
 
-        if (targetWindow == nint.Zero)
-        {
-            throw new ArgumentException(
-                "A target window is required.",
-                nameof(targetWindow));
-        }
-
-        if (!OverlayScopePolicy.IsSupported(
-                overlayScope))
-        {
-            throw new ArgumentOutOfRangeException(
-                nameof(overlayScope));
-        }
-
+        var visualProfile = request.VisualProfile;
+        var menuVisualProfile = request.MenuVisualProfile;
         var primaryTransform =
             _transformCatalog.GetRequiredTransform(
                 visualProfile.TransformId);
@@ -107,22 +76,22 @@ internal sealed class OverlayController :
         if (IsActive)
         {
             ActivateExistingOverlay(
-                targetWindow,
+                request.TargetWindow,
                 primaryColorEffect,
                 primaryTransform.Id,
                 menuColorEffect,
                 menuTransform.Id,
-                overlayScope);
+                request.OverlayScope);
             return;
         }
 
         ActivateNewOverlay(
-            targetWindow,
+            request.TargetWindow,
             primaryColorEffect,
             primaryTransform.Id,
             menuColorEffect,
             menuTransform.Id,
-            overlayScope);
+            request.OverlayScope);
     }
 
     public void Disable()
