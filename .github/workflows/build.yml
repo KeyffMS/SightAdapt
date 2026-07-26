@@ -28,6 +28,11 @@ jobs:
         with:
           dotnet-version: 8.0.x
 
+      - name: Verify release metadata
+        id: release
+        shell: pwsh
+        run: .\tools\verify-release-metadata.ps1 -WriteGitHubOutput
+
       - name: Restore application
         run: dotnet restore src/SightAdapt/SightAdapt.csproj
 
@@ -76,7 +81,7 @@ jobs:
       - name: Upload Windows alpha
         uses: actions/upload-artifact@v4
         with:
-          name: SightAdapt-0.5-Alpha-win-x64-${{ github.run_id }}
+          name: ${{ steps.release.outputs.artifact_name }}-${{ github.run_id }}
           path: artifacts/win-x64/
           if-no-files-found: error
           retention-days: 7
