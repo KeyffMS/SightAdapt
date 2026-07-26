@@ -7,19 +7,34 @@ internal sealed class ForegroundWindowChangedEventArgs(nint window) : EventArgs
 
 internal sealed class ForegroundWindowTracker : IDisposable
 {
-    internal const int DefaultIntervalMilliseconds = 75;
+    internal static int DefaultIntervalMilliseconds =>
+        RuntimeTimingPolicy.Default.ForegroundPollMilliseconds;
 
     private readonly System.Windows.Forms.Timer _timer;
+    private readonly INativeWindowApi _windowApi;
     private nint _lastExternalWindow;
     private nint _lastPublishedWindow;
     private bool _disposed;
 
     public ForegroundWindowTracker(
-        int intervalMilliseconds = DefaultIntervalMilliseconds)
+        int? intervalMilliseconds = null)
+        : this(
+            NativeWindowApi.Default,
+            intervalMilliseconds ??
+                RuntimeTimingPolicy.Default.ForegroundPollMilliseconds)
     {
+    }
+
+    internal ForegroundWindowTracker(
+        INativeWindowApi windowApi,
+        int intervalMilliseconds)
+    {
+        _windowApi = windowApi ??
+            throw new ArgumentNullException(nameof(windowApi));
         if (intervalMilliseconds <= 0)
         {
-            throw new ArgumentOutOfRangeException(nameof(intervalMilliseconds));
+            throw new ArgumentOutOfRangeException(
+                nameof(intervalMilliseconds));
         }
 
         _timer = new System.Windows.Forms.Timer
@@ -42,14 +57,17 @@ internal sealed class ForegroundWindowTracker : IDisposable
         ObjectDisposedException.ThrowIf(_disposed, this);
 
         var foreground = NormalizeTopLevelWindow(
-            NativeMethods.GetForegroundWindow());
-        if (IsSupportedTarget(foreground))
+            _windowApi,
+            _windowApi.GetForegroundWindow());
+        if (IsSupportedTarget(foreground, _windowApi))
         {
             _lastExternalWindow = foreground;
             return foreground;
         }
 
-        return IsSupportedTarget(_lastExternalWindow)
+        return IsSupportedTarget(
+                _lastExternalWindow,
+                _windowApi)
             ? _lastExternalWindow
             : nint.Zero;
     }
@@ -58,28 +76,43 @@ internal sealed class ForegroundWindowTracker : IDisposable
     {
         var target = ResolveTargetWindow();
         return target != nint.Zero &&
-            ApplicationDiscovery.TryGetIdentity(target, out var identity)
+            ApplicationDiscovery.TryGetIdentity(
+                target,
+                out var identity)
                 ? identity
                 : null;
     }
 
     public static bool IsSupportedTarget(nint window)
     {
+        return IsSupportedTarget(
+            window,
+            NativeWindowApi.Default);
+    }
+
+    internal static bool IsSupportedTarget(
+        nint window,
+        INativeWindowApi windowApi)
+    {
+        ArgumentNullException.ThrowIfNull(windowApi);
+
         if (window == nint.Zero ||
-            !NativeMethods.IsWindow(window) ||
-            !NativeMethods.IsWindowVisible(window) ||
-            NativeMethods.IsIconic(window))
+            !windowApi.IsWindow(window) ||
+            !windowApi.IsWindowVisible(window) ||
+            windowApi.IsMinimized(window))
         {
             return false;
         }
 
-        NativeMethods.GetWindowThreadProcessId(window, out var processId);
+        windowApi.GetWindowThreadProcessId(
+            window,
+            out var processId);
         if (processId == (uint)Environment.ProcessId)
         {
             return false;
         }
 
-        var windowClass = NativeMethods.GetWindowClass(window);
+        var windowClass = windowApi.GetWindowClass(window);
         if (Win32MenuWindowPolicy.IsPopupMenuClass(
                 windowClass))
         {
@@ -118,11 +151,14 @@ internal sealed class ForegroundWindowTracker : IDisposable
         _disposed = true;
     }
 
-    private void TimerTick(object? sender, EventArgs eventArgs)
+    private void TimerTick(
+        object? sender,
+        EventArgs eventArgs)
     {
         var candidate = NormalizeTopLevelWindow(
-            NativeMethods.GetForegroundWindow());
-        if (!IsSupportedTarget(candidate))
+            _windowApi,
+            _windowApi.GetForegroundWindow());
+        if (!IsSupportedTarget(candidate, _windowApi))
         {
             return;
         }
@@ -138,8 +174,10 @@ internal sealed class ForegroundWindowTracker : IDisposable
             new ForegroundWindowChangedEventArgs(candidate));
     }
 
-    private static nint NormalizeTopLevelWindow(nint window)
+    private static nint NormalizeTopLevelWindow(
+        INativeWindowApi windowApi,
+        nint window)
     {
-        return NativeMethods.GetAncestor(window, NativeMethods.GaRoot);
+        return windowApi.GetRootWindow(window);
     }
 }

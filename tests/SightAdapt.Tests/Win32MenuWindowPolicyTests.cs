@@ -76,4 +76,66 @@ public sealed class Win32MenuWindowPolicyTests
                 [(nint)10],
                 [(nint)10, (nint)20]));
     }
+
+    [TestMethod]
+    public void CandidatePolicyAcceptsOnlyVisibleAssociatedNativeMenu()
+    {
+        var candidate = new MenuWindowCandidate(
+            (nint)20,
+            Exists: true,
+            Visible: true,
+            Minimized: false,
+            WindowClass: Win32MenuWindowPolicy.PopupMenuClassName,
+            ThreadId: 11,
+            ProcessId: 20,
+            Bounds: new Rect
+            {
+                Left = 1,
+                Top = 2,
+                Right = 101,
+                Bottom = 202,
+            });
+
+        Assert.IsTrue(
+            Win32MenuWindowPolicy.IsCandidate(
+                (nint)10,
+                targetThreadId: 10,
+                targetProcessId: 20,
+                candidate));
+        Assert.IsFalse(
+            Win32MenuWindowPolicy.IsCandidate(
+                (nint)20,
+                targetThreadId: 10,
+                targetProcessId: 20,
+                candidate));
+        Assert.IsFalse(
+            Win32MenuWindowPolicy.IsCandidate(
+                (nint)10,
+                targetThreadId: 30,
+                targetProcessId: 40,
+                candidate));
+    }
+
+    [TestMethod]
+    public void SnapshotPublisherSuppressesEquivalentSetsAndCanReset()
+    {
+        var publisher = new MenuWindowSnapshotPublisher();
+
+        Assert.IsTrue(publisher.TryUpdate(
+            [(nint)10, (nint)20],
+            out var first));
+        CollectionAssert.AreEquivalent(
+            new[] { (nint)10, (nint)20 },
+            first);
+        Assert.IsFalse(publisher.TryUpdate(
+            [(nint)20, (nint)10],
+            out _));
+
+        publisher.Reset();
+
+        Assert.IsTrue(publisher.TryUpdate(
+            [(nint)20, (nint)10],
+            out _));
+    }
+
 }

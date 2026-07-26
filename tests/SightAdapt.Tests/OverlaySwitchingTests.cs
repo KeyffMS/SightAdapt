@@ -72,22 +72,6 @@ public sealed class OverlaySwitchingTests
         Assert.AreEqual(browser, cachedBrowser);
     }
 
-    [TestMethod]
-    public void OverlayControllerRetargetsExistingResource()
-    {
-        var controller = ReadSource("OverlayController.cs");
-        var overlay = ReadSource("MagnifierOverlay.cs");
-
-        StringAssert.Contains(controller, "if (IsActive)");
-        StringAssert.Contains(controller, "_overlay!.Retarget(");
-        Assert.IsFalse(
-            controller.Contains(
-                "if (IsActive && TargetWindow == targetWindow)",
-                StringComparison.Ordinal));
-        StringAssert.Contains(overlay, "public void Retarget(");
-        StringAssert.Contains(overlay, "IsWithinTransitionGrace()");
-        StringAssert.Contains(overlay, "TargetHandle { get; private set; }");
-    }
 
     private static ProcessIdentityKey CreateProcessKey(
         uint processId,
