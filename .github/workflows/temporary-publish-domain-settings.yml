@@ -50,6 +50,34 @@ jobs:
           print(f'payload parts={len(parts)}; patch bytes={len(data)}')
           '@ | python -
           git apply --verbose --whitespace=error-all $patch
+          @'
+          from pathlib import Path
+
+          replacements = {
+              'tests/SightAdapt.Tests/VisualProfileTests.cs': [
+                  ('VisualProfile\n                            .DefaultSoftInvertId',
+                   'VisualProfileCatalog\n                            .DefaultSoftInvertId'),
+              ],
+              'tests/SightAdapt.Tests/OverlayScopeTests.cs': [
+                  ('OverlayScopePolicy.IsSupportedTransform', 'OverlayScopePolicy.IsSupported'),
+                  ('OverlayScopePolicy.GetTransformDisplayName', 'OverlayScopePolicy.GetDisplayName'),
+              ],
+              'tests/SightAdapt.Tests/RuntimeMenuProfileTests.cs': [
+                  ('OverlayScopePolicy.IsSupportedTransform', 'OverlayScopePolicy.IsSupported'),
+              ],
+              'tests/SightAdapt.Tests/RuntimeCoordinatorTests.cs': [
+                  ('OverlayScopePolicy.IsSupportedTransform', 'OverlayScopePolicy.IsSupported'),
+              ],
+          }
+          for name, rules in replacements.items():
+              path = Path(name)
+              source = path.read_text(encoding='utf-8')
+              for old, new in rules:
+                  if old not in source:
+                      raise RuntimeError(f'Expected test reference not found in {name}: {old}')
+                  source = source.replace(old, new)
+              path.write_text(source, encoding='utf-8', newline='\n')
+          '@ | python -
           if (-not (Test-Path .\src\SightAdapt\VisualProfileCatalog.cs)) {
             throw 'The patch did not create VisualProfileCatalog.cs.'
           }
