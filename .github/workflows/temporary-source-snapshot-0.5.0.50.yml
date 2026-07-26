@@ -2,7 +2,7 @@ name: Temporary 0.5.0.50 source snapshot
 
 on:
   pull_request:
-    branches: ["0.5.0.50-alpha"]
+    branches: [main, "0.5.0.50-alpha"]
 
 permissions:
   contents: read
