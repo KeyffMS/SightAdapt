@@ -87,6 +87,7 @@ jobs:
           import json
           import os
           import subprocess
+          import traceback
           import urllib.request
           from pathlib import Path
 
@@ -94,6 +95,9 @@ jobs:
           token = os.environ['GH_TOKEN']
           base_branch = os.environ['BASE_BRANCH']
           api_root = f'https://api.github.com/repos/{repository}'
+          bootstrap_file = '.github/workflows/temporary-runtime-contracts.yml'
+          bootstrap_prefix = 'tools/0.5.0.50/runtime-contracts/'
+          output_directory = Path(os.environ['RUNNER_TEMP'])
 
           def request(method, path, payload=None):
               data = None if payload is None else json.dumps(payload).encode('utf-8')
@@ -110,65 +114,79 @@ jobs:
               with urllib.request.urlopen(req) as response:
                   return json.load(response)
 
-          base_sha = subprocess.check_output(
-              ['git', 'rev-parse', f'origin/{base_branch}'],
-              text=True).strip()
-          base_commit = request('GET', f'/git/commits/{base_sha}')
-          output = subprocess.check_output(
-              ['git', 'diff', '--cached', '--name-status',
-               f'origin/{base_branch}', '--'],
-              text=True,
-              encoding='utf-8')
-          entries = []
-          for line in output.splitlines():
-              fields = line.split('\t')
-              status = fields[0]
-              if status.startswith('R'):
-                  old_path, path = fields[1], fields[2]
-                  entries.append({
-                      'path': old_path,
-                      'mode': '100644',
-                      'type': 'blob',
-                      'sha': None,
+          def is_bootstrap(path):
+              return path == bootstrap_file or path.startswith(bootstrap_prefix)
+
+          try:
+              base_sha = subprocess.check_output(
+                  ['git', 'rev-parse', f'origin/{base_branch}'],
+                  text=True).strip()
+              base_commit = request('GET', f'/git/commits/{base_sha}')
+              output = subprocess.check_output(
+                  ['git', 'diff', '--cached', '--name-status',
+                   f'origin/{base_branch}', '--'],
+                  text=True,
+                  encoding='utf-8')
+              entries = []
+              for line in output.splitlines():
+                  fields = line.split('\t')
+                  status = fields[0]
+                  if status.startswith('R'):
+                      old_path, path = fields[1], fields[2]
+                      if not is_bootstrap(old_path):
+                          entries.append({
+                              'path': old_path,
+                              'mode': '100644',
+                              'type': 'blob',
+                              'sha': None,
+                          })
+                  else:
+                      path = fields[1]
+
+                  if is_bootstrap(path):
+                      continue
+
+                  if status.startswith('D'):
+                      entries.append({
+                          'path': path,
+                          'mode': '100644',
+                          'type': 'blob',
+                          'sha': None,
+                      })
+                      continue
+
+                  blob = request('POST', '/git/blobs', {
+                      'content': base64.b64encode(
+                          Path(path).read_bytes()).decode('ascii'),
+                      'encoding': 'base64',
                   })
-              else:
-                  path = fields[1]
-              if status.startswith('D'):
                   entries.append({
                       'path': path,
                       'mode': '100644',
                       'type': 'blob',
-                      'sha': None,
+                      'sha': blob['sha'],
                   })
-                  continue
-              blob = request('POST', '/git/blobs', {
-                  'content': base64.b64encode(
-                      Path(path).read_bytes()).decode('ascii'),
-                  'encoding': 'base64',
-              })
-              entries.append({
-                  'path': path,
-                  'mode': '100644',
-                  'type': 'blob',
-                  'sha': blob['sha'],
-              })
 
-          if not any(entry['path'].endswith('RuntimeOverlay.cs')
-                     for entry in entries):
-              raise RuntimeError('RuntimeOverlay.cs is missing from the validated tree.')
+              if not any(entry['path'].endswith('RuntimeOverlay.cs')
+                         for entry in entries):
+                  raise RuntimeError('RuntimeOverlay.cs is missing from the validated tree.')
 
-          tree = request('POST', '/git/trees', {
-              'base_tree': base_commit['tree']['sha'],
-              'tree': entries,
-          })
-          commit = request('POST', '/git/commits', {
-              'message': 'Use explicit runtime contracts and coherent settings snapshots',
-              'tree': tree['sha'],
-              'parents': [base_sha],
-          })
-          output_path = Path(os.environ['RUNNER_TEMP']) / 'validated-commit.txt'
-          output_path.write_text(commit['sha'] + '\n', encoding='utf-8')
-          print(f"created validated commit {commit['sha']} with {len(entries)} entries")
+              tree = request('POST', '/git/trees', {
+                  'base_tree': base_commit['tree']['sha'],
+                  'tree': entries,
+              })
+              commit = request('POST', '/git/commits', {
+                  'message': 'Use explicit runtime contracts and coherent settings snapshots',
+                  'tree': tree['sha'],
+                  'parents': [base_sha],
+              })
+              (output_directory / 'validated-commit.txt').write_text(
+                  commit['sha'] + '\n', encoding='utf-8')
+              print(f"created validated commit {commit['sha']} with {len(entries)} entries")
+          except Exception:
+              (output_directory / 'validated-error.txt').write_text(
+                  traceback.format_exc(), encoding='utf-8')
+              raise
           '@ | python -
 
       - name: Upload validated commit and tests
@@ -178,6 +196,7 @@ jobs:
           name: runtime-contracts-v3-${{ github.run_id }}
           path: |
             ${{ runner.temp }}\validated-commit.txt
+            ${{ runner.temp }}\validated-error.txt
             ${{ runner.temp }}\runtime-results\runtime-contracts.trx
           if-no-files-found: ignore
           retention-days: 3
