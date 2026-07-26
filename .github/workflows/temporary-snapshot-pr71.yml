@@ -1,0 +1,55 @@
+name: Temporary PR 71 source snapshot
+
+on:
+  pull_request:
+    branches: ["0.5.0.50-alpha"]
+
+permissions:
+  contents: read
+
+jobs:
+  snapshot:
+    if: github.head_ref == 'agent/0.5.0.50-domain-settings'
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - name: Restore
+        shell: pwsh
+        run: |
+          dotnet restore .\src\SightAdapt\SightAdapt.csproj
+          dotnet restore .\tests\SightAdapt.Tests\SightAdapt.Tests.csproj
+      - name: Build
+        shell: pwsh
+        run: dotnet build .\src\SightAdapt\SightAdapt.csproj --configuration Release --no-restore
+      - name: Test
+        shell: pwsh
+        run: >-
+          dotnet test .\tests\SightAdapt.Tests\SightAdapt.Tests.csproj
+          --configuration Release
+          --no-restore
+          --results-directory TestResults
+          --logger "trx;LogFileName=pr71.trx"
+      - name: Upload source and results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr71-source-and-results
+          path: |
+            .github
+            docs
+            src
+            tests
+            .gitignore
+            CONTRIBUTING.md
+            LICENSE
+            README.md
+            SECURITY.md
+          if-no-files-found: error
+          retention-days: 2
+          include-hidden-files: true
