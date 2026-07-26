@@ -6,6 +6,7 @@ namespace SightAdapt;
 internal sealed class ConfigurationForm : Form
 {
     private readonly SettingsCoordinator _settingsCoordinator;
+    private readonly ConfigurationUseCases _useCases;
     private readonly Func<ApplicationIdentity?> _getCurrentApplication;
     private readonly Action<IWin32Window, SettingsCoordinator>
         _showVisualProfileManager;
@@ -25,6 +26,7 @@ internal sealed class ConfigurationForm : Form
     {
         _settingsCoordinator = settingsCoordinator ??
             throw new ArgumentNullException(nameof(settingsCoordinator));
+        _useCases = new ConfigurationUseCases(_settingsCoordinator);
         _getCurrentApplication = getCurrentApplication ??
             throw new ArgumentNullException(nameof(getCurrentApplication));
         _showVisualProfileManager = showVisualProfileManager ??
@@ -46,24 +48,25 @@ internal sealed class ConfigurationForm : Form
         };
         _automaticModeSwitch.CheckedChanged += AutomaticModeCheckedChanged;
         _automaticModeStateLabel = CreateAutomaticModeStateLabel();
-        _applicationCountLabel = CreateApplicationCountLabel();
-        _editVisualProfileButton = CreateButton(
+        _applicationCountLabel = FormPresentation.CreateCountLabel();
+        _editVisualProfileButton = FormPresentation.CreateActionButton(
             "Edit color profile",
             ModernButtonStyle.Secondary,
-            160,
-            EditSelectedVisualProfile);
+            EditSelectedVisualProfile,
+            160);
         _editVisualProfileButton.Enabled = false;
         _assignmentsGrid = new ApplicationAssignmentsGrid();
-        _assignmentsGrid.ApplicationEnabledChanged += AssignmentsGridEnabledChanged;
-        _assignmentsGrid.VisualProfileChanged += AssignmentsGridVisualProfileChanged;
-        _assignmentsGrid.MenuVisualProfileChanged += AssignmentsGridMenuVisualProfileChanged;
-        _assignmentsGrid.OverlayScopeChanged += AssignmentsGridOverlayScopeChanged;
+        _assignmentsGrid.AssignmentChanged +=
+            AssignmentChanged;
         _assignmentsGrid.SelectedApplicationChanged += (_, _) =>
-            UpdateSelectedProfileActions(_settingsCoordinator.Current);
+        {
+            var snapshot = _useCases.Snapshot;
+            UpdateSelectedProfileActions(snapshot);
+        };
 
         Controls.Add(CreateRootLayout());
-        _settingsCoordinator.Changed += SettingsChanged;
-        FormClosed += (_, _) => _settingsCoordinator.Changed -= SettingsChanged;
+        _useCases.Changed += SettingsChanged;
+        FormClosed += (_, _) => _useCases.Changed -= SettingsChanged;
         RefreshProfiles();
     }
 
@@ -76,21 +79,22 @@ internal sealed class ConfigurationForm : Form
             return;
         }
 
-        var settings = _settingsCoordinator.Current;
+        var settings = _useCases.Snapshot;
         _refreshing = true;
         try
         {
             _automaticModeSwitch.Checked = settings.AutomaticMode;
             UpdateAutomaticModeState(settings.AutomaticMode);
             _assignmentsGrid.Bind(
-                settings.Assignments,
+                ApplicationAssignmentRowMapper.MapAll(
+                    settings.Assignments),
                 settings.VisualProfiles);
 
             var count = settings.Assignments.Count;
             _applicationCountLabel.Text = count == 1
                 ? "1 APPLICATION"
                 : $"{count} APPLICATIONS";
-            UpdateSelectedProfileActions();
+            UpdateSelectedProfileActions(settings);
         }
         finally
         {
@@ -126,7 +130,7 @@ internal sealed class ConfigurationForm : Form
             Dock = DockStyle.Fill,
             ForeColor = AppTheme.TextMuted,
             Font = AppTheme.CreateUiFont(8.5f),
-            Text = $"Settings are stored locally: {_settingsCoordinator.SettingsPath}",
+            Text = $"Settings are stored locally: {_useCases.SettingsPath}",
             TextAlign = ContentAlignment.MiddleLeft,
         }, 0, 4);
 
@@ -158,13 +162,13 @@ internal sealed class ConfigurationForm : Form
         text.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         text.RowStyles.Add(new RowStyle(SizeType.Percent, 58));
         text.RowStyles.Add(new RowStyle(SizeType.Percent, 42));
-        text.Controls.Add(CreateHeaderLabel(
+        text.Controls.Add(FormPresentation.CreateHeaderLabel(
             "Application and color profiles",
             20f,
             FontStyle.Bold,
             AppTheme.TextPrimary,
             ContentAlignment.BottomLeft), 0, 0);
-        text.Controls.Add(CreateHeaderLabel(
+        text.Controls.Add(FormPresentation.CreateHeaderLabel(
             "Assign visual correction profiles to application windows and native popup menus.",
             9.5f,
             FontStyle.Regular,
@@ -200,13 +204,13 @@ internal sealed class ConfigurationForm : Form
         description.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         description.RowStyles.Add(new RowStyle(SizeType.Percent, 55));
         description.RowStyles.Add(new RowStyle(SizeType.Percent, 45));
-        description.Controls.Add(CreateHeaderLabel(
+        description.Controls.Add(FormPresentation.CreateHeaderLabel(
             "Automatic mode",
             10.5f,
             FontStyle.Bold,
             AppTheme.TextPrimary,
             ContentAlignment.BottomLeft), 0, 0);
-        description.Controls.Add(CreateHeaderLabel(
+        description.Controls.Add(FormPresentation.CreateHeaderLabel(
             "Apply each application's window and native-menu profiles whenever it becomes active.",
             9f,
             FontStyle.Regular,
@@ -293,11 +297,11 @@ internal sealed class ConfigurationForm : Form
             WrapContents = false,
         };
         left.Controls.AddRange([
-            CreateButton("Add current app", ModernButtonStyle.Primary, 150, AddCurrentApplication),
-            CreateButton("Browse for .exe", ModernButtonStyle.Secondary, 140, BrowseForApplication),
-            CreateButton("Manage profiles", ModernButtonStyle.Secondary, 145, ManageVisualProfiles),
+            FormPresentation.CreateActionButton("Add current app", ModernButtonStyle.Primary, AddCurrentApplication, 150),
+            FormPresentation.CreateActionButton("Browse for .exe", ModernButtonStyle.Secondary, BrowseForApplication, 140),
+            FormPresentation.CreateActionButton("Manage profiles", ModernButtonStyle.Secondary, ManageVisualProfiles, 145),
             _editVisualProfileButton,
-            CreateButton("Remove selected", ModernButtonStyle.Danger, 145, RemoveSelectedProfile),
+            FormPresentation.CreateActionButton("Remove selected", ModernButtonStyle.Danger, RemoveSelectedProfile, 145),
         ]);
 
         var close = new ModernButton
@@ -353,13 +357,13 @@ internal sealed class ConfigurationForm : Form
             RowCount = 2,
         };
         product.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        product.Controls.Add(CreateHeaderLabel(
+        product.Controls.Add(FormPresentation.CreateHeaderLabel(
             ProductInfo.DisplayName,
             10.5f,
             FontStyle.Bold,
             AppTheme.TextPrimary,
             ContentAlignment.BottomLeft), 0, 0);
-        product.Controls.Add(CreateHeaderLabel(
+        product.Controls.Add(FormPresentation.CreateHeaderLabel(
             ProductInfo.Tagline,
             8.8f,
             FontStyle.Regular,
@@ -402,25 +406,6 @@ internal sealed class ConfigurationForm : Form
         return card;
     }
 
-    private static Label CreateHeaderLabel(
-        string text,
-        float size,
-        FontStyle style,
-        Color color,
-        ContentAlignment alignment)
-    {
-        return new Label
-        {
-            AutoEllipsis = true,
-            AutoSize = true,
-            Dock = DockStyle.Fill,
-            ForeColor = color,
-            Font = AppTheme.CreateUiFont(size, style),
-            Text = text,
-            TextAlign = alignment,
-        };
-    }
-
     private static Label CreateAutomaticModeStateLabel()
     {
         return new Label
@@ -431,19 +416,6 @@ internal sealed class ConfigurationForm : Form
             Margin = new Padding(12, 0, 0, 0),
             Padding = new Padding(12, 6, 12, 6),
             TextAlign = ContentAlignment.MiddleCenter,
-        };
-    }
-
-    private static Label CreateApplicationCountLabel()
-    {
-        return new Label
-        {
-            Anchor = AnchorStyles.Right,
-            AutoSize = true,
-            ForeColor = AppTheme.TextSecondary,
-            Font = AppTheme.CreateUiFont(9f, FontStyle.Bold),
-            Margin = new Padding(0, 0, 18, 0),
-            TextAlign = ContentAlignment.MiddleRight,
         };
     }
 
@@ -460,25 +432,6 @@ internal sealed class ConfigurationForm : Form
         };
     }
 
-    private static ModernButton CreateButton(
-        string text,
-        ModernButtonStyle style,
-        int minimumWidth,
-        Action action)
-    {
-        var button = new ModernButton
-        {
-            Text = text,
-            VisualStyle = style,
-            MinimumSize = new Size(minimumWidth, 40),
-            Margin = new Padding(0, 0, 8, 0),
-        };
-        button.Click += (_, _) => action();
-        return button;
-    }
-
-
-
     private void AutomaticModeCheckedChanged(object? sender, EventArgs eventArgs)
     {
         if (_refreshing)
@@ -486,8 +439,8 @@ internal sealed class ConfigurationForm : Form
             return;
         }
 
-        var result = _settingsCoordinator.Commit(settings =>
-            AutomaticModeManagementService.Set(settings, _automaticModeSwitch.Checked));
+        var result = _useCases.SetAutomaticMode(
+            _automaticModeSwitch.Checked);
         if (!result.Succeeded)
         {
             ShowCommitError(result.ErrorMessage);
@@ -508,79 +461,25 @@ internal sealed class ConfigurationForm : Form
             : AppTheme.TextSecondary;
     }
 
-    private void AssignmentsGridEnabledChanged(
-        object? sender,
-        ApplicationAssignmentEnabledChangedEventArgs eventArgs)
+    private void AssignmentChanged(
+        ApplicationAssignmentChange change)
     {
-        CommitGridChange(
-            eventArgs.ExecutablePath,
-            (settings, profile) =>
-                ApplicationAssignmentService.SetEnabled(
-                    settings,
-                    profile,
-                    eventArgs.Enabled));
-    }
+        ArgumentNullException.ThrowIfNull(change);
 
-    private void AssignmentsGridVisualProfileChanged(
-        object? sender,
-        ApplicationAssignmentVisualProfileChangedEventArgs eventArgs)
-    {
-        CommitGridChange(
-            eventArgs.ExecutablePath,
-            (settings, profile) =>
-                ApplicationAssignmentService.AssignVisualProfile(
-                    settings,
-                    profile,
-                    eventArgs.VisualProfileId));
-    }
-
-    private void AssignmentsGridMenuVisualProfileChanged(
-        object? sender,
-        ApplicationAssignmentMenuVisualProfileChangedEventArgs eventArgs)
-    {
-        CommitGridChange(
-            eventArgs.ExecutablePath,
-            (settings, profile) =>
-                ApplicationAssignmentService.AssignMenuVisualProfile(
-                    settings,
-                    profile,
-                    eventArgs.MenuVisualProfileId));
-    }
-
-    private void AssignmentsGridOverlayScopeChanged(
-        object? sender,
-        ApplicationAssignmentOverlayScopeChangedEventArgs eventArgs)
-    {
-        CommitGridChange(
-            eventArgs.ExecutablePath,
-            (settings, profile) =>
-                ApplicationAssignmentService.SetOverlayScope(
-                    settings,
-                    profile,
-                    eventArgs.OverlayScope));
-    }
-
-    private void CommitGridChange(
-        string executablePath,
-        Action<SightAdaptSettings, ApplicationAssignment> mutation)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(executablePath);
-        ArgumentNullException.ThrowIfNull(mutation);
-
-        var displayedSettings = _settingsCoordinator.Current;
+        var displayedSettings = _useCases.Snapshot;
         var displayedAssignment =
             ProfileResolver.RequireAssignmentByExecutablePath(
                 displayedSettings,
-                executablePath);
+                change.ExecutablePath);
+        var displayedRow =
+            ApplicationAssignmentRowMapper.Map(
+                displayedAssignment);
         SettingsCommitResult result;
 
         _committingGridValue = true;
         try
         {
-            result = _settingsCoordinator.Commit(settings =>
-                mutation(
-                    settings,
-                    ProfileResolver.RequireAssignmentByExecutablePath(settings, executablePath)));
+            result = _useCases.Apply(change);
         }
         finally
         {
@@ -590,22 +489,19 @@ internal sealed class ConfigurationForm : Form
         if (!result.Succeeded)
         {
             ShowCommitError(result.ErrorMessage);
-            _assignmentsGrid.UpdateAssignment(displayedAssignment);
+            _assignmentsGrid.UpdateAssignment(displayedRow);
             return;
         }
 
-        var committedSettings = _settingsCoordinator.Current;
-        _assignmentsGrid.UpdateAssignment(
+        var committedSettings = _useCases.Snapshot;
+        var committedAssignment =
             ProfileResolver.RequireAssignmentByExecutablePath(
                 committedSettings,
-                executablePath));
+                change.ExecutablePath);
+        _assignmentsGrid.UpdateAssignment(
+            ApplicationAssignmentRowMapper.Map(
+                committedAssignment));
         UpdateSelectedProfileActions(committedSettings);
-    }
-
-    private void UpdateSelectedProfileActions()
-    {
-        UpdateSelectedProfileActions(
-            _settingsCoordinator.Current);
     }
 
     private void UpdateSelectedProfileActions(
@@ -627,7 +523,7 @@ internal sealed class ConfigurationForm : Form
 
     private void EditSelectedVisualProfile()
     {
-        var settings = _settingsCoordinator.Current;
+        var settings = _useCases.Snapshot;
         var assignment =
             GetSelectedApplicationAssignment(settings);
         if (assignment is null)
@@ -654,13 +550,9 @@ internal sealed class ConfigurationForm : Form
         }
 
         var profileId = profile.Id;
-        var result = _settingsCoordinator.Commit(settings =>
-            VisualProfileManagementService.UpdateTuning(
-                settings,
-                ProfileResolver.RequireVisualProfile(
-                    settings,
-                    profileId),
-                values));
+        var result = _useCases.UpdateTuning(
+            profileId,
+            values);
         if (!result.Succeeded)
         {
             ShowCommitError(result.ErrorMessage);
@@ -739,12 +631,7 @@ internal sealed class ConfigurationForm : Form
 
     private void AddOrUpdateProfile(ApplicationIdentity identity)
     {
-        var result = _settingsCoordinator.Commit(settings =>
-        {
-            var assignment = ApplicationAssignmentService.AddOrEnable(settings, identity);
-            AutomaticModeManagementService.Enable(settings);
-            return assignment.WasCreated;
-        });
+        var result = _useCases.AddOrEnable(identity);
         if (!result.Succeeded)
         {
             ShowCommitError(result.ErrorMessage);
@@ -764,7 +651,7 @@ internal sealed class ConfigurationForm : Form
 
     private void RemoveSelectedProfile()
     {
-        var settings = _settingsCoordinator.Current;
+        var settings = _useCases.Snapshot;
         var profile =
             GetSelectedApplicationAssignment(settings);
         if (profile is null ||
@@ -780,8 +667,7 @@ internal sealed class ConfigurationForm : Form
         }
 
         var path = profile.ExecutablePath;
-        var result = _settingsCoordinator.Commit(settings =>
-            ApplicationAssignmentService.Remove(settings, ProfileResolver.RequireAssignmentByExecutablePath(settings, path)));
+        var result = _useCases.Remove(path);
         if (!result.Succeeded)
         {
             ShowCommitError(result.ErrorMessage);
@@ -807,6 +693,5 @@ internal sealed class ConfigurationForm : Form
             MessageBoxButtons.OK,
             MessageBoxIcon.Warning);
     }
-
 
 }

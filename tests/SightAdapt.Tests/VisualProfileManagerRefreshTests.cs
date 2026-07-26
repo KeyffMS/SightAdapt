@@ -19,10 +19,8 @@ public sealed class VisualProfileManagerRefreshTests
                     new VisualProfileManagerForm(coordinator);
                 var generation = manager.RefreshGeneration;
 
-                manager.Commit(settings =>
-                    VisualProfileManagementService.Create(
-                        settings,
-                        "Reader").Id);
+                manager.Commit(useCases =>
+                    useCases.Create("Reader"));
 
                 Assert.AreEqual(
                     generation + 1,
