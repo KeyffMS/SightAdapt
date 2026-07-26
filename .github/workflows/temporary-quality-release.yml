@@ -50,18 +50,18 @@ jobs:
               raise RuntimeError('No reviewed patch payload was found.')
           payload = ''.join(path.read_text(encoding='utf-8').strip() for path in parts)
           Path(os.environ['SIGHTADAPT_PATCH']).write_bytes(
-              gzip.decompress(base64.b64decode(payload))
-          )
+              gzip.decompress(base64.b64decode(payload)))
           '@ | python -
+
           git fetch origin "+refs/heads/0.5.0.50-alpha:refs/remotes/origin/0.5.0.50-alpha"
           git reset --hard origin/0.5.0.50-alpha
           git apply --index --whitespace=error-all $patch
+
           @'
           from pathlib import Path
 
           path = Path('tests/SightAdapt.Tests/ArchitectureComplianceTests.cs')
           source = path.read_text(encoding='utf-8')
-
           negative = (
               ".Where(call => !allowed.Contains(\n"
               "                OwnerType(call.Caller.DeclaringType)))")
@@ -70,8 +70,7 @@ jobs:
               "                OwnerType(call.Caller.DeclaringType) is not { } owner ||\n"
               "                !allowed.Contains(owner))")
           if source.count(negative) != 2:
-              raise RuntimeError(
-                  'Expected exactly two null-unsafe allowed-owner checks.')
+              raise RuntimeError('Expected exactly two null-unsafe allowed-owner checks.')
           source = source.replace(negative, negative_replacement)
 
           positive = (
@@ -82,17 +81,17 @@ jobs:
               "                OwnerType(call.Caller.DeclaringType) is { } owner &&\n"
               "                allowedCallers.Contains(owner))")
           if source.count(positive) != 1:
-              raise RuntimeError(
-                  'Expected exactly one null-unsafe caller-owner check.')
+              raise RuntimeError('Expected exactly one null-unsafe caller-owner check.')
           source = source.replace(positive, positive_replacement)
           path.write_text(source, encoding='utf-8', newline='\n')
           '@ | python -
+
           git add tests/SightAdapt.Tests/ArchitectureComplianceTests.cs
           git diff --cached --check
-          if (-not (Test-Path 'Directory.Build.props')) { throw 'Expected validated marker is missing: Directory.Build.props' }
-          if (-not (Test-Path 'tests/SightAdapt.Tests/TestSupport.cs')) { throw 'Expected validated marker is missing: tests/SightAdapt.Tests/TestSupport.cs' }
-          if (-not (Test-Path 'tests/SightAdapt.Tests/ReleaseMetadataTests.cs')) { throw 'Expected validated marker is missing: tests/SightAdapt.Tests/ReleaseMetadataTests.cs' }
-          if (-not (Test-Path 'tools/verify-release-metadata.ps1')) { throw 'Expected validated marker is missing: tools/verify-release-metadata.ps1' }
+          if (-not (Test-Path 'Directory.Build.props')) { throw 'Directory.Build.props is missing.' }
+          if (-not (Test-Path 'tests/SightAdapt.Tests/TestSupport.cs')) { throw 'TestSupport.cs is missing.' }
+          if (-not (Test-Path 'tests/SightAdapt.Tests/ReleaseMetadataTests.cs')) { throw 'ReleaseMetadataTests.cs is missing.' }
+          if (-not (Test-Path 'tools/verify-release-metadata.ps1')) { throw 'Release metadata verifier is missing.' }
           if (-not (git diff --cached --name-only)) { throw 'The reviewed patch produced no changes.' }
 
       - name: Verify release metadata
@@ -138,6 +137,9 @@ jobs:
       - name: Publish validated source commit
         shell: pwsh
         run: |
+          git restore --source="origin/0.5.0.50-alpha" --staged --worktree .github/workflows/build.yml
+          git diff --cached --check
+          if (-not (git diff --cached --name-only)) { throw 'No publishable source changes remain.' }
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git commit -m 'Finish semantic architecture gates and canonical 0.5.0.50 release metadata'
