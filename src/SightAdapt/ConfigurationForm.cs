@@ -11,8 +11,8 @@ internal sealed class ConfigurationForm : Form
         _showVisualProfileManager;
     private readonly ToggleSwitch _automaticModeSwitch;
     private readonly Label _automaticModeStateLabel;
-    private readonly Label _profileCountLabel;
-    private readonly ApplicationAssignmentsGrid _profilesGrid;
+    private readonly Label _applicationCountLabel;
+    private readonly ApplicationAssignmentsGrid _assignmentsGrid;
     private readonly ModernButton _editVisualProfileButton;
     private bool _refreshing;
     private bool _committingGridValue;
@@ -46,19 +46,19 @@ internal sealed class ConfigurationForm : Form
         };
         _automaticModeSwitch.CheckedChanged += AutomaticModeCheckedChanged;
         _automaticModeStateLabel = CreateAutomaticModeStateLabel();
-        _profileCountLabel = CreateProfileCountLabel();
+        _applicationCountLabel = CreateApplicationCountLabel();
         _editVisualProfileButton = CreateButton(
             "Edit color profile",
             ModernButtonStyle.Secondary,
             160,
             EditSelectedVisualProfile);
         _editVisualProfileButton.Enabled = false;
-        _profilesGrid = new ApplicationAssignmentsGrid();
-        _profilesGrid.ApplicationEnabledChanged += ProfilesGridEnabledChanged;
-        _profilesGrid.VisualProfileChanged += ProfilesGridVisualProfileChanged;
-        _profilesGrid.MenuVisualProfileChanged += ProfilesGridMenuVisualProfileChanged;
-        _profilesGrid.OverlayScopeChanged += ProfilesGridOverlayScopeChanged;
-        _profilesGrid.SelectedApplicationChanged += (_, _) =>
+        _assignmentsGrid = new ApplicationAssignmentsGrid();
+        _assignmentsGrid.ApplicationEnabledChanged += AssignmentsGridEnabledChanged;
+        _assignmentsGrid.VisualProfileChanged += AssignmentsGridVisualProfileChanged;
+        _assignmentsGrid.MenuVisualProfileChanged += AssignmentsGridMenuVisualProfileChanged;
+        _assignmentsGrid.OverlayScopeChanged += AssignmentsGridOverlayScopeChanged;
+        _assignmentsGrid.SelectedApplicationChanged += (_, _) =>
             UpdateSelectedProfileActions();
 
         Controls.Add(CreateRootLayout());
@@ -83,14 +83,14 @@ internal sealed class ConfigurationForm : Form
         {
             _automaticModeSwitch.Checked = Settings.AutomaticMode;
             UpdateAutomaticModeState();
-            _profilesGrid.Bind(
+            _assignmentsGrid.Bind(
                 Settings.Assignments,
                 Settings.VisualProfiles);
 
             var count = Settings.Assignments.Count;
-            _profileCountLabel.Text = count == 1
-                ? "1 PROFILE"
-                : $"{count} PROFILES";
+            _applicationCountLabel.Text = count == 1
+                ? "1 APPLICATION"
+                : $"{count} APPLICATIONS";
             UpdateSelectedProfileActions();
         }
         finally
@@ -261,7 +261,7 @@ internal sealed class ConfigurationForm : Form
             Margin = new Padding(18, 0, 0, 0),
             Text = "Configured applications",
         }, 0, 0);
-        header.Controls.Add(_profileCountLabel, 1, 0);
+        header.Controls.Add(_applicationCountLabel, 1, 0);
 
         var host = new Panel
         {
@@ -269,7 +269,7 @@ internal sealed class ConfigurationForm : Form
             Dock = DockStyle.Fill,
             Margin = Padding.Empty,
         };
-        host.Controls.Add(_profilesGrid);
+        host.Controls.Add(_assignmentsGrid);
 
         var card = new RoundedPanel
         {
@@ -435,7 +435,7 @@ internal sealed class ConfigurationForm : Form
         };
     }
 
-    private static Label CreateProfileCountLabel()
+    private static Label CreateApplicationCountLabel()
     {
         return new Label
         {
@@ -507,7 +507,7 @@ internal sealed class ConfigurationForm : Form
             : AppTheme.TextSecondary;
     }
 
-    private void ProfilesGridEnabledChanged(
+    private void AssignmentsGridEnabledChanged(
         object? sender,
         ApplicationAssignmentEnabledChangedEventArgs eventArgs)
     {
@@ -520,7 +520,7 @@ internal sealed class ConfigurationForm : Form
                     eventArgs.Enabled));
     }
 
-    private void ProfilesGridVisualProfileChanged(
+    private void AssignmentsGridVisualProfileChanged(
         object? sender,
         ApplicationAssignmentVisualProfileChangedEventArgs eventArgs)
     {
@@ -533,7 +533,7 @@ internal sealed class ConfigurationForm : Form
                     eventArgs.VisualProfileId));
     }
 
-    private void ProfilesGridMenuVisualProfileChanged(
+    private void AssignmentsGridMenuVisualProfileChanged(
         object? sender,
         ApplicationAssignmentMenuVisualProfileChangedEventArgs eventArgs)
     {
@@ -546,7 +546,7 @@ internal sealed class ConfigurationForm : Form
                     eventArgs.MenuVisualProfileId));
     }
 
-    private void ProfilesGridOverlayScopeChanged(
+    private void AssignmentsGridOverlayScopeChanged(
         object? sender,
         ApplicationAssignmentOverlayScopeChangedEventArgs eventArgs)
     {
@@ -588,11 +588,11 @@ internal sealed class ConfigurationForm : Form
         if (!result.Succeeded)
         {
             ShowCommitError(result.ErrorMessage);
-            _profilesGrid.UpdateApplication(displayedProfile);
+            _assignmentsGrid.UpdateAssignment(displayedProfile);
             return;
         }
 
-        _profilesGrid.UpdateApplication(
+        _assignmentsGrid.UpdateAssignment(
             ProfileResolver.RequireAssignmentByExecutablePath(
                 Settings,
                 executablePath));
@@ -659,7 +659,7 @@ internal sealed class ConfigurationForm : Form
 
     private ApplicationAssignment? GetSelectedApplicationAssignment()
     {
-        var executablePath = _profilesGrid.SelectedExecutablePath;
+        var executablePath = _assignmentsGrid.SelectedExecutablePath;
         if (string.IsNullOrWhiteSpace(executablePath))
         {
             return null;
