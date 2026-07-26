@@ -17,20 +17,16 @@ jobs:
     if: github.head_ref == 'agent/0.5.0.50-runtime-contracts-v3'
     runs-on: windows-latest
     timeout-minutes: 30
+    env:
+      BASE_BRANCH: 0.5.0.50-alpha
+      GH_REPOSITORY: ${{ github.repository }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - name: Check out pull-request branch
         uses: actions/checkout@v4
         with:
           ref: ${{ github.head_ref }}
           fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Detect publication state
-        id: state
-        shell: pwsh
-        run: |
-          $needsApply = -not (Test-Path .\src\SightAdapt\RuntimeOverlay.cs)
-          "needs_apply=$($needsApply.ToString().ToLowerInvariant())" >> $env:GITHUB_OUTPUT
 
       - name: Set up .NET 8
         uses: actions/setup-dotnet@v4
@@ -38,9 +34,9 @@ jobs:
           dotnet-version: 8.0.x
 
       - name: Apply reviewed runtime patch
-        if: steps.state.outputs.needs_apply == 'true'
         shell: pwsh
         run: |
+          git fetch origin $env:BASE_BRANCH
           $patch = Join-Path $env:RUNNER_TEMP 'runtime-contracts.patch'
           $env:RUNTIME_PATCH = $patch
           @'
@@ -58,8 +54,11 @@ jobs:
               gzip.decompress(base64.b64decode(payload)))
           '@ | python -
           git apply --whitespace=error-all $patch
+          Remove-Item .github/workflows/temporary-runtime-contracts.yml
           Remove-Item tools/0.5.0.50/runtime-contracts -Recurse
-          git diff --check
+          git add --all
+          git diff --cached --check
+          git diff --cached --name-status "origin/$env:BASE_BRANCH"
 
       - name: Restore
         shell: pwsh
@@ -80,27 +79,105 @@ jobs:
           --results-directory "$env:RUNNER_TEMP\runtime-results"
           --logger "trx;LogFileName=runtime-contracts.trx"
 
-      - name: Publish validated source branch
-        if: steps.state.outputs.needs_apply == 'true'
+      - name: Create validated Git commit object
         shell: pwsh
         run: |
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add --all
-          git diff --cached --check
-          $changed = git diff --cached --name-only
-          $changed | ForEach-Object { Write-Host $_ }
-          if (-not ($changed | Select-String 'RuntimeOverlay.cs')) {
-            throw 'The validated runtime source is not staged.'
-          }
-          git commit -m 'Use explicit runtime contracts and coherent settings snapshots'
-          git push origin "HEAD:refs/heads/$env:GITHUB_HEAD_REF"
+          @'
+          import base64
+          import json
+          import os
+          import subprocess
+          import urllib.request
+          from pathlib import Path
 
-      - name: Upload diagnostics
+          repository = os.environ['GH_REPOSITORY']
+          token = os.environ['GH_TOKEN']
+          base_branch = os.environ['BASE_BRANCH']
+          api_root = f'https://api.github.com/repos/{repository}'
+
+          def request(method, path, payload=None):
+              data = None if payload is None else json.dumps(payload).encode('utf-8')
+              req = urllib.request.Request(
+                  api_root + path,
+                  data=data,
+                  method=method,
+                  headers={
+                      'Authorization': f'Bearer {token}',
+                      'Accept': 'application/vnd.github+json',
+                      'X-GitHub-Api-Version': '2022-11-28',
+                      'User-Agent': 'SightAdapt-validated-commit-builder',
+                  })
+              with urllib.request.urlopen(req) as response:
+                  return json.load(response)
+
+          base_sha = subprocess.check_output(
+              ['git', 'rev-parse', f'origin/{base_branch}'],
+              text=True).strip()
+          base_commit = request('GET', f'/git/commits/{base_sha}')
+          output = subprocess.check_output(
+              ['git', 'diff', '--cached', '--name-status',
+               f'origin/{base_branch}', '--'],
+              text=True,
+              encoding='utf-8')
+          entries = []
+          for line in output.splitlines():
+              fields = line.split('\t')
+              status = fields[0]
+              if status.startswith('R'):
+                  old_path, path = fields[1], fields[2]
+                  entries.append({
+                      'path': old_path,
+                      'mode': '100644',
+                      'type': 'blob',
+                      'sha': None,
+                  })
+              else:
+                  path = fields[1]
+              if status.startswith('D'):
+                  entries.append({
+                      'path': path,
+                      'mode': '100644',
+                      'type': 'blob',
+                      'sha': None,
+                  })
+                  continue
+              blob = request('POST', '/git/blobs', {
+                  'content': base64.b64encode(
+                      Path(path).read_bytes()).decode('ascii'),
+                  'encoding': 'base64',
+              })
+              entries.append({
+                  'path': path,
+                  'mode': '100644',
+                  'type': 'blob',
+                  'sha': blob['sha'],
+              })
+
+          if not any(entry['path'].endswith('RuntimeOverlay.cs')
+                     for entry in entries):
+              raise RuntimeError('RuntimeOverlay.cs is missing from the validated tree.')
+
+          tree = request('POST', '/git/trees', {
+              'base_tree': base_commit['tree']['sha'],
+              'tree': entries,
+          })
+          commit = request('POST', '/git/commits', {
+              'message': 'Use explicit runtime contracts and coherent settings snapshots',
+              'tree': tree['sha'],
+              'parents': [base_sha],
+          })
+          output_path = Path(os.environ['RUNNER_TEMP']) / 'validated-commit.txt'
+          output_path.write_text(commit['sha'] + '\n', encoding='utf-8')
+          print(f"created validated commit {commit['sha']} with {len(entries)} entries")
+          '@ | python -
+
+      - name: Upload validated commit and tests
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: runtime-contracts-v3-${{ github.run_id }}
-          path: ${{ runner.temp }}\runtime-results\runtime-contracts.trx
+          path: |
+            ${{ runner.temp }}\validated-commit.txt
+            ${{ runner.temp }}\runtime-results\runtime-contracts.trx
           if-no-files-found: ignore
           retention-days: 3
