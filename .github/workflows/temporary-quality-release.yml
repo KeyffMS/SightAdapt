@@ -56,6 +56,38 @@ jobs:
           git fetch origin "+refs/heads/0.5.0.50-alpha:refs/remotes/origin/0.5.0.50-alpha"
           git reset --hard origin/0.5.0.50-alpha
           git apply --index --whitespace=error-all $patch
+          @'
+          from pathlib import Path
+
+          path = Path('tests/SightAdapt.Tests/ArchitectureComplianceTests.cs')
+          source = path.read_text(encoding='utf-8')
+
+          negative = (
+              ".Where(call => !allowed.Contains(\n"
+              "                OwnerType(call.Caller.DeclaringType)))")
+          negative_replacement = (
+              ".Where(call =>\n"
+              "                OwnerType(call.Caller.DeclaringType) is not { } owner ||\n"
+              "                !allowed.Contains(owner))")
+          if source.count(negative) != 2:
+              raise RuntimeError(
+                  'Expected exactly two null-unsafe allowed-owner checks.')
+          source = source.replace(negative, negative_replacement)
+
+          positive = (
+              ".Where(call => allowedCallers.Contains(\n"
+              "                OwnerType(call.Caller.DeclaringType)))")
+          positive_replacement = (
+              ".Where(call =>\n"
+              "                OwnerType(call.Caller.DeclaringType) is { } owner &&\n"
+              "                allowedCallers.Contains(owner))")
+          if source.count(positive) != 1:
+              raise RuntimeError(
+                  'Expected exactly one null-unsafe caller-owner check.')
+          source = source.replace(positive, positive_replacement)
+          path.write_text(source, encoding='utf-8', newline='\n')
+          '@ | python -
+          git add tests/SightAdapt.Tests/ArchitectureComplianceTests.cs
           git diff --cached --check
           if (-not (Test-Path 'Directory.Build.props')) { throw 'Expected validated marker is missing: Directory.Build.props' }
           if (-not (Test-Path 'tests/SightAdapt.Tests/TestSupport.cs')) { throw 'Expected validated marker is missing: tests/SightAdapt.Tests/TestSupport.cs' }
