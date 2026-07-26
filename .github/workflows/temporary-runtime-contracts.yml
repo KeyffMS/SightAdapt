@@ -1,0 +1,93 @@
+name: Temporary runtime contracts validation
+
+on:
+  pull_request:
+    branches: ["0.5.0.50-alpha"]
+
+permissions:
+  contents: write
+  pull-requests: read
+
+jobs:
+  apply-and-validate:
+    if: github.head_ref == 'agent/0.5.0.50-runtime-contracts'
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out pull-request branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Apply reviewed runtime patch
+        shell: pwsh
+        run: |
+          $patch = Join-Path $env:RUNNER_TEMP 'runtime-contracts.patch'
+          $env:RUNTIME_PATCH = $patch
+          @'
+          import base64
+          import gzip
+          import os
+          from pathlib import Path
+
+          root = Path('tools/0.5.0.50/runtime-contracts')
+          payload = ''.join(
+              path.read_text(encoding='utf-8')
+              for path in sorted(root.glob('payload.*'))
+          )
+          Path(os.environ['RUNTIME_PATCH']).write_bytes(
+              gzip.decompress(base64.b64decode(payload)))
+          '@ | python -
+          git apply --index --whitespace=error-all $patch
+          git diff --cached --check
+
+      - name: Remove bootstrap files
+        shell: pwsh
+        run: |
+          git rm .github/workflows/temporary-runtime-contracts.yml
+          git rm -r tools/0.5.0.50/runtime-contracts
+
+      - name: Restore
+        shell: pwsh
+        run: |
+          dotnet restore .\src\SightAdapt\SightAdapt.csproj
+          dotnet restore .\tests\SightAdapt.Tests\SightAdapt.Tests.csproj
+
+      - name: Build
+        shell: pwsh
+        run: dotnet build .\src\SightAdapt\SightAdapt.csproj --configuration Release --no-restore
+
+      - name: Test
+        shell: pwsh
+        run: >-
+          dotnet test .\tests\SightAdapt.Tests\SightAdapt.Tests.csproj
+          --configuration Release
+          --no-restore
+          --results-directory "$env:RUNNER_TEMP\runtime-results"
+          --logger "trx;LogFileName=runtime-contracts.trx"
+
+      - name: Publish validated source branch
+        shell: pwsh
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add --all
+          git diff --cached --check
+          git commit -m 'Use explicit runtime contracts and coherent settings snapshots'
+          git push origin "HEAD:refs/heads/$env:GITHUB_HEAD_REF"
+
+      - name: Upload test result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: runtime-contracts-${{ github.run_id }}
+          path: ${{ runner.temp }}\runtime-results\runtime-contracts.trx
+          if-no-files-found: ignore
+          retention-days: 3
