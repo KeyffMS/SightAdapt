@@ -9,7 +9,7 @@ public sealed class ProfileSliderLayoutTests
     [TestMethod]
     public void ExplicitNeutralPointUsesCenteredMapping()
     {
-        RunOnSta(() =>
+        StaTest.Run(() =>
         {
             using var slider = new ModernProfileSlider
             {
@@ -33,7 +33,7 @@ public sealed class ProfileSliderLayoutTests
     [TestMethod]
     public void UnitTextDoesNotChangeNeutralPoint()
     {
-        RunOnSta(() =>
+        StaTest.Run(() =>
         {
             using var slider = new ModernProfileSlider
             {
@@ -55,7 +55,7 @@ public sealed class ProfileSliderLayoutTests
     [TestMethod]
     public void SliderWithoutNeutralUsesLinearMapping()
     {
-        RunOnSta(() =>
+        StaTest.Run(() =>
         {
             using var slider = new ModernProfileSlider
             {
@@ -76,7 +76,7 @@ public sealed class ProfileSliderLayoutTests
     [TestMethod]
     public void ProfileEditorDeclaresEveryNeutralPointExplicitly()
     {
-        RunOnSta(() =>
+        StaTest.Run(() =>
         {
             using var editor = new VisualProfileEditorForm(
                 VisualProfileCatalog.Default.CreateBuiltInProfile(VisualProfileCatalog.DefaultSoftInvertId));
@@ -129,29 +129,4 @@ public sealed class ProfileSliderLayoutTests
         }
     }
 
-    private static void RunOnSta(Action action)
-    {
-        Exception? failure = null;
-        var thread = new Thread(() =>
-        {
-            try
-            {
-                action();
-            }
-            catch (Exception exception)
-            {
-                failure = exception;
-            }
-        });
-        thread.SetApartmentState(ApartmentState.STA);
-        thread.Start();
-
-        Assert.IsTrue(
-            thread.Join(TimeSpan.FromSeconds(10)),
-            "The profile-slider test did not finish in time.");
-        if (failure is not null)
-        {
-            Assert.Fail(failure.ToString());
-        }
-    }
 }

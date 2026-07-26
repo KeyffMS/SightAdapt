@@ -1,5 +1,5 @@
 
-# SightAdapt 0.5 Alpha functionality
+# SightAdapt functionality
 
 ## Application operation
 

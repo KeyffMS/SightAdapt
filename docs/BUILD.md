@@ -71,14 +71,16 @@ $process = Get-Process SightAdapt
     Format-List ProductVersion, FileVersion
 ```
 
-Expected version prefix:
+The expected values are generated from the single source of truth in `Directory.Build.props`:
 
 ```text
-ProductVersion: 0.5.0-alpha.1+<commit>
-FileVersion:    0.5.0.0
+SightAdaptProductVersion
+SightAdaptFileVersion
+SightAdaptInformationalVersion
+SightAdaptAssemblyVersion
 ```
 
-The commit suffix identifies the exact source revision.
+`SightAdapt.csproj`, the executable metadata, CI artifact names, and the generated README version block consume or verify these properties rather than maintaining independent version numbers.
 
 ## Output directory
 
