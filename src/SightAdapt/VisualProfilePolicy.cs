@@ -5,35 +5,31 @@ internal static class VisualProfilePolicy
     public const string UserProfileIdPrefix = "user-";
     public const int MaximumNameLength = 80;
     public const string CustomProfileBaseName =
-        "Custom Soft Invert";
+        VisualProfileCatalog.DefaultUserProfileBaseName;
 
     public const string NewAssignmentProfileId =
-        VisualProfile.DefaultSoftInvertId;
+        VisualProfileCatalog.DefaultSoftInvertId;
     public const string DeletionFallbackProfileId =
-        VisualProfile.DefaultSoftInvertId;
+        VisualProfileCatalog.DefaultSoftInvertId;
     public const string MissingReferenceFallbackProfileId =
-        VisualProfile.DefaultInvertId;
+        VisualProfileCatalog.DefaultInvertId;
+
+    public static string NewAssignmentProfileName =>
+        VisualProfileCatalog.Default
+            .GetRequiredBuiltInDefinition(
+                NewAssignmentProfileId)
+            .DisplayName;
 
     public static bool IsBuiltInId(string? profileId)
     {
-        return string.Equals(
-                   profileId,
-                   VisualProfile.DefaultNoneId,
-                   StringComparison.OrdinalIgnoreCase) ||
-               string.Equals(
-                   profileId,
-                   VisualProfile.DefaultInvertId,
-                   StringComparison.OrdinalIgnoreCase) ||
-               string.Equals(
-                   profileId,
-                   VisualProfile.DefaultSoftInvertId,
-                   StringComparison.OrdinalIgnoreCase);
+        return VisualProfileCatalog.Default.IsBuiltInId(
+            profileId);
     }
 
     public static bool IsSupportedTransformId(
         string? transformId)
     {
-        return VisualTransformCatalog.Default.IsSupported(
+        return VisualProfileCatalog.Default.IsSupportedTransform(
             transformId);
     }
 

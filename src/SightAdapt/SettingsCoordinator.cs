@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 
 namespace SightAdapt;
@@ -169,8 +168,12 @@ internal sealed class SettingsCoordinator
     private static void ReportUnexpectedError(
         Exception exception)
     {
-        Debug.WriteLine(
-            $"Unexpected SightAdapt settings transaction failure: " +
-            $"{exception}");
+        Diagnostics.Report(
+            nameof(SettingsCoordinator),
+            "Commit settings transaction",
+            DiagnosticSeverity.Error,
+            DiagnosticFailurePolicy.None,
+            "An unexpected settings transaction failure occurred.",
+            exception);
     }
 }

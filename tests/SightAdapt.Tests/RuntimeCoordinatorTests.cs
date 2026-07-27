@@ -44,7 +44,7 @@ public sealed class RuntimeCoordinatorTests
             ApplicationRunState.AutomaticActive,
             context.State.Current.Kind);
         Assert.AreEqual(
-            VisualProfile.DefaultSoftInvertId,
+            VisualProfileCatalog.DefaultSoftInvertId,
             context.State.Current.VisualProfileId);
     }
 
@@ -55,7 +55,7 @@ public sealed class RuntimeCoordinatorTests
         context.AddDisabledAssignment();
         context.WireSettingsChanged();
 
-        context.Coordinator.ToggleActiveApplicationProfile();
+        context.Coordinator.ToggleActiveApplicationAssignment();
 
         Assert.AreEqual(1, context.Overlay.ActivationCount);
         Assert.IsTrue(context.Overlay.IsActive);
@@ -98,10 +98,15 @@ public sealed class RuntimeCoordinatorTests
                 context.Settings.Current.AutomaticMode);
             order.Add("overlay-disabled");
         };
+        var profile = VisualProfileCatalog.Default
+            .CreateBuiltInProfile(
+                VisualProfileCatalog.DefaultSoftInvertId);
         context.Overlay.Activate(
-            context.Target,
-            VisualProfile.CreateDefaultSoftInvert(),
-            OverlayScope.ClientArea);
+            new OverlayActivationRequest(
+                context.Target,
+                profile,
+                profile,
+                OverlayScope.ClientArea));
 
         context.Coordinator.EmergencyDisable();
 
@@ -118,6 +123,41 @@ public sealed class RuntimeCoordinatorTests
             ApplicationRunState.Emergency,
             context.State.Current.Kind);
         Assert.IsFalse(context.Overlay.IsActive);
+    }
+
+    [TestMethod]
+    public void ForegroundEvaluationReadsOneSettingsSnapshot()
+    {
+        using var context = new RuntimeTestContext();
+        context.AddEnabledAssignment();
+        var reads = 0;
+        var environment = new DelegateRuntimeEnvironment(
+            () => context.Target,
+            target => target == context.Target,
+            target => target == context.Target
+                ? new ApplicationIdentity(
+                    "Reader",
+                    "reader.exe",
+                    @"C:\Apps\reader.exe")
+                : null,
+            _ => { },
+            _ => { });
+        var coordinator = new RuntimeCoordinator(
+            context.Settings,
+            context.State,
+            context.Overlay,
+            environment,
+            () =>
+            {
+                reads++;
+                return context.Settings.Current;
+            });
+
+        coordinator.HandleForegroundWindowChanged(
+            context.Target);
+
+        Assert.AreEqual(1, reads);
+        Assert.AreEqual(1, context.Overlay.ActivationCount);
     }
 
     private sealed class RuntimeTestContext : IDisposable
@@ -172,7 +212,7 @@ public sealed class RuntimeCoordinatorTests
         public void AddEnabledAssignment()
         {
             var result = Settings.Commit(settings =>
-                ApplicationProfileManagementService.AddOrEnable(
+                ApplicationAssignmentService.AddOrEnable(
                     settings,
                     _identity));
             Assert.IsTrue(result.Succeeded);
@@ -183,10 +223,10 @@ public sealed class RuntimeCoordinatorTests
             var result = Settings.Commit(settings =>
             {
                 var assignment =
-                    ApplicationProfileManagementService.AddOrEnable(
+                    ApplicationAssignmentService.AddOrEnable(
                         settings,
-                        _identity).Profile;
-                ApplicationProfileManagementService.SetEnabled(
+                        _identity).Assignment;
+                ApplicationAssignmentService.SetEnabled(
                     settings,
                     assignment,
                     enabled: false);
@@ -227,15 +267,10 @@ public sealed class RuntimeCoordinatorTests
 
         public Action? BeforeDisable { get; set; }
 
-        public void Activate(
-            nint targetWindow,
-            VisualProfile visualProfile,
-            OverlayScope overlayScope)
+        public void Activate(OverlayActivationRequest request)
         {
-            ArgumentNullException.ThrowIfNull(visualProfile);
-            Assert.IsTrue(
-                OverlayScopePolicy.IsSupported(overlayScope));
-            TargetWindow = targetWindow;
+            ArgumentNullException.ThrowIfNull(request);
+            TargetWindow = request.TargetWindow;
             IsActive = true;
             ActivationCount++;
         }

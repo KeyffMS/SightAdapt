@@ -9,241 +9,190 @@ public sealed class ConfigurationGridCommitRegressionTests
     [TestMethod]
     public void ProfileSelectionCommitsWithoutRebuildingActiveGrid()
     {
-        RunOnSta(RunProfileSelectionScenario);
+        StaTest.Run(RunProfileSelectionScenario);
     }
 
     [TestMethod]
     public void ExternalSettingsChangeRebindsGridFromCurrentSettings()
     {
-        RunOnSta(RunExternalChangeScenario);
+        StaTest.Run(RunExternalChangeScenario);
     }
 
     [TestMethod]
     public void OverlayScopeSelectionCommitsOnlySelectedApplication()
     {
-        RunOnSta(RunOverlayScopeSelectionScenario);
-    }
-
-    private static void RunOnSta(Action scenario)
-    {
-        Exception? failure = null;
-        var thread = new Thread(() =>
-        {
-            try
-            {
-                scenario();
-            }
-            catch (Exception exception)
-            {
-                failure = exception;
-            }
-        });
-        thread.SetApartmentState(ApartmentState.STA);
-        thread.Start();
-
-        Assert.IsTrue(
-            thread.Join(TimeSpan.FromSeconds(10)),
-            "The configuration-grid regression did not finish in time.");
-
-        if (failure is not null)
-        {
-            Assert.Fail(failure.ToString());
-        }
+        StaTest.Run(RunOverlayScopeSelectionScenario);
     }
 
     private static void RunProfileSelectionScenario()
     {
-        var directory = CreateTemporaryDirectory();
-        try
+        using var workspace =
+            new TestWorkspace("configuration-grid");
+        var coordinator = workspace.CreateSettingsCoordinator();
+        var identity = new ApplicationIdentity(
+            "Reader",
+            "reader.exe",
+            @"C:\Apps\reader.exe");
+        Assert.IsTrue(coordinator.Commit(settings =>
         {
-            var coordinator = CreateCoordinator(directory);
-            var identity = new ApplicationIdentity(
-                "Reader",
-                "reader.exe",
-                @"C:\Apps\reader.exe");
-            Assert.IsTrue(coordinator.Commit(settings =>
-            {
-                ApplicationProfileManagementService.AddOrEnable(
-                    settings,
-                    identity);
-            }).Succeeded);
+            ApplicationAssignmentService.AddOrEnable(
+                settings,
+                identity);
+        }).Succeeded);
 
-            using var form = new ConfigurationForm(coordinator, () => null);
-            form.Show();
-            Application.DoEvents();
+        using var form = new ConfigurationForm(coordinator, () => null);
+        form.Show();
+        Application.DoEvents();
 
-            var profilesGrid = FindControl<ApplicationProfilesGrid>(form);
-            var grid = FindControl<DataGridView>(profilesGrid);
-            Assert.AreEqual(1, grid.Rows.Count);
-            Assert.AreEqual(identity.ExecutablePath, grid.Rows[0].Tag);
+        var profilesGrid = FindControl<ApplicationAssignmentsGrid>(form);
+        var grid = FindControl<DataGridView>(profilesGrid);
+        Assert.AreEqual(1, grid.Rows.Count);
+        Assert.AreEqual(identity.ExecutablePath, grid.Rows[0].Tag);
 
-            var profileCell = grid.Rows[0].Cells["VisualProfile"];
-            grid.CurrentCell = profileCell;
-            grid.Focus();
-            Assert.IsTrue(grid.BeginEdit(true));
-            Assert.IsInstanceOfType<ModernSelectorEditingControl>(
-                grid.EditingControl);
+        var profileCell = grid.Rows[0].Cells["VisualProfile"];
+        grid.CurrentCell = profileCell;
+        grid.Focus();
+        Assert.IsTrue(grid.BeginEdit(true));
+        Assert.IsInstanceOfType<ModernSelectorEditingControl>(
+            grid.EditingControl);
 
-            var editor =
-                (ModernSelectorEditingControl)grid.EditingControl;
-            var option = ((DataGridViewComboBoxCell)profileCell)
-                .Items
-                .Cast<object>()
-                .OfType<ModernSelectorOption>()
-                .Single(candidate =>
-                    candidate.Id == VisualProfile.DefaultInvertId);
+        var editor =
+            (ModernSelectorEditingControl)grid.EditingControl;
+        var option = ((DataGridViewComboBoxCell)profileCell)
+            .Items
+            .Cast<object>()
+            .OfType<ModernSelectorOption>()
+            .Single(candidate =>
+                candidate.Id == VisualProfileCatalog.DefaultInvertId);
 
-            editor.SelectOptionFromInput(option);
-            WaitFor(() =>
-                coordinator.Current.Applications.Single().VisualProfileId ==
-                VisualProfile.DefaultInvertId);
+        editor.SelectOptionFromInput(option);
+        WaitFor(() =>
+            coordinator.Current.Assignments.Single().VisualProfileId ==
+            VisualProfileCatalog.DefaultInvertId);
 
-            Assert.AreEqual(1, grid.Rows.Count);
-            Assert.AreEqual(
-                VisualProfile.DefaultInvertId,
-                grid.Rows[0].Cells["VisualProfile"].Value);
-            Assert.AreEqual(identity.ExecutablePath, grid.Rows[0].Tag);
+        Assert.AreEqual(1, grid.Rows.Count);
+        Assert.AreEqual(
+            VisualProfileCatalog.DefaultInvertId,
+            grid.Rows[0].Cells["VisualProfile"].Value);
+        Assert.AreEqual(identity.ExecutablePath, grid.Rows[0].Tag);
 
-            grid.CurrentCell = grid.Rows[0].Cells["Application"];
-            Application.DoEvents();
-            Assert.IsFalse(grid.IsCurrentCellInEditMode);
-            Assert.AreEqual(1, grid.Rows.Count);
-            form.Close();
-        }
-        finally
-        {
-            DeleteTemporaryDirectory(directory);
-        }
+        grid.CurrentCell = grid.Rows[0].Cells["Application"];
+        Application.DoEvents();
+        Assert.IsFalse(grid.IsCurrentCellInEditMode);
+        Assert.AreEqual(1, grid.Rows.Count);
+        form.Close();
     }
 
     private static void RunExternalChangeScenario()
     {
-        var directory = CreateTemporaryDirectory();
-        try
+        using var workspace =
+            new TestWorkspace("configuration-grid");
+        var coordinator = workspace.CreateSettingsCoordinator();
+        Assert.IsTrue(coordinator.Commit(settings =>
         {
-            var coordinator = CreateCoordinator(directory);
-            Assert.IsTrue(coordinator.Commit(settings =>
-            {
-                ApplicationProfileManagementService.AddOrEnable(
-                    settings,
-                    new ApplicationIdentity(
-                        "Reader",
-                        "reader.exe",
-                        @"C:\Apps\reader.exe"));
-            }).Succeeded);
+            ApplicationAssignmentService.AddOrEnable(
+                settings,
+                new ApplicationIdentity(
+                    "Reader",
+                    "reader.exe",
+                    @"C:\Apps\reader.exe"));
+        }).Succeeded);
 
-            using var form = new ConfigurationForm(coordinator, () => null);
-            form.Show();
-            Application.DoEvents();
+        using var form = new ConfigurationForm(coordinator, () => null);
+        form.Show();
+        Application.DoEvents();
 
-            var grid = FindControl<DataGridView>(
-                FindControl<ApplicationProfilesGrid>(form));
-            Assert.AreEqual(1, grid.Rows.Count);
+        var grid = FindControl<DataGridView>(
+            FindControl<ApplicationAssignmentsGrid>(form));
+        Assert.AreEqual(1, grid.Rows.Count);
 
-            Assert.IsTrue(coordinator.Commit(settings =>
-            {
-                ApplicationProfileManagementService.AddOrEnable(
-                    settings,
-                    new ApplicationIdentity(
-                        "Writer",
-                        "writer.exe",
-                        @"C:\Apps\writer.exe"));
-            }).Succeeded);
-            Application.DoEvents();
-
-            Assert.AreEqual(2, grid.Rows.Count);
-            CollectionAssert.AreEquivalent(
-                new[]
-                {
-                    @"C:\Apps\reader.exe",
-                    @"C:\Apps\writer.exe",
-                },
-                grid.Rows
-                    .Cast<DataGridViewRow>()
-                    .Select(row => (string)row.Tag!)
-                    .ToArray());
-            form.Close();
-        }
-        finally
+        Assert.IsTrue(coordinator.Commit(settings =>
         {
-            DeleteTemporaryDirectory(directory);
-        }
+            ApplicationAssignmentService.AddOrEnable(
+                settings,
+                new ApplicationIdentity(
+                    "Writer",
+                    "writer.exe",
+                    @"C:\Apps\writer.exe"));
+        }).Succeeded);
+        Application.DoEvents();
+
+        Assert.AreEqual(2, grid.Rows.Count);
+        CollectionAssert.AreEquivalent(
+            new[]
+            {
+                @"C:\Apps\reader.exe",
+                @"C:\Apps\writer.exe",
+            },
+            grid.Rows
+                .Cast<DataGridViewRow>()
+                .Select(row => (string)row.Tag!)
+                .ToArray());
+        form.Close();
     }
 
     private static void RunOverlayScopeSelectionScenario()
     {
-        var directory = CreateTemporaryDirectory();
-        try
+        using var workspace =
+            new TestWorkspace("configuration-grid");
+        var coordinator = workspace.CreateSettingsCoordinator();
+        var reader = new ApplicationIdentity(
+            "Reader",
+            "reader.exe",
+            @"C:\Apps\reader.exe");
+        var writer = new ApplicationIdentity(
+            "Writer",
+            "writer.exe",
+            @"C:\Apps\writer.exe");
+        Assert.IsTrue(coordinator.Commit(settings =>
         {
-            var coordinator = CreateCoordinator(directory);
-            var reader = new ApplicationIdentity(
-                "Reader",
-                "reader.exe",
-                @"C:\Apps\reader.exe");
-            var writer = new ApplicationIdentity(
-                "Writer",
-                "writer.exe",
-                @"C:\Apps\writer.exe");
-            Assert.IsTrue(coordinator.Commit(settings =>
-            {
-                ApplicationProfileManagementService.AddOrEnable(settings, reader);
-                ApplicationProfileManagementService.AddOrEnable(settings, writer);
-            }).Succeeded);
+            ApplicationAssignmentService.AddOrEnable(settings, reader);
+            ApplicationAssignmentService.AddOrEnable(settings, writer);
+        }).Succeeded);
 
-            using var form = new ConfigurationForm(coordinator, () => null);
-            form.Show();
-            Application.DoEvents();
+        using var form = new ConfigurationForm(coordinator, () => null);
+        form.Show();
+        Application.DoEvents();
 
-            var grid = FindControl<DataGridView>(
-                FindControl<ApplicationProfilesGrid>(form));
-            var readerRow = grid.Rows
-                .Cast<DataGridViewRow>()
-                .Single(row => string.Equals(
-                    row.Tag as string,
-                    reader.ExecutablePath,
-                    StringComparison.OrdinalIgnoreCase));
-            var scopeCell = readerRow.Cells["OverlayScope"];
-            grid.CurrentCell = scopeCell;
-            grid.Focus();
-            Assert.IsTrue(grid.BeginEdit(true));
-            Assert.IsInstanceOfType<ModernSelectorEditingControl>(
-                grid.EditingControl);
+        var grid = FindControl<DataGridView>(
+            FindControl<ApplicationAssignmentsGrid>(form));
+        var readerRow = grid.Rows
+            .Cast<DataGridViewRow>()
+            .Single(row => string.Equals(
+                row.Tag as string,
+                reader.ExecutablePath,
+                StringComparison.OrdinalIgnoreCase));
+        var scopeCell = readerRow.Cells["OverlayScope"];
+        grid.CurrentCell = scopeCell;
+        grid.Focus();
+        Assert.IsTrue(grid.BeginEdit(true));
+        Assert.IsInstanceOfType<ModernSelectorEditingControl>(
+            grid.EditingControl);
 
-            var editor = (ModernSelectorEditingControl)grid.EditingControl;
-            var option = ((DataGridViewComboBoxCell)scopeCell)
-                .Items
-                .Cast<object>()
-                .OfType<ModernSelectorOption>()
-                .Single(candidate => candidate.Id == "screen");
-            editor.SelectOptionFromInput(option);
+        var editor = (ModernSelectorEditingControl)grid.EditingControl;
+        var option = ((DataGridViewComboBoxCell)scopeCell)
+            .Items
+            .Cast<object>()
+            .OfType<ModernSelectorOption>()
+            .Single(candidate => candidate.Id == "screen");
+        editor.SelectOptionFromInput(option);
 
-            WaitFor(() => coordinator.Current.Applications
+        WaitFor(() => coordinator.Current.Assignments
+            .Single(profile => profile.Matches(reader))
+            .OverlayScope == OverlayScope.Screen);
+
+        Assert.AreEqual(
+            OverlayScope.Screen,
+            coordinator.Current.Assignments
                 .Single(profile => profile.Matches(reader))
-                .OverlayScope == OverlayScope.Screen);
-
-            Assert.AreEqual(
-                OverlayScope.Screen,
-                coordinator.Current.Applications
-                    .Single(profile => profile.Matches(reader))
-                    .OverlayScope);
-            Assert.AreEqual(
-                OverlayScope.ClientArea,
-                coordinator.Current.Applications
-                    .Single(profile => profile.Matches(writer))
-                    .OverlayScope);
-            Assert.AreEqual("screen", scopeCell.Value);
-            form.Close();
-        }
-        finally
-        {
-            DeleteTemporaryDirectory(directory);
-        }
-    }
-
-    private static SettingsCoordinator CreateCoordinator(string directory)
-    {
-        return new SettingsCoordinator(
-            new SettingsStore(Path.Combine(directory, "settings.json")));
+                .OverlayScope);
+        Assert.AreEqual(
+            OverlayScope.ClientArea,
+            coordinator.Current.Assignments
+                .Single(profile => profile.Matches(writer))
+                .OverlayScope);
+        Assert.AreEqual("screen", scopeCell.Value);
+        form.Close();
     }
 
     private static T FindControl<T>(Control root)
@@ -267,24 +216,6 @@ public sealed class ConfigurationGridCommitRegressionTests
 
         throw new InvalidOperationException(
             $"Control {typeof(T).Name} was not found.");
-    }
-
-    private static string CreateTemporaryDirectory()
-    {
-        var directory = Path.Combine(
-            Path.GetTempPath(),
-            "SightAdapt.Tests",
-            Guid.NewGuid().ToString("N"));
-        Directory.CreateDirectory(directory);
-        return directory;
-    }
-
-    private static void DeleteTemporaryDirectory(string directory)
-    {
-        if (Directory.Exists(directory))
-        {
-            Directory.Delete(directory, true);
-        }
     }
 
     private static void WaitFor(Func<bool> condition)

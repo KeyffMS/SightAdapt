@@ -17,19 +17,20 @@ internal sealed class SightAdaptContext : ApplicationContext
     public SightAdaptContext()
     {
         _settingsCoordinator = new SettingsCoordinator();
+        var initialSettings = _settingsCoordinator.Current;
         _stateController = new ApplicationStateController();
         _overlayController = new OverlayController(
-            VisualTransformCatalog.Default);
+            VisualProfileCatalog.Default);
         _foregroundTracker = new ForegroundWindowTracker();
         _faultStateTimer = new System.Windows.Forms.Timer
         {
-            Interval = 5000,
+            Interval = RuntimeTimingPolicy.Default.FaultRecoveryMilliseconds,
         };
 
         _tray = new TrayPresenter(
-            _settingsCoordinator.Current.AutomaticMode,
+            initialSettings.AutomaticMode,
             ToggleForActiveWindow,
-            ToggleActiveApplicationProfile,
+            ToggleActiveApplicationAssignment,
             SetAutomaticMode,
             ShowConfiguration,
             EmergencyDisable,
@@ -52,7 +53,7 @@ internal sealed class SightAdaptContext : ApplicationContext
         _foregroundTracker.Changed += ForegroundWindowChanged;
         _faultStateTimer.Tick += FaultStateTimerTick;
 
-        ApplyApplicationState(_stateController.Current);
+        ApplyApplicationState(_stateController.Current, initialSettings);
         _foregroundTracker.Start();
         _tray.ShowStartup(
             _hotkeys.LocalToggleShortcut,
@@ -70,9 +71,6 @@ internal sealed class SightAdaptContext : ApplicationContext
                 _settingsCoordinator.LastLoadWarning);
         }
     }
-
-    private SightAdaptSettings Settings =>
-        _settingsCoordinator.Current;
 
     protected override void ExitThreadCore()
     {
@@ -112,7 +110,7 @@ internal sealed class SightAdaptContext : ApplicationContext
         }
         else if (id == HotkeyWindow.ProfileToggleId)
         {
-            ToggleActiveApplicationProfile();
+            ToggleActiveApplicationAssignment();
         }
     }
 
@@ -121,9 +119,9 @@ internal sealed class SightAdaptContext : ApplicationContext
         _runtimeCoordinator.ToggleForActiveWindow();
     }
 
-    private void ToggleActiveApplicationProfile()
+    private void ToggleActiveApplicationAssignment()
     {
-        _runtimeCoordinator.ToggleActiveApplicationProfile();
+        _runtimeCoordinator.ToggleActiveApplicationAssignment();
     }
 
     private void SetAutomaticMode(bool enabled)
@@ -155,9 +153,12 @@ internal sealed class SightAdaptContext : ApplicationContext
         object? sender,
         EventArgs eventArgs)
     {
-        _tray.SetAutomaticMode(Settings.AutomaticMode);
-        ApplyApplicationState(_stateController.Current);
-        _runtimeCoordinator.HandleSettingsChanged();
+        var settings = _settingsCoordinator.Current;
+        _tray.SetAutomaticMode(settings.AutomaticMode);
+        ApplyApplicationState(
+            _stateController.Current,
+            settings);
+        _runtimeCoordinator.HandleSettingsChanged(settings);
     }
 
     private void ShowConfiguration()
@@ -200,24 +201,28 @@ internal sealed class SightAdaptContext : ApplicationContext
             _faultStateTimer.Stop();
         }
 
-        ApplyApplicationState(eventArgs.Current);
+        ApplyApplicationState(
+            eventArgs.Current,
+            _settingsCoordinator.Current);
     }
 
     private void ApplyApplicationState(
-        ApplicationState state)
+        ApplicationState state,
+        IReadOnlySightAdaptSettings settings)
     {
+        ArgumentNullException.ThrowIfNull(settings);
         var title = state.TargetWindow == nint.Zero
             ? null
-            : NativeMethods.GetWindowTitle(
+            : NativeWindowApi.Default.GetWindowTitle(
                 state.TargetWindow);
         var profileName = ProfileResolver.ResolveVisualProfileName(
-            Settings,
+            settings,
             state.VisualProfileId,
             "Visual correction");
 
         _tray.ApplyState(
             state,
-            Settings.AutomaticMode,
+            settings.AutomaticMode,
             title,
             profileName);
 

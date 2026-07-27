@@ -4,18 +4,18 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 namespace SightAdapt.Tests;
 
 [TestClass]
-public sealed class ApplicationProfilesGridDataErrorTests
+public sealed class ApplicationAssignmentsGridDataErrorTests
 {
     [DataTestMethod]
     [DataRow(
-        ApplicationProfilesGrid.VisualProfileColumnName)]
+        ApplicationAssignmentsGrid.VisualProfileColumnName)]
     [DataRow(
-        ApplicationProfilesGrid.OverlayScopeColumnName)]
+        ApplicationAssignmentsGrid.OverlayScopeColumnName)]
     public void SelectorPresentationArgumentErrorIsRecoverable(
         string columnName)
     {
         Assert.IsTrue(
-            ApplicationProfilesGrid.IsExpectedSelectorDataError(
+            ApplicationAssignmentsGrid.IsExpectedSelectorDataError(
                 new ArgumentException("Transient selector value"),
                 DataGridViewDataErrorContexts.Formatting |
                     DataGridViewDataErrorContexts.Display,
@@ -26,27 +26,27 @@ public sealed class ApplicationProfilesGridDataErrorTests
     public void CommitErrorIsNotClassifiedAsPresentationRace()
     {
         Assert.IsFalse(
-            ApplicationProfilesGrid.IsExpectedSelectorDataError(
+            ApplicationAssignmentsGrid.IsExpectedSelectorDataError(
                 new ArgumentException("Invalid committed value"),
                 DataGridViewDataErrorContexts.Commit,
-                ApplicationProfilesGrid.VisualProfileColumnName));
+                ApplicationAssignmentsGrid.VisualProfileColumnName));
     }
 
     [TestMethod]
     public void InvalidOperationIsNeverBlanketSuppressed()
     {
         Assert.IsFalse(
-            ApplicationProfilesGrid.IsExpectedSelectorDataError(
+            ApplicationAssignmentsGrid.IsExpectedSelectorDataError(
                 new InvalidOperationException("Broken selector"),
                 DataGridViewDataErrorContexts.Formatting,
-                ApplicationProfilesGrid.VisualProfileColumnName));
+                ApplicationAssignmentsGrid.VisualProfileColumnName));
     }
 
     [TestMethod]
     public void NonSelectorArgumentErrorIsNotSuppressed()
     {
         Assert.IsFalse(
-            ApplicationProfilesGrid.IsExpectedSelectorDataError(
+            ApplicationAssignmentsGrid.IsExpectedSelectorDataError(
                 new ArgumentException("Invalid enabled value"),
                 DataGridViewDataErrorContexts.Formatting,
                 "Enabled"));
@@ -56,12 +56,12 @@ public sealed class ApplicationProfilesGridDataErrorTests
     public void DiagnosticContainsRowColumnPathAndContext()
     {
         var diagnostic =
-            ApplicationProfilesGrid.CreateDataErrorDiagnostic(
+            ApplicationAssignmentsGrid.CreateDataErrorDiagnostic(
                 new ArgumentException("Transient selector value"),
                 DataGridViewDataErrorContexts.Display,
                 rowIndex: 4,
                 columnIndex: 2,
-                ApplicationProfilesGrid.VisualProfileColumnName,
+                ApplicationAssignmentsGrid.VisualProfileColumnName,
                 @"C:\Apps\Reader.exe",
                 recovered: true);
 
@@ -70,7 +70,7 @@ public sealed class ApplicationProfilesGridDataErrorTests
         StringAssert.Contains(diagnostic, "column=2");
         StringAssert.Contains(
             diagnostic,
-            ApplicationProfilesGrid.VisualProfileColumnName);
+            ApplicationAssignmentsGrid.VisualProfileColumnName);
         StringAssert.Contains(
             diagnostic,
             @"C:\Apps\Reader.exe");

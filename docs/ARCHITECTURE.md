@@ -18,16 +18,22 @@ SightAdaptContext
 (lifecycle and composition)
       ↓
 RuntimeCoordinator
-(use-case orchestration)
+(small command/event façade)
+      ↓
+RuntimeOverlayActivator + AutomaticActivationService
+(focused runtime use cases)
       ↓
 OverlayController
-(one persistent overlay plus transient menu overlays)
+(profile-to-effect façade)
+      ↓
+OverlaySession
+(primary and transient overlay aggregate)
       ↑
 Win32MenuWindowTracker
-(WinEvent hint plus polling verification for `#32768`)
+(signal source + enumerator + pure policy)
       ↓
 MagnifierOverlay
-(target kind, geometry, cross-filtering, rendering)
+(native lifetime delegated to availability and frame-rendering policies)
 ```
 
 ## Settings transaction
@@ -39,11 +45,12 @@ CreateWorkingCopy
       ↓
 Domain-service mutation
       ↓
-SettingsStore.Save
-      ↓
 SettingsNormalizer.Normalize
+(explicit idempotent passes)
       ↓
-atomic file replacement
+PersistedSettingsMapper.FromDomain
+      ↓
+SettingsStore atomic file replacement
       ↓
 Current.ReplaceWith
       ↓
@@ -58,22 +65,31 @@ A failed mutation or failed write does not replace committed settings and does n
 |---|---|
 | Settings transaction and published snapshots | `SettingsCoordinator` |
 | Settings JSON persistence and atomic replacement | `SettingsStore` |
-| Migration, scope canonicalization, normalization, recovery, and reference repair | `SettingsNormalizer` |
-| Runtime use-case orchestration | `RuntimeCoordinator` |
-| Application assignment mutations and overlay scope | `ApplicationProfileManagementService` |
+| Persisted JSON DTOs and legacy-field migration | `PersistedSettingsMapper` |
+| Schema, profile, assignment and reference normalization | explicit `ISettingsNormalizationPass` implementations |
+| Runtime command/event façade | `RuntimeCoordinator` |
+| Overlay activation and automatic evaluation use cases | `RuntimeOverlayActivator` and `AutomaticActivationService` |
+| Application assignment mutations and overlay scope | `ApplicationAssignmentService` |
 | Visual-profile lifecycle and tuning | `VisualProfileManagementService` |
 | Automatic-mode mutation | `AutomaticModeManagementService` |
 | Runtime mode, target, profile, suppression, and message | `ApplicationStateController` |
 | Foreground detection, native-menu exclusion, and duplicate suppression | `ForegroundWindowTracker` |
-| Native popup-menu detection and association | `Win32MenuWindowTracker` and `Win32MenuWindowPolicy` |
+| Native popup-menu coordination | `Win32MenuWindowTracker` |
+| Native-menu signals, enumeration and association policy | `WinEventMenuRefreshSignalSource`, `NativeMenuWindowEnumerator`, and `Win32MenuWindowPolicy` |
 | Runtime identity resolution | `ApplicationDiscovery` |
 | Bounded process identity cache | `ApplicationIdentityCache` |
 | Overlay geometry | `OverlayBoundsResolver` |
-| Persistent and transient overlay lifetime, retargeting, and cross-filtering | `OverlayController` |
-| Native call failure classification and diagnostics | `NativeCall` |
-| Native target kind, rendering, geometry refresh, and transition grace | `MagnifierOverlay` |
+| Profile-to-effect overlay façade | `OverlayController` |
+| Persistent and transient overlay lifetime, retargeting, and cross-filtering | `OverlaySession` |
+| Raw P/Invoke declarations | `NativeInterop` |
+| Domain-focused native operations | native API interfaces and adapters in `NativeApis` |
+| Native call failure classification | `NativeCall` |
+| Structured production diagnostics | `Diagnostics` and `IDiagnosticSink` |
+| Runtime timing defaults | `RuntimeTimingPolicy` |
+| Target availability and frame positioning/source updates | availability strategies and `MagnifierFrameRenderer` |
+| Native window/control lifetime | `MagnifierOverlay` |
 | Notification-area presentation | `TrayPresenter` |
-| Application-table presentation and edit mechanics | `ApplicationProfilesGrid` |
+| Application-table presentation and edit mechanics | `ApplicationAssignmentsGrid` |
 | Configuration use cases and dialogs | `ConfigurationForm` |
 | Selector editing contract | `ModernSelectorEditingControl` |
 
@@ -81,16 +97,18 @@ A failed mutation or failed write does not replace committed settings and does n
 
 | Data or rule | Source of truth |
 |---|---|
-| Persisted automatic mode, applications, assignments, scopes, and profiles | `SightAdaptSettings` committed through `SettingsCoordinator` |
+| Persisted JSON shape and legacy compatibility | `PersistedSightAdaptSettings` and `PersistedSettingsMapper` |
+| Committed automatic mode, assignments, scopes, and profiles | `SightAdaptSettings` committed through `SettingsCoordinator` |
 | Runtime mode, target, active profile, suppression, and message | `ApplicationStateController.Current` |
-| Actual overlay resource and target | `OverlayController` and active `MagnifierOverlay` |
-| Per-application overlay scope | `ApplicationProfile.OverlayScopeId` |
-| Optional native-menu profile reference and inheritance sentinel | `ApplicationProfile.MenuVisualProfileId` and `ApplicationMenuProfilePolicy` |
+| Actual overlay session, primary target and popup resources | `OverlaySession` |
+| Per-application overlay scope | `ApplicationAssignment.OverlayScopeId` |
+| Optional native-menu profile reference and inheritance sentinel | `ApplicationAssignment.MenuVisualProfileId` and `ApplicationMenuProfilePolicy` |
 | Scope enum values, canonical identifiers, aliases, default, and display names | `OverlayScopePolicy` definition table |
-| Profile IDs, fallback, user-ID, and name rules | `VisualProfilePolicy` |
-| Canonical profile values | `VisualProfileDefaults` |
-| Supported transforms and tuning capability | `VisualTransformCatalog` |
+| Built-in profile IDs, names, transforms, ordering, tuning capability and canonicalization | `VisualProfileCatalog` definition table |
+| Assignment defaults, fallbacks, user-ID and user-name rules | `VisualProfilePolicy` |
+| Canonical tuning values and numeric normalization | `VisualProfileDefaults` |
 | Parameter ranges | `VisualProfileLimits` |
+| Runtime polling, refresh, transition and fault-recovery intervals | `RuntimeTimingPolicy.Default` |
 | Product name, version, milestone, repository, author, and license | project and assembly metadata exposed through `ProductInfo` |
 
 `ApplicationIdentityCache` is an optimization, not a product source of truth. Entries are keyed by both PID and process creation time so a reused PID cannot inherit another process lifetime's identity.
@@ -99,17 +117,18 @@ A failed mutation or failed write does not replace committed settings and does n
 
 The foreground tracker polls every 75 ms and publishes only a changed supported application handle. Native `#32768` popup-menu windows are deliberately rejected as application targets, so opening a menu does not replace the active assignment. When an enabled assignment exists, the context resolves the application profile, the inherited or explicit menu profile, and the overlay scope.
 
-- without an active application overlay, `OverlayController` creates one persistent `MagnifierOverlay`;
-- with an active application overlay, it retargets the same instance;
+- `OverlayController` resolves profiles to immutable `ResolvedVisualEffect` values and delegates lifetime work;
+- without an active application overlay, `OverlaySession` creates one persistent overlay window;
+- with an active application overlay, `OverlaySession` retargets the same primary resource;
 - the built-in `None` profile retains the application session with an identity color effect, allowing an explicit menu profile to correct only native popup menus;
-- `Win32MenuWindowTracker` combines out-of-context WinEvent menu notifications with 75 ms `EnumWindows` verification;
+- `Win32MenuWindowTracker` coordinates an isolated WinEvent signal source and menu-window enumerator, with the polling interval supplied by `RuntimeTimingPolicy`;
 - visible associated `#32768` HWNDs create transient window-scope overlays, including nested menus;
 - disappearing or destroyed menu HWNDs remove only their transient overlays;
 - every active overlay handle is installed in every magnifier filter list before a new menu overlay is shown;
 - without an enabled assignment, an automatically active overlay session is disabled;
 - local disable, emergency shutdown, exit, and disposal remove the complete overlay session immediately.
 
-A rendered application frame may remain visible for at most 125 ms during application-target transition. Native popup overlays do not use this grace period. This rendering grace is not a second runtime state.
+A rendered application frame may remain visible during the transition grace configured by `RuntimeTimingPolicy`. Native popup overlays do not use this grace period. Availability strategies determine whether a foreground target or popup is renderable, while `MagnifierFrameRenderer` owns positioning, source updates, and repaint requests.
 
 ## Geometry
 
@@ -124,19 +143,19 @@ The current backend uses the same rectangle for the magnifier source and overlay
 
 ## Native call failure policy
 
-`NativeCall` classifies fallible Win32 and Magnification API operations explicitly:
+Raw imports exist only in `NativeInterop`. Production components depend on focused window, process, menu-event, DWM, and Magnification API adapters. `NativeCall` classifies fallible native operations explicitly:
 
 - **critical** initialization and effect calls throw a `Win32Exception` containing the operation name and native error code;
 - **transient** geometry, positioning, and source-update failures are diagnosed, hide the overlay, and allow a later timer tick to recover;
 - **best effort** cleanup failures are diagnosed without replacing the primary application failure.
 
-Native menu detection, menu-overlay creation, and cross-filter refresh are subordinate operations. Their failure closes transient menu overlays and restores the primary overlay's self-filter instead of disabling the application correction.
+Every failure is emitted through the structured `Diagnostics` authority. Native menu detection, menu-overlay creation, and cross-filter refresh are subordinate operations. Their failure closes transient menu overlays and restores the primary overlay's self-filter instead of disabling the application correction.
 
 `ShowWindow` and `InvalidateRect` are handled explicitly at their call sites because their Boolean return values do not represent a standard extended-error success contract.
 
 ## Configuration grid boundary
 
-`ApplicationProfilesGrid` owns columns, rows, selectors, status painting, selection, empty state, stable executable-path keys, separate typed change events, row updates, and failed-cell restoration. It does not know about persistence or dialogs.
+`ApplicationAssignmentsGrid` owns columns, rows, selectors, status painting, selection, empty state, stable executable-path keys, separate typed change events, row updates, and failed-cell restoration. It does not know about persistence or dialogs.
 
 `ConfigurationForm` resolves current committed assignments and translates typed grid events into domain-service mutations wrapped by `SettingsCoordinator.Commit`. It suppresses only its own synchronous full refresh during a grid-originated commit.
 
@@ -154,7 +173,7 @@ Native menu detection, menu-overlay creation, and cross-filter refresh are subor
 
 ## Architecture test strategy
 
-Architecture checks are behavior-first. Transaction publication, defensive settings snapshots, failed persistence, expected and unexpected transaction failures, emergency ordering, runtime state transitions, native call classification, transform catalog consistency, overlay-scope and menu-profile recovery, grid commits, native menu policy, menu roles, preview caching, and profile-manager refresh behavior are exercised through executable tests.
+Architecture checks are behavior-first. Transaction publication, coherent settings snapshots, runtime contracts, overlay-session lifetime, target availability, frame rendering, menu tracking, native call classification, structured diagnostics, transform catalog consistency, overlay-scope and menu-profile recovery, grid commits, menu roles, preview caching, and profile-manager refresh behavior are exercised through executable tests.
 
 Source inspection is retained only for exhaustive negative rules that cannot be proven by a finite runtime scenario:
 

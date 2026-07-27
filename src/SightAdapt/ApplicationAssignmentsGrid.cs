@@ -1,76 +1,8 @@
-using System.Diagnostics;
 using System.Drawing.Drawing2D;
 
 namespace SightAdapt;
 
-internal sealed class ApplicationProfileEnabledChangedEventArgs(
-    string executablePath,
-    bool enabled) : EventArgs
-{
-    public string ExecutablePath { get; } =
-        !string.IsNullOrWhiteSpace(executablePath)
-            ? executablePath
-            : throw new ArgumentException(
-                "An executable path is required.",
-                nameof(executablePath));
-
-    public bool Enabled { get; } = enabled;
-}
-
-internal sealed class ApplicationProfileVisualProfileChangedEventArgs(
-    string executablePath,
-    string visualProfileId) : EventArgs
-{
-    public string ExecutablePath { get; } =
-        !string.IsNullOrWhiteSpace(executablePath)
-            ? executablePath
-            : throw new ArgumentException(
-                "An executable path is required.",
-                nameof(executablePath));
-
-    public string VisualProfileId { get; } =
-        !string.IsNullOrWhiteSpace(visualProfileId)
-            ? visualProfileId
-            : throw new ArgumentException(
-                "A visual profile identifier is required.",
-                nameof(visualProfileId));
-}
-
-internal sealed class ApplicationProfileMenuVisualProfileChangedEventArgs(
-    string executablePath,
-    string? menuVisualProfileId) : EventArgs
-{
-    public string ExecutablePath { get; } =
-        !string.IsNullOrWhiteSpace(executablePath)
-            ? executablePath
-            : throw new ArgumentException(
-                "An executable path is required.",
-                nameof(executablePath));
-
-    public string? MenuVisualProfileId { get; } =
-        ApplicationMenuProfilePolicy.FromSelectorId(
-            menuVisualProfileId);
-}
-
-internal sealed class ApplicationProfileOverlayScopeChangedEventArgs(
-    string executablePath,
-    OverlayScope overlayScope) : EventArgs
-{
-    public string ExecutablePath { get; } =
-        !string.IsNullOrWhiteSpace(executablePath)
-            ? executablePath
-            : throw new ArgumentException(
-                "An executable path is required.",
-                nameof(executablePath));
-
-    public OverlayScope OverlayScope { get; } =
-        OverlayScopePolicy.IsSupported(overlayScope)
-            ? overlayScope
-            : throw new ArgumentOutOfRangeException(
-                nameof(overlayScope));
-}
-
-internal sealed class ApplicationProfilesGrid : UserControl
+internal sealed class ApplicationAssignmentsGrid : UserControl
 {
     private const string EnabledColumnName = "Enabled";
     private const string ApplicationColumnName = "Application";
@@ -92,7 +24,7 @@ internal sealed class ApplicationProfilesGrid : UserControl
     private readonly Label _emptyStateLabel;
     private bool _binding;
 
-    public ApplicationProfilesGrid()
+    public ApplicationAssignmentsGrid()
     {
         BackColor = AppTheme.Surface;
         Dock = DockStyle.Fill;
@@ -104,13 +36,7 @@ internal sealed class ApplicationProfilesGrid : UserControl
         Controls.Add(_emptyStateLabel);
     }
 
-    public event EventHandler<ApplicationProfileEnabledChangedEventArgs>? ApplicationEnabledChanged;
-
-    public event EventHandler<ApplicationProfileVisualProfileChangedEventArgs>? VisualProfileChanged;
-
-    public event EventHandler<ApplicationProfileMenuVisualProfileChangedEventArgs>? MenuVisualProfileChanged;
-
-    public event EventHandler<ApplicationProfileOverlayScopeChangedEventArgs>? OverlayScopeChanged;
+    public event Action<ApplicationAssignmentChange>? AssignmentChanged;
 
     public event EventHandler? SelectedApplicationChanged;
 
@@ -126,10 +52,10 @@ internal sealed class ApplicationProfilesGrid : UserControl
     }
 
     public void Bind(
-        IReadOnlyList<ApplicationProfile> applications,
+        IReadOnlyList<ApplicationAssignmentRow> assignments,
         IReadOnlyList<VisualProfile> visualProfiles)
     {
-        ArgumentNullException.ThrowIfNull(applications);
+        ArgumentNullException.ThrowIfNull(assignments);
         ArgumentNullException.ThrowIfNull(visualProfiles);
 
         var selectedPath = SelectedExecutablePath;
@@ -141,9 +67,9 @@ internal sealed class ApplicationProfilesGrid : UserControl
             SetOverlayScopes();
             _grid.Rows.Clear();
 
-            foreach (var application in applications)
+            foreach (var assignment in assignments)
             {
-                AddRow(application, selectedPath);
+                AddRow(assignment, selectedPath);
             }
         }
         finally
@@ -151,15 +77,15 @@ internal sealed class ApplicationProfilesGrid : UserControl
             _binding = false;
         }
 
-        UpdateVisibility(applications.Count);
+        UpdateVisibility(assignments.Count);
         SelectedApplicationChanged?.Invoke(this, EventArgs.Empty);
     }
 
-    public void UpdateApplication(ApplicationProfile application)
+    public void UpdateAssignment(ApplicationAssignmentRow assignment)
     {
-        ArgumentNullException.ThrowIfNull(application);
+        ArgumentNullException.ThrowIfNull(assignment);
 
-        var row = FindRow(application.ExecutablePath);
+        var row = FindRow(assignment.ExecutablePath);
         if (row is null)
         {
             return;
@@ -168,17 +94,7 @@ internal sealed class ApplicationProfilesGrid : UserControl
         _binding = true;
         try
         {
-            row.Cells[EnabledColumnName].Value = application.Enabled;
-            row.Cells[ApplicationColumnName].Value = application.DisplayName;
-            row.Cells[VisualProfileColumnName].Value = application.VisualProfileId;
-            row.Cells[MenuVisualProfileColumnName].Value =
-                ApplicationMenuProfilePolicy.ToSelectorId(
-                    application.MenuVisualProfileId);
-            row.Cells[OverlayScopeColumnName].Value =
-                OverlayScopePolicy.ToId(application.OverlayScope);
-            row.Cells[ExecutableColumnName].Value = application.ExecutableName;
-            row.Cells[PathColumnName].Value = application.ExecutablePath;
-            row.Tag = application.ExecutablePath;
+            WriteRow(row, assignment);
         }
         finally
         {
@@ -220,7 +136,7 @@ internal sealed class ApplicationProfilesGrid : UserControl
         enabled.DefaultCellStyle.Padding = Padding.Empty;
 
         grid.Columns.Add(enabled);
-        grid.Columns.Add(CreateTextColumn(
+        grid.Columns.Add(FormPresentation.CreateReadOnlyTextColumn(
             ApplicationColumnName,
             "APPLICATION",
             205));
@@ -254,11 +170,11 @@ internal sealed class ApplicationProfilesGrid : UserControl
             MinimumWidth = 150,
             SortMode = DataGridViewColumnSortMode.NotSortable,
         });
-        grid.Columns.Add(CreateTextColumn(
+        grid.Columns.Add(FormPresentation.CreateReadOnlyTextColumn(
             ExecutableColumnName,
             "EXECUTABLE",
             155));
-        grid.Columns.Add(CreateTextColumn(
+        grid.Columns.Add(FormPresentation.CreateReadOnlyTextColumn(
             PathColumnName,
             "FULL PATH",
             220,
@@ -278,23 +194,17 @@ internal sealed class ApplicationProfilesGrid : UserControl
         return grid;
     }
 
-    private void AddRow(ApplicationProfile application, string? selectedPath)
+    private void AddRow(
+        ApplicationAssignmentRow assignment,
+        string? selectedPath)
     {
-        var index = _grid.Rows.Add(
-            application.Enabled,
-            application.DisplayName,
-            application.VisualProfileId,
-            ApplicationMenuProfilePolicy.ToSelectorId(
-                application.MenuVisualProfileId),
-            OverlayScopePolicy.ToId(application.OverlayScope),
-            application.ExecutableName,
-            application.ExecutablePath);
+        var index = _grid.Rows.Add();
         var row = _grid.Rows[index];
-        row.Tag = application.ExecutablePath;
+        WriteRow(row, assignment);
 
         if (!string.Equals(
                 selectedPath,
-                application.ExecutablePath,
+                assignment.ExecutablePath,
                 StringComparison.OrdinalIgnoreCase))
         {
             return;
@@ -302,6 +212,21 @@ internal sealed class ApplicationProfilesGrid : UserControl
 
         row.Selected = true;
         _grid.CurrentCell = row.Cells[ApplicationColumnName];
+    }
+
+    private static void WriteRow(
+        DataGridViewRow row,
+        ApplicationAssignmentRow assignment)
+    {
+        row.Cells[EnabledColumnName].Value = assignment.Enabled;
+        row.Cells[ApplicationColumnName].Value = assignment.DisplayName;
+        row.Cells[VisualProfileColumnName].Value = assignment.VisualProfileId;
+        row.Cells[MenuVisualProfileColumnName].Value =
+            assignment.MenuVisualProfileSelectorId;
+        row.Cells[OverlayScopeColumnName].Value = assignment.OverlayScopeId;
+        row.Cells[ExecutableColumnName].Value = assignment.ExecutableName;
+        row.Cells[PathColumnName].Value = assignment.ExecutablePath;
+        row.Tag = assignment.ExecutablePath;
     }
 
     private void SetVisualProfiles(IReadOnlyList<VisualProfile> profiles)
@@ -395,36 +320,33 @@ internal sealed class ApplicationProfilesGrid : UserControl
         if (columnName == EnabledColumnName &&
             row.Cells[eventArgs.ColumnIndex].Value is bool enabled)
         {
-            ApplicationEnabledChanged?.Invoke(
-                this,
-                new ApplicationProfileEnabledChangedEventArgs(
+            AssignmentChanged?.Invoke(
+                new ApplicationAssignmentChange.Enabled(
                     executablePath,
                     enabled));
         }
         else if (columnName == VisualProfileColumnName &&
                  row.Cells[eventArgs.ColumnIndex].Value is string profileId)
         {
-            VisualProfileChanged?.Invoke(
-                this,
-                new ApplicationProfileVisualProfileChangedEventArgs(
+            AssignmentChanged?.Invoke(
+                new ApplicationAssignmentChange.VisualProfile(
                     executablePath,
                     profileId));
         }
         else if (columnName == MenuVisualProfileColumnName &&
                  row.Cells[eventArgs.ColumnIndex].Value is string menuProfileId)
         {
-            MenuVisualProfileChanged?.Invoke(
-                this,
-                new ApplicationProfileMenuVisualProfileChangedEventArgs(
+            AssignmentChanged?.Invoke(
+                new ApplicationAssignmentChange.MenuVisualProfile(
                     executablePath,
-                    menuProfileId));
+                    ApplicationMenuProfilePolicy.FromSelectorId(
+                        menuProfileId)));
         }
         else if (columnName == OverlayScopeColumnName &&
                  row.Cells[eventArgs.ColumnIndex].Value is string scopeId)
         {
-            OverlayScopeChanged?.Invoke(
-                this,
-                new ApplicationProfileOverlayScopeChangedEventArgs(
+            AssignmentChanged?.Invoke(
+                new ApplicationAssignmentChange.OverlayScope(
                     executablePath,
                     OverlayScopePolicy.ParseRequired(scopeId)));
         }
@@ -446,14 +368,24 @@ internal sealed class ApplicationProfilesGrid : UserControl
             eventArgs.Context,
             columnName);
 
-        Debug.WriteLine(CreateDataErrorDiagnostic(
-            eventArgs.Exception,
-            eventArgs.Context,
-            eventArgs.RowIndex,
-            eventArgs.ColumnIndex,
-            columnName,
-            executablePath,
-            recovered));
+        Diagnostics.Report(
+            nameof(ApplicationAssignmentsGrid),
+            "Handle selector data error",
+            recovered
+                ? DiagnosticSeverity.Warning
+                : DiagnosticSeverity.Error,
+            recovered
+                ? DiagnosticFailurePolicy.Recovered
+                : DiagnosticFailurePolicy.None,
+            CreateDataErrorDiagnostic(
+                eventArgs.Exception,
+                eventArgs.Context,
+                eventArgs.RowIndex,
+                eventArgs.ColumnIndex,
+                columnName,
+                executablePath,
+                recovered),
+            eventArgs.Exception);
         eventArgs.ThrowException = !recovered;
     }
 
@@ -593,26 +525,6 @@ internal sealed class ApplicationProfilesGrid : UserControl
         eventArgs.Handled = true;
     }
 
-    private static DataGridViewTextBoxColumn CreateTextColumn(
-        string name,
-        string header,
-        int width,
-        bool fill = false)
-    {
-        return new DataGridViewTextBoxColumn
-        {
-            Name = name,
-            HeaderText = header,
-            AutoSizeMode = fill
-                ? DataGridViewAutoSizeColumnMode.Fill
-                : DataGridViewAutoSizeColumnMode.None,
-            MinimumWidth = width,
-            ReadOnly = true,
-            Width = width,
-            SortMode = DataGridViewColumnSortMode.NotSortable,
-        };
-    }
-
     private static Label CreateEmptyStateLabel()
     {
         return new Label
@@ -622,7 +534,7 @@ internal sealed class ApplicationProfilesGrid : UserControl
             ForeColor = AppTheme.TextSecondary,
             Font = AppTheme.CreateUiFont(10.5f),
             Padding = new Padding(32),
-            Text = "No application profiles yet.\n\n" +
+            Text = "No application assignments yet.\n\n" +
                    "Add the currently active application or select an executable file.",
             TextAlign = ContentAlignment.MiddleCenter,
             Visible = false,

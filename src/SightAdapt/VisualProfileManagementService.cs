@@ -115,7 +115,7 @@ internal static class VisualProfileManagementService
         }
 
         var reassigned =
-            ApplicationProfileManagementService
+            ApplicationAssignmentService
                 .ReassignVisualProfile(
                     settings,
                     profile.Id,
@@ -132,7 +132,7 @@ internal static class VisualProfileManagementService
         ArgumentNullException.ThrowIfNull(settings);
         ArgumentNullException.ThrowIfNull(profile);
 
-        return ApplicationProfileManagementService
+        return ApplicationAssignmentService
             .CountAssignments(
                 settings,
                 profile.Id);
@@ -162,7 +162,7 @@ internal static class VisualProfileManagementService
         string name)
     {
         var profile =
-            VisualProfile.CreateDefaultSoftInvert();
+            VisualProfileCatalog.Default.CreateBuiltInProfile(VisualProfileCatalog.DefaultSoftInvertId);
         profile.Id =
             CreateAvailableUserProfileId(settings);
         profile.Name = name;

@@ -32,9 +32,9 @@ public sealed class VisualProfileTuningAuthorityTests
     public void UpdateTuningRejectsDetachedAndExactInvertProfiles()
     {
         var settings = new SightAdaptSettings();
-        var detached = VisualProfile.CreateDefaultSoftInvert();
+        var detached = VisualProfileCatalog.Default.CreateBuiltInProfile(VisualProfileCatalog.DefaultSoftInvertId);
         var exact = settings.VisualProfiles.Single(
-            profile => profile.Id == VisualProfile.DefaultInvertId);
+            profile => profile.Id == VisualProfileCatalog.DefaultInvertId);
 
         Assert.ThrowsException<SettingsValidationException>(() =>
             VisualProfileManagementService.UpdateTuning(
@@ -51,7 +51,7 @@ public sealed class VisualProfileTuningAuthorityTests
     [TestMethod]
     public void WorkingCopyDoesNotMutatePersistedProfile()
     {
-        var source = VisualProfile.CreateDefaultSoftInvert();
+        var source = VisualProfileCatalog.Default.CreateBuiltInProfile(VisualProfileCatalog.DefaultSoftInvertId);
         var working = source.CreateWorkingCopy();
 
         working.Brightness = 0.25f;

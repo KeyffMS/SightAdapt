@@ -1,13 +1,13 @@
-# SightAdapt 0.5 Alpha
+# SightAdapt 0.5.0.50 Alpha
 
 SightAdapt is an open-source visual-accessibility application for Windows 10 and Windows 11. It applies configurable visual correction to selected application windows through a separate input-transparent overlay. It does not modify another application's files or process memory.
 
 ## Current version
 
 ```text
-Product version: 0.5.0.36
-File version:    0.5.0.36
-Milestone:       Alpha 0.5
+Product version: 0.5.0.50-alpha
+File version:    0.5.0.50
+Milestone:       0.5.0.50 Alpha
 Settings schema: 5
 Runtime:         .NET 8, Windows x64
 ```

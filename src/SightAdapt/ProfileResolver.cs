@@ -2,18 +2,18 @@ namespace SightAdapt;
 
 internal static class ProfileResolver
 {
-    public static ApplicationProfile? FindAssignment(
+    public static ApplicationAssignment? FindAssignment(
         IReadOnlySightAdaptSettings settings,
         ApplicationIdentity identity)
     {
         ArgumentNullException.ThrowIfNull(settings);
         ArgumentNullException.ThrowIfNull(identity);
 
-        return settings.Applications.FirstOrDefault(profile =>
+        return settings.Assignments.FirstOrDefault(profile =>
             profile is not null && profile.Matches(identity));
     }
 
-    public static ApplicationProfile? FindAssignmentByExecutablePath(
+    public static ApplicationAssignment? FindAssignmentByExecutablePath(
         IReadOnlySightAdaptSettings settings,
         string? executablePath)
     {
@@ -25,14 +25,14 @@ internal static class ProfileResolver
         }
 
         var normalizedPath = executablePath.Trim();
-        return settings.Applications.FirstOrDefault(profile =>
+        return settings.Assignments.FirstOrDefault(profile =>
             profile is not null && string.Equals(
                 profile.ExecutablePath,
                 normalizedPath,
                 StringComparison.OrdinalIgnoreCase));
     }
 
-    public static ApplicationProfile RequireAssignmentByExecutablePath(
+    public static ApplicationAssignment RequireAssignmentByExecutablePath(
         IReadOnlySightAdaptSettings settings,
         string executablePath)
     {
@@ -44,7 +44,7 @@ internal static class ProfileResolver
                 "The selected application assignment no longer exists.");
     }
 
-    public static ApplicationProfile? FindEnabledAssignment(
+    public static ApplicationAssignment? FindEnabledAssignment(
         IReadOnlySightAdaptSettings settings,
         ApplicationIdentity identity)
     {
@@ -98,7 +98,7 @@ internal static class ProfileResolver
 
     public static VisualProfile ResolveMenuVisualProfile(
         IReadOnlySightAdaptSettings settings,
-        ApplicationProfile? assignment)
+        ApplicationAssignment? assignment)
     {
         ArgumentNullException.ThrowIfNull(settings);
 
@@ -112,7 +112,7 @@ internal static class ProfileResolver
 
     public static VisualProfile ResolveVisualProfile(
         IReadOnlySightAdaptSettings settings,
-        ApplicationProfile? assignment)
+        ApplicationAssignment? assignment)
     {
         ArgumentNullException.ThrowIfNull(settings);
 
@@ -123,6 +123,6 @@ internal static class ProfileResolver
                 settings,
                 VisualProfilePolicy
                     .MissingReferenceFallbackProfileId)
-            ?? VisualProfile.CreateDefaultInvert();
+            ?? VisualProfileCatalog.Default.CreateBuiltInProfile(VisualProfileCatalog.DefaultInvertId);
     }
 }

@@ -30,7 +30,7 @@ internal static class Program
         Application.SetCompatibleTextRenderingDefault(false);
         ToolStripManager.Renderer = new DarkMenuRenderer();
 
-        if (!NativeMethods.MagInitialize())
+        if (!NativeMagnificationApi.Default.Initialize())
         {
             MessageBox.Show(
                 "Windows Magnification API could not be initialized. " +
@@ -56,7 +56,7 @@ internal static class Program
         }
         finally
         {
-            NativeMethods.MagUninitialize();
+            NativeMagnificationApi.Default.Uninitialize();
         }
     }
 }

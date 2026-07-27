@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using System.Runtime.InteropServices;
 
 namespace SightAdapt;
@@ -8,8 +7,7 @@ internal sealed class Win32MenuWindowsChangedEventArgs(
 {
     public IReadOnlyList<nint> Windows { get; } =
         windows?.ToArray() ??
-        throw new ArgumentNullException(
-            nameof(windows));
+        throw new ArgumentNullException(nameof(windows));
 }
 
 internal interface IWin32MenuWindowTracker : IDisposable
@@ -22,6 +20,16 @@ internal interface IWin32MenuWindowTracker : IDisposable
 
     void Refresh();
 }
+
+internal readonly record struct MenuWindowCandidate(
+    nint Window,
+    bool Exists,
+    bool Visible,
+    bool Minimized,
+    string WindowClass,
+    uint ThreadId,
+    uint ProcessId,
+    Rect Bounds);
 
 internal static class Win32MenuWindowPolicy
 {
@@ -53,109 +61,100 @@ internal static class Win32MenuWindowPolicy
         return candidateProcessId == targetProcessId ||
                candidateThreadId == targetThreadId;
     }
+
+    public static bool IsCandidate(
+        nint targetWindow,
+        uint targetThreadId,
+        uint targetProcessId,
+        MenuWindowCandidate candidate)
+    {
+        return candidate.Window != nint.Zero &&
+            candidate.Window != targetWindow &&
+            candidate.Exists &&
+            candidate.Visible &&
+            !candidate.Minimized &&
+            IsPopupMenuClass(candidate.WindowClass) &&
+            IsAssociatedWithTarget(
+                targetThreadId,
+                targetProcessId,
+                candidate.ThreadId,
+                candidate.ProcessId) &&
+            candidate.Bounds.Width > 0 &&
+            candidate.Bounds.Height > 0;
+    }
 }
 
-internal sealed class Win32MenuWindowTracker :
-    IWin32MenuWindowTracker
+internal interface IMenuRefreshSignalSource : IDisposable
 {
-    internal const int DefaultIntervalMilliseconds = 75;
+    event EventHandler? RefreshRequested;
 
-    private readonly System.Windows.Forms.Timer _timer;
+    void Start();
+
+    void Stop();
+}
+
+internal sealed class WinEventMenuRefreshSignalSource :
+    IMenuRefreshSignalSource
+{
+    private readonly INativeMenuEventApi _nativeApi;
     private readonly MenuEventMessageWindow _messageWindow;
-    private readonly NativeMenuMethods.WinEventDelegate
-        _winEventCallback;
-
-    private nint _targetWindow;
-    private nint _winEventHook;
-    private nint[] _lastPublishedWindows = [];
+    private readonly WinEventCallback _callback;
+    private nint _hook;
     private bool _disposed;
 
-    public Win32MenuWindowTracker(
-        int intervalMilliseconds =
-            DefaultIntervalMilliseconds)
+    public WinEventMenuRefreshSignalSource()
+        : this(NativeMenuEventApi.Default)
     {
-        if (intervalMilliseconds <= 0)
-        {
-            throw new ArgumentOutOfRangeException(
-                nameof(intervalMilliseconds));
-        }
-
-        _timer = new System.Windows.Forms.Timer
-        {
-            Interval = intervalMilliseconds,
-        };
-        _timer.Tick += TimerTick;
-        _messageWindow =
-            new MenuEventMessageWindow(Refresh);
-        _winEventCallback = WinEventCallback;
     }
 
-    public event EventHandler<
-        Win32MenuWindowsChangedEventArgs>? Changed;
-
-    public void Start(nint targetWindow)
+    internal WinEventMenuRefreshSignalSource(
+        INativeMenuEventApi nativeApi)
     {
-        ObjectDisposedException.ThrowIf(
-            _disposed,
-            this);
+        _nativeApi = nativeApi ??
+            throw new ArgumentNullException(nameof(nativeApi));
+        _messageWindow = new MenuEventMessageWindow(
+            nativeApi,
+            RaiseRefreshRequested);
+        _callback = WinEventCallback;
+    }
 
-        if (targetWindow == nint.Zero)
+    public event EventHandler? RefreshRequested;
+
+    public void Start()
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        if (_hook != nint.Zero)
         {
-            throw new ArgumentException(
-                "A target window is required.",
-                nameof(targetWindow));
+            return;
         }
 
-        _targetWindow = targetWindow;
-        _lastPublishedWindows = [];
-        EnsureWinEventHook();
-        _timer.Start();
-        Refresh();
+        _hook = _nativeApi.InstallHook(_callback);
+        if (_hook == nint.Zero)
+        {
+            var errorCode = Marshal.GetLastWin32Error();
+            Diagnostics.Report(
+                nameof(WinEventMenuRefreshSignalSource),
+                "Install WinEvent menu hook",
+                DiagnosticSeverity.Warning,
+                DiagnosticFailurePolicy.Recovered,
+                NativeCall.FormatFailure(
+                    "Install WinEvent menu hook",
+                    errorCode),
+                nativeErrorCode: errorCode);
+        }
     }
 
     public void Stop()
     {
-        if (_disposed)
+        if (_disposed || _hook == nint.Zero)
         {
             return;
         }
 
-        _timer.Stop();
-        _targetWindow = nint.Zero;
-        _lastPublishedWindows = [];
-        RemoveWinEventHook();
-    }
-
-    public void Refresh()
-    {
-        if (_disposed ||
-            _targetWindow == nint.Zero)
-        {
-            return;
-        }
-
-        if (!TryGetAssociation(
-                _targetWindow,
-                out var targetThreadId,
-                out var targetProcessId) ||
-            !IsTargetSessionForeground(
-                _targetWindow,
-                targetThreadId,
-                targetProcessId))
-        {
-            Publish([]);
-            return;
-        }
-
-        if (!TryEnumerateMenuWindows(
-                targetThreadId,
-                targetProcessId,
-                out var windows))
-        {
-            return;
-        }
-
-        Publish(windows);
+        NativeCall.BestEffort(
+            _nativeApi.RemoveHook(_hook),
+            "Remove WinEvent menu hook");
+        _hook = nint.Zero;
     }
 
     public void Dispose()
@@ -166,28 +165,8 @@ internal sealed class Win32MenuWindowTracker :
         }
 
         Stop();
-        _timer.Tick -= TimerTick;
-        _timer.Dispose();
         _messageWindow.Dispose();
         _disposed = true;
-    }
-
-    internal static bool HaveSameWindowSet(
-        IReadOnlyCollection<nint> first,
-        IReadOnlyCollection<nint> second)
-    {
-        ArgumentNullException.ThrowIfNull(first);
-        ArgumentNullException.ThrowIfNull(second);
-
-        return first.Count == second.Count &&
-               first.ToHashSet().SetEquals(second);
-    }
-
-    private void TimerTick(
-        object? sender,
-        EventArgs eventArgs)
-    {
-        Refresh();
     }
 
     private void WinEventCallback(
@@ -207,188 +186,15 @@ internal sealed class Win32MenuWindowTracker :
         _ = eventThread;
         _ = eventTime;
 
-        if (!_disposed &&
-            _targetWindow != nint.Zero)
+        if (!_disposed)
         {
             _messageWindow.RequestRefresh();
         }
     }
 
-    private void EnsureWinEventHook()
+    private void RaiseRefreshRequested()
     {
-        if (_winEventHook != nint.Zero)
-        {
-            return;
-        }
-
-        _winEventHook =
-            NativeMenuMethods.SetWinEventHook(
-                NativeMenuMethods.EventSystemMenuStart,
-                NativeMenuMethods.EventSystemMenuPopupEnd,
-                nint.Zero,
-                _winEventCallback,
-                0,
-                0,
-                NativeMenuMethods.WinEventOutOfContext |
-                    NativeMenuMethods.WinEventSkipOwnProcess);
-
-        if (_winEventHook == nint.Zero)
-        {
-            Debug.WriteLine(
-                "SightAdapt native menu tracking: " +
-                NativeCall.FormatFailure(
-                    "Install WinEvent menu hook",
-                    Marshal.GetLastWin32Error()));
-        }
-    }
-
-    private void RemoveWinEventHook()
-    {
-        if (_winEventHook == nint.Zero)
-        {
-            return;
-        }
-
-        NativeCall.BestEffort(
-            NativeMenuMethods.UnhookWinEvent(
-                _winEventHook),
-            "Remove WinEvent menu hook");
-        _winEventHook = nint.Zero;
-    }
-
-    private bool TryEnumerateMenuWindows(
-        uint targetThreadId,
-        uint targetProcessId,
-        out nint[] windows)
-    {
-        var candidates = new List<nint>();
-        var succeeded = NativeMenuMethods.EnumWindows(
-            (window, _) =>
-            {
-                if (IsMenuWindowCandidate(
-                        window,
-                        targetThreadId,
-                        targetProcessId))
-                {
-                    candidates.Add(window);
-                }
-
-                return true;
-            },
-            nint.Zero);
-
-        if (!NativeCall.TryTransient(
-                succeeded,
-                "Enumerate native popup menus"))
-        {
-            windows = [];
-            return false;
-        }
-
-        windows = candidates
-            .Distinct()
-            .ToArray();
-        return true;
-    }
-
-    private bool IsMenuWindowCandidate(
-        nint window,
-        uint targetThreadId,
-        uint targetProcessId)
-    {
-        if (window == nint.Zero ||
-            window == _targetWindow ||
-            !NativeMethods.IsWindow(window) ||
-            !NativeMethods.IsWindowVisible(window) ||
-            NativeMethods.IsIconic(window) ||
-            !Win32MenuWindowPolicy.IsPopupMenuClass(
-                NativeMethods.GetWindowClass(window)) ||
-            !TryGetAssociation(
-                window,
-                out var candidateThreadId,
-                out var candidateProcessId) ||
-            !Win32MenuWindowPolicy
-                .IsAssociatedWithTarget(
-                    targetThreadId,
-                    targetProcessId,
-                    candidateThreadId,
-                    candidateProcessId) ||
-            !NativeMethods.TryGetVisibleWindowBounds(
-                window,
-                out var bounds) ||
-            bounds.Width <= 0 ||
-            bounds.Height <= 0)
-        {
-            return false;
-        }
-
-        return true;
-    }
-
-    private static bool IsTargetSessionForeground(
-        nint targetWindow,
-        uint targetThreadId,
-        uint targetProcessId)
-    {
-        var foreground =
-            NativeMethods.GetForegroundWindow();
-        foreground = NativeMethods.GetAncestor(
-            foreground,
-            NativeMethods.GaRoot);
-
-        if (foreground == targetWindow)
-        {
-            return true;
-        }
-
-        return foreground != nint.Zero &&
-               Win32MenuWindowPolicy.IsPopupMenuClass(
-                   NativeMethods.GetWindowClass(
-                       foreground)) &&
-               TryGetAssociation(
-                   foreground,
-                   out var foregroundThreadId,
-                   out var foregroundProcessId) &&
-               Win32MenuWindowPolicy
-                   .IsAssociatedWithTarget(
-                       targetThreadId,
-                       targetProcessId,
-                       foregroundThreadId,
-                       foregroundProcessId);
-    }
-
-    private static bool TryGetAssociation(
-        nint window,
-        out uint threadId,
-        out uint processId)
-    {
-        threadId =
-            NativeMethods.GetWindowThreadProcessId(
-                window,
-                out processId);
-        return threadId != 0 && processId != 0;
-    }
-
-    private void Publish(
-        IReadOnlyList<nint> windows)
-    {
-        var snapshot = windows
-            .Where(window => window != nint.Zero)
-            .Distinct()
-            .ToArray();
-
-        if (HaveSameWindowSet(
-                _lastPublishedWindows,
-                snapshot))
-        {
-            return;
-        }
-
-        _lastPublishedWindows = snapshot;
-        Changed?.Invoke(
-            this,
-            new Win32MenuWindowsChangedEventArgs(
-                snapshot));
+        RefreshRequested?.Invoke(this, EventArgs.Empty);
     }
 
     private sealed class MenuEventMessageWindow :
@@ -396,24 +202,26 @@ internal sealed class Win32MenuWindowTracker :
         IDisposable
     {
         private const int RefreshMessage =
-            NativeMenuMethods.WmApp + 0x47;
+            NativeConstants.WmApp + 0x47;
 
+        private readonly INativeMenuEventApi _nativeApi;
         private readonly Action _refresh;
         private int _refreshPending;
         private bool _disposed;
 
         public MenuEventMessageWindow(
+            INativeMenuEventApi nativeApi,
             Action refresh)
         {
+            _nativeApi = nativeApi ??
+                throw new ArgumentNullException(nameof(nativeApi));
             _refresh = refresh ??
-                throw new ArgumentNullException(
-                    nameof(refresh));
+                throw new ArgumentNullException(nameof(refresh));
 
             CreateHandle(new CreateParams
             {
-                Caption =
-                    "SightAdapt Native Menu Event Window",
-                Parent = NativeMethods.HwndMessage,
+                Caption = "SightAdapt Native Menu Event Window",
+                Parent = NativeConstants.HwndMessage,
             });
         }
 
@@ -427,25 +235,26 @@ internal sealed class Win32MenuWindowTracker :
                 return;
             }
 
-            if (NativeMenuMethods.PostMessage(
+            if (_nativeApi.PostMessage(
                     Handle,
-                    RefreshMessage,
-                    nint.Zero,
-                    nint.Zero))
+                    RefreshMessage))
             {
                 return;
             }
 
-            var errorCode =
-                Marshal.GetLastWin32Error();
+            var errorCode = Marshal.GetLastWin32Error();
             Interlocked.Exchange(
                 ref _refreshPending,
                 0);
-            Debug.WriteLine(
-                "SightAdapt native menu tracking: " +
+            Diagnostics.Report(
+                nameof(MenuEventMessageWindow),
+                "Post native menu refresh message",
+                DiagnosticSeverity.Warning,
+                DiagnosticFailurePolicy.Recovered,
                 NativeCall.FormatFailure(
                     "Post native menu refresh message",
-                    errorCode));
+                    errorCode),
+                nativeErrorCode: errorCode);
         }
 
         protected override void WndProc(
@@ -474,67 +283,346 @@ internal sealed class Win32MenuWindowTracker :
             _disposed = true;
         }
     }
+}
 
-    private static class NativeMenuMethods
+internal interface IMenuWindowEnumerator
+{
+    bool TryEnumerate(
+        nint targetWindow,
+        uint targetThreadId,
+        uint targetProcessId,
+        out nint[] windows);
+}
+
+internal sealed class NativeMenuWindowEnumerator :
+    IMenuWindowEnumerator
+{
+    private readonly INativeMenuEventApi _menuApi;
+    private readonly INativeWindowApi _windowApi;
+
+    public NativeMenuWindowEnumerator()
+        : this(
+            NativeMenuEventApi.Default,
+            NativeWindowApi.Default)
     {
-        public const uint EventSystemMenuStart =
-            0x0004;
-        public const uint EventSystemMenuPopupEnd =
-            0x0007;
-        public const uint WinEventOutOfContext =
-            0x0000;
-        public const uint WinEventSkipOwnProcess =
-            0x0002;
-        public const int WmApp = 0x8000;
+    }
 
-        public delegate bool EnumWindowsDelegate(
-            nint window,
-            nint parameter);
+    internal NativeMenuWindowEnumerator(
+        INativeMenuEventApi menuApi,
+        INativeWindowApi windowApi)
+    {
+        _menuApi = menuApi ??
+            throw new ArgumentNullException(nameof(menuApi));
+        _windowApi = windowApi ??
+            throw new ArgumentNullException(nameof(windowApi));
+    }
 
-        public delegate void WinEventDelegate(
-            nint hook,
-            uint eventType,
-            nint window,
-            int objectId,
-            int childId,
-            uint eventThread,
-            uint eventTime);
+    public bool TryEnumerate(
+        nint targetWindow,
+        uint targetThreadId,
+        uint targetProcessId,
+        out nint[] windows)
+    {
+        var candidates = new List<nint>();
+        var succeeded = _menuApi.EnumerateWindows(
+            (window, _) =>
+            {
+                var candidate = ReadCandidate(window);
+                if (Win32MenuWindowPolicy.IsCandidate(
+                        targetWindow,
+                        targetThreadId,
+                        targetProcessId,
+                        candidate))
+                {
+                    candidates.Add(window);
+                }
 
-        [DllImport(
-            "user32.dll",
-            SetLastError = true)]
-        [return: MarshalAs(UnmanagedType.Bool)]
-        public static extern bool EnumWindows(
-            EnumWindowsDelegate callback,
-            nint parameter);
+                return true;
+            });
 
-        [DllImport(
-            "user32.dll",
-            SetLastError = true)]
-        public static extern nint SetWinEventHook(
-            uint eventMinimum,
-            uint eventMaximum,
-            nint module,
-            WinEventDelegate callback,
-            uint processId,
-            uint threadId,
-            uint flags);
+        if (!NativeCall.TryTransient(
+                succeeded,
+                "Enumerate native popup menus"))
+        {
+            windows = [];
+            return false;
+        }
 
-        [DllImport(
-            "user32.dll",
-            SetLastError = true)]
-        [return: MarshalAs(UnmanagedType.Bool)]
-        public static extern bool UnhookWinEvent(
-            nint hook);
+        windows = candidates
+            .Distinct()
+            .ToArray();
+        return true;
+    }
 
-        [DllImport(
-            "user32.dll",
-            SetLastError = true)]
-        [return: MarshalAs(UnmanagedType.Bool)]
-        public static extern bool PostMessage(
-            nint window,
-            int message,
-            nint wParam,
-            nint lParam);
+    private MenuWindowCandidate ReadCandidate(
+        nint window)
+    {
+        var threadId =
+            _windowApi.GetWindowThreadProcessId(
+                window,
+                out var processId);
+        _windowApi.TryGetVisibleWindowBounds(
+            window,
+            out var bounds);
+
+        return new MenuWindowCandidate(
+            window,
+            _windowApi.IsWindow(window),
+            _windowApi.IsWindowVisible(window),
+            _windowApi.IsMinimized(window),
+            _windowApi.GetWindowClass(window),
+            threadId,
+            processId,
+            bounds);
+    }
+}
+
+internal sealed class MenuWindowSnapshotPublisher
+{
+    private nint[] _lastPublished = [];
+
+    public bool TryUpdate(
+        IReadOnlyCollection<nint> windows,
+        out nint[] snapshot)
+    {
+        ArgumentNullException.ThrowIfNull(windows);
+
+        snapshot = windows
+            .Where(window => window != nint.Zero)
+            .Distinct()
+            .ToArray();
+        if (HaveSameWindowSet(
+                _lastPublished,
+                snapshot))
+        {
+            return false;
+        }
+
+        _lastPublished = snapshot;
+        return true;
+    }
+
+    public void Reset()
+    {
+        _lastPublished = [];
+    }
+
+    public static bool HaveSameWindowSet(
+        IReadOnlyCollection<nint> first,
+        IReadOnlyCollection<nint> second)
+    {
+        ArgumentNullException.ThrowIfNull(first);
+        ArgumentNullException.ThrowIfNull(second);
+
+        return first.Count == second.Count &&
+               first.ToHashSet().SetEquals(second);
+    }
+}
+
+internal sealed class Win32MenuWindowTracker :
+    IWin32MenuWindowTracker
+{
+    internal static int DefaultIntervalMilliseconds =>
+        RuntimeTimingPolicy.Default.MenuPollMilliseconds;
+
+    private readonly System.Windows.Forms.Timer _timer;
+    private readonly IMenuRefreshSignalSource _signalSource;
+    private readonly IMenuWindowEnumerator _enumerator;
+    private readonly INativeWindowApi _windowApi;
+    private readonly MenuWindowSnapshotPublisher _publisher = new();
+    private nint _targetWindow;
+    private bool _disposed;
+
+    public Win32MenuWindowTracker(
+        int? intervalMilliseconds = null)
+        : this(
+            new WinEventMenuRefreshSignalSource(),
+            new NativeMenuWindowEnumerator(),
+            NativeWindowApi.Default,
+            intervalMilliseconds ??
+                RuntimeTimingPolicy.Default.MenuPollMilliseconds)
+    {
+    }
+
+    internal Win32MenuWindowTracker(
+        IMenuRefreshSignalSource signalSource,
+        IMenuWindowEnumerator enumerator,
+        INativeWindowApi windowApi,
+        int intervalMilliseconds)
+    {
+        if (intervalMilliseconds <= 0)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(intervalMilliseconds));
+        }
+
+        _signalSource = signalSource ??
+            throw new ArgumentNullException(nameof(signalSource));
+        _enumerator = enumerator ??
+            throw new ArgumentNullException(nameof(enumerator));
+        _windowApi = windowApi ??
+            throw new ArgumentNullException(nameof(windowApi));
+        _timer = new System.Windows.Forms.Timer
+        {
+            Interval = intervalMilliseconds,
+        };
+        _timer.Tick += TimerTick;
+        _signalSource.RefreshRequested += SignalSourceRefreshRequested;
+    }
+
+    public event EventHandler<
+        Win32MenuWindowsChangedEventArgs>? Changed;
+
+    public void Start(nint targetWindow)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        if (targetWindow == nint.Zero)
+        {
+            throw new ArgumentException(
+                "A target window is required.",
+                nameof(targetWindow));
+        }
+
+        _targetWindow = targetWindow;
+        _publisher.Reset();
+        _signalSource.Start();
+        _timer.Start();
+        Refresh();
+    }
+
+    public void Stop()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        _timer.Stop();
+        _signalSource.Stop();
+        _targetWindow = nint.Zero;
+        _publisher.Reset();
+    }
+
+    public void Refresh()
+    {
+        if (_disposed || _targetWindow == nint.Zero)
+        {
+            return;
+        }
+
+        if (!TryGetAssociation(
+                _targetWindow,
+                out var targetThreadId,
+                out var targetProcessId) ||
+            !IsTargetSessionForeground(
+                _targetWindow,
+                targetThreadId,
+                targetProcessId))
+        {
+            Publish([]);
+            return;
+        }
+
+        if (_enumerator.TryEnumerate(
+                _targetWindow,
+                targetThreadId,
+                targetProcessId,
+                out var windows))
+        {
+            Publish(windows);
+        }
+    }
+
+    public void Dispose()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        Stop();
+        _timer.Tick -= TimerTick;
+        _timer.Dispose();
+        _signalSource.RefreshRequested -=
+            SignalSourceRefreshRequested;
+        _signalSource.Dispose();
+        _disposed = true;
+    }
+
+    internal static bool HaveSameWindowSet(
+        IReadOnlyCollection<nint> first,
+        IReadOnlyCollection<nint> second)
+    {
+        return MenuWindowSnapshotPublisher.HaveSameWindowSet(
+            first,
+            second);
+    }
+
+    private void TimerTick(
+        object? sender,
+        EventArgs eventArgs)
+    {
+        Refresh();
+    }
+
+    private void SignalSourceRefreshRequested(
+        object? sender,
+        EventArgs eventArgs)
+    {
+        Refresh();
+    }
+
+    private bool IsTargetSessionForeground(
+        nint targetWindow,
+        uint targetThreadId,
+        uint targetProcessId)
+    {
+        var foreground = _windowApi.GetRootWindow(
+            _windowApi.GetForegroundWindow());
+        if (foreground == targetWindow)
+        {
+            return true;
+        }
+
+        return foreground != nint.Zero &&
+            Win32MenuWindowPolicy.IsPopupMenuClass(
+                _windowApi.GetWindowClass(foreground)) &&
+            TryGetAssociation(
+                foreground,
+                out var foregroundThreadId,
+                out var foregroundProcessId) &&
+            Win32MenuWindowPolicy.IsAssociatedWithTarget(
+                targetThreadId,
+                targetProcessId,
+                foregroundThreadId,
+                foregroundProcessId);
+    }
+
+    private bool TryGetAssociation(
+        nint window,
+        out uint threadId,
+        out uint processId)
+    {
+        threadId =
+            _windowApi.GetWindowThreadProcessId(
+                window,
+                out processId);
+        return threadId != 0 && processId != 0;
+    }
+
+    private void Publish(
+        IReadOnlyCollection<nint> windows)
+    {
+        if (!_publisher.TryUpdate(
+                windows,
+                out var snapshot))
+        {
+            return;
+        }
+
+        Changed?.Invoke(
+            this,
+            new Win32MenuWindowsChangedEventArgs(
+                snapshot));
     }
 }

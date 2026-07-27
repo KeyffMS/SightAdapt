@@ -31,14 +31,14 @@ internal sealed class VisualProfileEditorForm : Form
             Dock = DockStyle.Fill,
             Margin = Padding.Empty,
             Profile = _workingProfile,
-            TransformCatalog = VisualTransformCatalog.Default,
+            TransformCatalog = VisualProfileCatalog.Default,
         };
         _outputPreview = new OutputLimitPreview
         {
             Dock = DockStyle.Fill,
             Margin = Padding.Empty,
             Profile = _workingProfile,
-            TransformCatalog = VisualTransformCatalog.Default,
+            TransformCatalog = VisualProfileCatalog.Default,
         };
         _adjustments = VisualAdjustmentDefinitions.All
             .Select(definition => new VisualAdjustmentBinding(
@@ -165,7 +165,7 @@ internal sealed class VisualProfileEditorForm : Form
             VisualAdjustmentDefinitions.OutputWhite), 1, 0);
         controls.Controls.Add(CreateConversionSamplePanel(), 2, 0);
 
-        return CreateSectionCard(
+        return FormPresentation.CreateSectionCard(
             "OUTPUT LIMITS AND CONVERSION SAMPLE",
             controls,
             new Padding(0, 0, 0, 14));
@@ -207,7 +207,7 @@ internal sealed class VisualProfileEditorForm : Form
             Padding = new Padding(16, 8, 16, 14),
         };
         host.Controls.Add(_preview);
-        return CreateSectionCard(
+        return FormPresentation.CreateSectionCard(
             "LIVE PROFILE PREVIEW",
             host,
             new Padding(0, 0, 0, 14));
@@ -237,48 +237,10 @@ internal sealed class VisualProfileEditorForm : Form
         grid.Controls.Add(CreateAdjustmentPanel(
             VisualAdjustmentDefinitions.HueShift), 1, 1);
 
-        return CreateSectionCard(
+        return FormPresentation.CreateSectionCard(
             "COLOR ADJUSTMENTS",
             grid,
             Padding.Empty);
-    }
-
-    private static Control CreateSectionCard(
-        string title,
-        Control content,
-        Padding margin)
-    {
-        var host = new TableLayoutPanel
-        {
-            BackColor = AppTheme.Surface,
-            ColumnCount = 1,
-            Dock = DockStyle.Fill,
-            Margin = Padding.Empty,
-            RowCount = 2,
-        };
-        host.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        host.RowStyles.Add(new RowStyle(SizeType.Absolute, 32));
-        host.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
-        host.Controls.Add(new Label
-        {
-            AutoSize = true,
-            Dock = DockStyle.Fill,
-            ForeColor = AppTheme.TextPrimary,
-            Font = AppTheme.CreateUiFont(9.2f, FontStyle.Bold),
-            Padding = new Padding(16, 6, 0, 0),
-            Text = title,
-            TextAlign = ContentAlignment.MiddleLeft,
-        }, 0, 0);
-        host.Controls.Add(content, 0, 1);
-
-        var card = new RoundedPanel
-        {
-            Dock = DockStyle.Fill,
-            Margin = margin,
-            Padding = new Padding(1),
-        };
-        card.Controls.Add(host);
-        return card;
     }
 
     private static Control CreateSliderPanel(
@@ -341,7 +303,8 @@ internal sealed class VisualProfileEditorForm : Form
             ModernButtonStyle.Secondary,
             160);
         reset.AccessibleDescription =
-            "Restore the canonical Soft invert tuning values.";
+            $"Restore the canonical {VisualProfileCatalog.Default.GetTransformDisplayName(
+                SoftInvertVisualTransform.TransformId)} tuning values.";
         reset.Click += (_, _) => ResetValues();
 
         var cancel = CreateButton("Cancel", ModernButtonStyle.Ghost, 100);

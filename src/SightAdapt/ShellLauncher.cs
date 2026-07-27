@@ -1,5 +1,5 @@
-using System.ComponentModel;
 using System.Diagnostics;
+using System.ComponentModel;
 
 namespace SightAdapt;
 
@@ -46,8 +46,13 @@ internal static class ShellLauncher
             exception is Win32Exception or
             InvalidOperationException)
         {
-            Debug.WriteLine(
-                $"SightAdapt could not open '{url}': {exception}");
+            Diagnostics.Report(
+                nameof(ShellLauncher),
+                "Open external link",
+                DiagnosticSeverity.Warning,
+                DiagnosticFailurePolicy.Recovered,
+                "The external link could not be opened.",
+                exception);
             showError(
                 owner,
                 $"The link could not be opened.\n\n{exception.Message}");

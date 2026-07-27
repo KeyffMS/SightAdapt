@@ -9,7 +9,7 @@ public sealed class SettingsCoordinatorTests
     public void SuccessfulCommitPublishesPersistedSnapshot()
     {
         using var temporaryDirectory =
-            new TemporaryDirectory();
+            new TestWorkspace();
         var settingsPath = Path.Combine(
             temporaryDirectory.Path,
             "settings.json");
@@ -42,7 +42,7 @@ public sealed class SettingsCoordinatorTests
     public void CurrentReturnsDefensiveSnapshot()
     {
         using var temporaryDirectory =
-            new TemporaryDirectory();
+            new TestWorkspace();
         var coordinator =
             new SettingsCoordinator(
                 new SettingsStore(Path.Combine(
@@ -53,7 +53,7 @@ public sealed class SettingsCoordinatorTests
             "reader.exe",
             @"C:\Apps\reader.exe");
         var result = coordinator.Commit(settings =>
-            ApplicationProfileManagementService.AddOrEnable(
+            ApplicationAssignmentService.AddOrEnable(
                 settings,
                 identity));
         Assert.IsTrue(result.Succeeded);
@@ -62,14 +62,14 @@ public sealed class SettingsCoordinatorTests
         coordinator.Changed += (_, _) => changedEvents++;
         var snapshot = coordinator.Current;
         snapshot.AutomaticMode = false;
-        snapshot.Applications[0].Enabled = false;
-        snapshot.Applications.Clear();
+        snapshot.Assignments[0].Enabled = false;
+        snapshot.Assignments.Clear();
         snapshot.VisualProfiles.Clear();
 
         var current = coordinator.Current;
         Assert.IsTrue(current.AutomaticMode);
-        Assert.AreEqual(1, current.Applications.Count);
-        Assert.IsTrue(current.Applications[0].Enabled);
+        Assert.AreEqual(1, current.Assignments.Count);
+        Assert.IsTrue(current.Assignments[0].Enabled);
         Assert.AreEqual(3, current.VisualProfiles.Count);
         Assert.AreEqual(0, changedEvents);
     }
@@ -78,7 +78,7 @@ public sealed class SettingsCoordinatorTests
     public void FailedPersistenceDoesNotPublishCandidateState()
     {
         using var temporaryDirectory =
-            new TemporaryDirectory();
+            new TestWorkspace();
         var blockingFile = Path.Combine(
             temporaryDirectory.Path,
             "not-a-directory");
@@ -110,7 +110,7 @@ public sealed class SettingsCoordinatorTests
     public void FailedDomainMutationDoesNotPublishPartialChanges()
     {
         using var temporaryDirectory =
-            new TemporaryDirectory();
+            new TestWorkspace();
         var coordinator =
             new SettingsCoordinator(
                 new SettingsStore(Path.Combine(
@@ -122,10 +122,10 @@ public sealed class SettingsCoordinatorTests
             {
                 AutomaticModeManagementService
                     .Disable(settings);
-                ApplicationProfileManagementService
+                ApplicationAssignmentService
                     .AssignVisualProfile(
                         settings,
-                        new ApplicationProfile(),
+                        new ApplicationAssignment(),
                         "missing");
             });
 
@@ -134,14 +134,14 @@ public sealed class SettingsCoordinatorTests
             coordinator.Current.AutomaticMode);
         Assert.AreEqual(
             0,
-            coordinator.Current.Applications.Count);
+            coordinator.Current.Assignments.Count);
     }
 
     [TestMethod]
     public void ValidationFailureDoesNotExposeGenericValue()
     {
         using var temporaryDirectory =
-            new TemporaryDirectory();
+            new TestWorkspace();
         var coordinator =
             new SettingsCoordinator(
                 new SettingsStore(Path.Combine(
@@ -165,7 +165,7 @@ public sealed class SettingsCoordinatorTests
     public void UnexpectedMutationFailureIsReportedAndRethrown()
     {
         using var temporaryDirectory =
-            new TemporaryDirectory();
+            new TestWorkspace();
         Exception? reported = null;
         var coordinator =
             new SettingsCoordinator(
@@ -193,7 +193,7 @@ public sealed class SettingsCoordinatorTests
     public void CommitReturnsValueFromPublishedCandidate()
     {
         using var temporaryDirectory =
-            new TemporaryDirectory();
+            new TestWorkspace();
         var coordinator =
             new SettingsCoordinator(
                 new SettingsStore(Path.Combine(
@@ -215,28 +215,4 @@ public sealed class SettingsCoordinatorTests
                     profile.Id == profileId));
     }
 
-    private sealed class TemporaryDirectory :
-        IDisposable
-    {
-        public TemporaryDirectory()
-        {
-            Path = System.IO.Path.Combine(
-                System.IO.Path.GetTempPath(),
-                "SightAdapt.Tests",
-                Guid.NewGuid().ToString("N"));
-            Directory.CreateDirectory(Path);
-        }
-
-        public string Path { get; }
-
-        public void Dispose()
-        {
-            if (Directory.Exists(Path))
-            {
-                Directory.Delete(
-                    Path,
-                    true);
-            }
-        }
-    }
 }

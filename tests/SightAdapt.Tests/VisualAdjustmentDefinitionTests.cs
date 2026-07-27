@@ -36,7 +36,7 @@ public sealed class VisualAdjustmentDefinitionTests
     [TestMethod]
     public void DefinitionsCreateConfiguredSliders()
     {
-        RunOnSta(() =>
+        StaTest.Run(() =>
         {
             foreach (var definition in
                      VisualAdjustmentDefinitions.All)
@@ -68,14 +68,14 @@ public sealed class VisualAdjustmentDefinitionTests
     [TestMethod]
     public void DefinitionBindingsRoundTripProfileValues()
     {
-        var source = VisualProfile.CreateDefaultSoftInvert();
+        var source = VisualProfileCatalog.Default.CreateBuiltInProfile(VisualProfileCatalog.DefaultSoftInvertId);
         source.OutputBlack = 0.12f;
         source.OutputWhite = 0.88f;
         source.Brightness = 0.15f;
         source.Contrast = 1.4f;
         source.Saturation = 0.65f;
         source.HueShiftDegrees = 25f;
-        var target = VisualProfile.CreateDefaultSoftInvert();
+        var target = VisualProfileCatalog.Default.CreateBuiltInProfile(VisualProfileCatalog.DefaultSoftInvertId);
 
         foreach (var definition in
                  VisualAdjustmentDefinitions.All)
@@ -94,10 +94,10 @@ public sealed class VisualAdjustmentDefinitionTests
     [TestMethod]
     public void EditorRendersEveryDeclaredAdjustment()
     {
-        RunOnSta(() =>
+        StaTest.Run(() =>
         {
             using var editor = new VisualProfileEditorForm(
-                VisualProfile.CreateDefaultSoftInvert());
+                VisualProfileCatalog.Default.CreateBuiltInProfile(VisualProfileCatalog.DefaultSoftInvertId));
             var names = FindControls<ModernProfileSlider>(editor)
                 .Select(slider => slider.AccessibleName)
                 .Where(name => !string.IsNullOrWhiteSpace(name))
@@ -130,29 +130,4 @@ public sealed class VisualAdjustmentDefinitionTests
         }
     }
 
-    private static void RunOnSta(Action action)
-    {
-        Exception? failure = null;
-        var thread = new Thread(() =>
-        {
-            try
-            {
-                action();
-            }
-            catch (Exception exception)
-            {
-                failure = exception;
-            }
-        });
-        thread.SetApartmentState(ApartmentState.STA);
-        thread.Start();
-
-        Assert.IsTrue(
-            thread.Join(TimeSpan.FromSeconds(10)),
-            "The visual-adjustment test did not finish in time.");
-        if (failure is not null)
-        {
-            Assert.Fail(failure.ToString());
-        }
-    }
 }

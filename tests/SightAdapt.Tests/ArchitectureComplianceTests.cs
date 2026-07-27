@@ -1,4 +1,6 @@
-using System.Text.RegularExpressions;
+using System.Diagnostics;
+using System.Reflection;
+using System.Runtime.InteropServices;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace SightAdapt.Tests;
@@ -6,162 +8,267 @@ namespace SightAdapt.Tests;
 [TestClass]
 public sealed class ArchitectureComplianceTests
 {
-    [TestMethod]
-    public void ApplicationAssignmentWritesStayInAuthorities()
-    {
-        // Intentional exhaustive source scan: a finite runtime scenario cannot
-        // prove that no other top-level production file writes these collections.
-        AssertPatternRestrictedTo(
-            @"(?m)^(?!\s*string\?\s+VisualProfileId\s*=)\s*.*\bVisualProfileId\s*=",
-            "ApplicationProfile.cs",
-            "ApplicationProfileManagementService.cs",
-            "SettingsNormalizer.cs",
-            "OverlayController.cs");
-        AssertPatternRestrictedTo(
-            @"\.MenuVisualProfileId\s*=",
-            "ApplicationProfileManagementService.cs",
-            "SettingsNormalizer.cs");
-        AssertPatternRestrictedTo(
-            @"\.Applications\.(Add|Remove)\(",
-            "ApplicationProfileManagementService.cs",
-            "SettingsNormalizer.cs");
-    }
+    private static readonly Assembly ProductionAssembly =
+        typeof(ProductInfo).Assembly;
+
+    private static readonly Lazy<IReadOnlyList<MethodCall>> Calls =
+        new(() => IlCallInspector.ReadCalls(ProductionAssembly));
 
     [TestMethod]
-    public void AutomaticModeWritesStayInAuthority()
+    public void ApplicationAssignmentWritesStayInDomainAuthorities()
     {
-        // Intentional exhaustive source scan for the single mutation authority.
-        AssertPatternRestrictedTo(
-            @"\.AutomaticMode\s*=",
-            "AutomaticModeManagementService.cs");
-    }
-
-    [TestMethod]
-    public void VisualProfileCollectionWritesStayInLifecycleAuthority()
-    {
-        // Intentional exhaustive source scan for collection ownership.
-        AssertPatternRestrictedTo(
-            @"\.VisualProfiles\.(Add|Remove)\(",
-            "VisualProfileManagementService.cs");
-    }
-
-    [TestMethod]
-    public void UiAndRuntimeDoNotPersistSettingsDirectly()
-    {
-        // This is a dependency-boundary check rather than an implementation-
-        // spelling check: these components must use SettingsCoordinator.
-        foreach (var fileName in new[]
-                 {
-                     "ConfigurationForm.cs",
-                     "VisualProfileManagerForm.cs",
-                     "SightAdaptContext.cs",
-                     "RuntimeCoordinator.cs",
-                 })
+        var setters = new[]
         {
-            var source = ReadSource(fileName);
-            Assert.IsFalse(
-                source.Contains(
-                    "SettingsStore",
-                    StringComparison.Ordinal),
-                $"{fileName} must not own settings persistence.");
+            nameof(ApplicationAssignment.DisplayName),
+            nameof(ApplicationAssignment.ExecutableName),
+            nameof(ApplicationAssignment.ExecutablePath),
+            nameof(ApplicationAssignment.Enabled),
+            nameof(ApplicationAssignment.VisualProfileId),
+            nameof(ApplicationAssignment.MenuVisualProfileId),
+            nameof(ApplicationAssignment.OverlayScopeId),
         }
+        .Select(name => typeof(ApplicationAssignment)
+            .GetProperty(name)!
+            .SetMethod!)
+        .ToArray();
+
+        AssertCallsRestrictedTo(
+            setters,
+            typeof(ApplicationAssignment),
+            typeof(ApplicationAssignmentService),
+            typeof(PersistedSettingsMapper),
+            typeof(ApplicationAssignmentNormalizationPass),
+            typeof(ProfileReferenceNormalizationPass));
     }
 
     [TestMethod]
-    public void ExpectedFailuresAreNotSilentlySwallowed()
+    public void AutomaticModeWritesStayInDomainAuthority()
     {
-        // Intentional exhaustive scan: empty catch blocks have no observable
-        // behavior and therefore cannot be covered reliably by runtime tests.
-        var violations = Directory
-            .EnumerateFiles(
-                SourceDirectory,
-                "*.cs",
-                SearchOption.TopDirectoryOnly)
-            .Where(path => Regex.IsMatch(
-                File.ReadAllText(path),
-                @"catch\s*(?:\([^)]*\))?\s*\{\s*\}",
-                RegexOptions.CultureInvariant |
-                RegexOptions.Singleline))
-            .Select(Path.GetFileName)
+        AssertCallsRestrictedTo(
+            [typeof(SightAdaptSettings)
+                .GetProperty(nameof(SightAdaptSettings.AutomaticMode))!
+                .SetMethod!],
+            typeof(SightAdaptSettings),
+            typeof(PersistedSettingsMapper),
+            typeof(AutomaticModeManagementService));
+    }
+
+    [TestMethod]
+    public void SettingsCollectionsHaveFocusedMutationAuthorities()
+    {
+        AssertListMutationRestrictedTo<ApplicationAssignment>(
+            typeof(ApplicationAssignmentService),
+            typeof(PersistedSettingsMapper),
+            typeof(ApplicationAssignmentNormalizationPass),
+            typeof(SettingsNormalizationContext));
+
+        AssertListMutationRestrictedTo<VisualProfile>(
+            typeof(VisualProfileManagementService),
+            typeof(PersistedSettingsMapper),
+            typeof(BuiltInVisualProfileNormalizationPass),
+            typeof(UserVisualProfileNormalizationPass),
+            typeof(SettingsNormalizationContext));
+    }
+
+    [TestMethod]
+    public void ConfigurationFormsDelegateCommandsToUseCaseAuthorities()
+    {
+        CollectionAssert.Contains(
+            FieldTypes(typeof(ConfigurationForm)),
+            typeof(ConfigurationUseCases));
+        CollectionAssert.Contains(
+            FieldTypes(typeof(VisualProfileManagerForm)),
+            typeof(VisualProfileUseCases));
+
+        AssertNoCallsToConstructor<SettingsStore>(
+            typeof(ConfigurationForm),
+            typeof(VisualProfileManagerForm),
+            typeof(RuntimeCoordinator),
+            typeof(SightAdaptContext));
+    }
+
+    [TestMethod]
+    public void RuntimeOverlayHasOneExplicitActivationContract()
+    {
+        var activateMethods = typeof(IRuntimeOverlay)
+            .GetMethods()
+            .Where(method => method.Name == nameof(IRuntimeOverlay.Activate))
+            .ToArray();
+
+        Assert.AreEqual(1, activateMethods.Length);
+        CollectionAssert.AreEqual(
+            new[] { typeof(OverlayActivationRequest) },
+            activateMethods[0]
+                .GetParameters()
+                .Select(parameter => parameter.ParameterType)
+                .ToArray());
+    }
+
+    [TestMethod]
+    public void RawNativeImportsStayInInteropBoundary()
+    {
+        var violations = ProductionAssembly
+            .GetTypes()
+            .SelectMany(type => type.GetMethods(
+                BindingFlags.Public |
+                BindingFlags.NonPublic |
+                BindingFlags.Static |
+                BindingFlags.Instance))
+            .Where(method =>
+                method.GetCustomAttribute<DllImportAttribute>() is not null)
+            .Where(method => method.DeclaringType?.FullName?.StartsWith(
+                "SightAdapt.NativeInterop+",
+                StringComparison.Ordinal) != true)
+            .Select(Describe)
             .OrderBy(name => name)
             .ToArray();
 
         Assert.AreEqual(
             0,
             violations.Length,
-            $"Empty catch blocks found in: {string.Join(", ", violations)}");
+            "Raw DllImport declarations found outside NativeInterop: " +
+            string.Join(", ", violations));
+    }
+
+    [TestMethod]
+    public void DirectDebugWritesStayInDiagnosticSink()
+    {
+        var violations = Calls.Value
+            .Where(call => call.Target.DeclaringType == typeof(Debug))
+            .Where(call => OwnerType(call.Caller.DeclaringType) !=
+                typeof(Diagnostics))
+            .Select(call => Describe(call.Caller))
+            .Distinct()
+            .OrderBy(name => name)
+            .ToArray();
+
+        Assert.AreEqual(
+            0,
+            violations.Length,
+            "Direct Debug calls found outside Diagnostics: " +
+            string.Join(", ", violations));
     }
 
     [TestMethod]
     public void RemovedLegacyMutationServiceDoesNotReturn()
     {
-        Assert.IsFalse(
-            File.Exists(Path.Combine(
-                SourceDirectory,
-                "ApplicationProfileToggleService.cs")));
+        Assert.IsNull(ProductionAssembly.GetType(
+            "SightAdapt.ApplicationAssignmentToggleService"));
     }
 
-    private static void AssertPatternRestrictedTo(
-        string pattern,
-        params string[] allowedFiles)
+    private static void AssertCallsRestrictedTo(
+        IEnumerable<MethodBase> targets,
+        params Type[] allowedOwners)
     {
-        var allowed = allowedFiles.ToHashSet(
-            StringComparer.OrdinalIgnoreCase);
-        var violations = Directory
-            .EnumerateFiles(
-                SourceDirectory,
-                "*.cs",
-                SearchOption.TopDirectoryOnly)
-            .Where(path => !allowed.Contains(
-                Path.GetFileName(path)))
-            .Where(path => Regex.IsMatch(
-                File.ReadAllText(path),
-                pattern,
-                RegexOptions.CultureInvariant))
-            .Select(Path.GetFileName)
+        var targetKeys = targets
+            .Select(MethodKey.Create)
+            .ToHashSet();
+        var allowed = allowedOwners.ToHashSet();
+        var violations = Calls.Value
+            .Where(call => targetKeys.Contains(
+                MethodKey.Create(call.Target)))
+            .Where(call =>
+                OwnerType(call.Caller.DeclaringType) is not { } owner ||
+                !allowed.Contains(owner))
+            .Select(call => Describe(call.Caller))
+            .Distinct()
             .OrderBy(name => name)
             .ToArray();
 
         Assert.AreEqual(
             0,
             violations.Length,
-            $"Restricted mutation pattern '{pattern}' found in: " +
+            "Restricted mutation calls found in: " +
             string.Join(", ", violations));
     }
 
-    private static string ReadSource(string fileName)
+    private static void AssertListMutationRestrictedTo<T>(
+        params Type[] allowedOwners)
     {
-        return File.ReadAllText(
-            Path.Combine(SourceDirectory, fileName));
+        var allowed = allowedOwners.ToHashSet();
+        var violations = Calls.Value
+            .Where(call => IsListMutation<T>(call.Target))
+            .Where(call =>
+                OwnerType(call.Caller.DeclaringType) is not { } owner ||
+                !allowed.Contains(owner))
+            .Select(call => Describe(call.Caller))
+            .Distinct()
+            .OrderBy(name => name)
+            .ToArray();
+
+        Assert.AreEqual(
+            0,
+            violations.Length,
+            $"List<{typeof(T).Name}> mutation calls found outside " +
+            "their authorities: " + string.Join(", ", violations));
     }
 
-    private static string SourceDirectory =>
-        Path.Combine(
-            RepositoryRoot,
-            "src",
-            "SightAdapt");
-
-    private static string RepositoryRoot
+    private static bool IsListMutation<T>(MethodBase method)
     {
-        get
+        if (method.Name is not ("Add" or "Remove") ||
+            method.DeclaringType is not { IsGenericType: true } type ||
+            type.GetGenericTypeDefinition() != typeof(List<>))
         {
-            var directory =
-                new DirectoryInfo(AppContext.BaseDirectory);
-            while (directory is not null)
-            {
-                if (Directory.Exists(Path.Combine(
-                        directory.FullName,
-                        "src",
-                        "SightAdapt")))
-                {
-                    return directory.FullName;
-                }
+            return false;
+        }
 
-                directory = directory.Parent;
-            }
+        return type.GetGenericArguments()[0] == typeof(T);
+    }
 
-            throw new DirectoryNotFoundException(
-                "The SightAdapt repository root could not be located.");
+    private static void AssertNoCallsToConstructor<T>(
+        params Type[] callerOwners)
+    {
+        var allowedCallers = callerOwners.ToHashSet();
+        var violations = Calls.Value
+            .Where(call => call.Target is ConstructorInfo &&
+                call.Target.DeclaringType == typeof(T))
+            .Where(call =>
+                OwnerType(call.Caller.DeclaringType) is { } owner &&
+                allowedCallers.Contains(owner))
+            .Select(call => Describe(call.Caller))
+            .Distinct()
+            .OrderBy(name => name)
+            .ToArray();
+
+        Assert.AreEqual(
+            0,
+            violations.Length,
+            $"{typeof(T).Name} is constructed directly by: " +
+            string.Join(", ", violations));
+    }
+
+    private static Type[] FieldTypes(Type type)
+    {
+        return type.GetFields(
+                BindingFlags.Instance |
+                BindingFlags.Public |
+                BindingFlags.NonPublic)
+            .Select(field => field.FieldType)
+            .ToArray();
+    }
+
+    private static Type? OwnerType(Type? type)
+    {
+        while (type?.DeclaringType is not null)
+        {
+            type = type.DeclaringType;
+        }
+
+        return type;
+    }
+
+    private static string Describe(MethodBase method)
+    {
+        return $"{OwnerType(method.DeclaringType)?.FullName}.{method.Name}";
+    }
+
+    private readonly record struct MethodKey(
+        Module Module,
+        int MetadataToken)
+    {
+        public static MethodKey Create(MethodBase method)
+        {
+            return new MethodKey(method.Module, method.MetadataToken);
         }
     }
 }

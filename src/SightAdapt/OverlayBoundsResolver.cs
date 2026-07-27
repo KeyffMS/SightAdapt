@@ -1,6 +1,3 @@
-using System.ComponentModel;
-using System.Runtime.InteropServices;
-
 namespace SightAdapt;
 
 internal readonly record struct OverlayGeometry(
@@ -17,7 +14,7 @@ internal static class OverlayBoundsResolver
         geometry = default;
 
         if (targetWindow == nint.Zero ||
-            !NativeMethods.IsWindow(targetWindow) ||
+            !NativeWindowApi.Default.IsWindow(targetWindow) ||
             !OverlayScopePolicy.IsSupported(scope))
         {
             return false;
@@ -42,33 +39,10 @@ internal static class OverlayBoundsResolver
         out OverlayGeometry geometry)
     {
         geometry = default;
-        if (!GetClientRect(targetWindow, out var clientRect))
-        {
-            return false;
-        }
-
-        var topLeft = new NativePoint(
-            clientRect.Left,
-            clientRect.Top);
-        var bottomRight = new NativePoint(
-            clientRect.Right,
-            clientRect.Bottom);
-
-        if (!ClientToScreen(targetWindow, ref topLeft) ||
-            !ClientToScreen(targetWindow, ref bottomRight))
-        {
-            return false;
-        }
-
-        return TryCreateGeometry(
-            new Rect
-            {
-                Left = topLeft.X,
-                Top = topLeft.Y,
-                Right = bottomRight.X,
-                Bottom = bottomRight.Y,
-            },
-            out geometry);
+        return NativeWindowApi.Default.TryGetClientBounds(
+                   targetWindow,
+                   out var bounds) &&
+               TryCreateGeometry(bounds, out geometry);
     }
 
     private static bool TryResolveWindow(
@@ -76,7 +50,7 @@ internal static class OverlayBoundsResolver
         out OverlayGeometry geometry)
     {
         geometry = default;
-        return NativeMethods.TryGetVisibleWindowBounds(
+        return NativeWindowApi.Default.TryGetVisibleWindowBounds(
                    targetWindow,
                    out var bounds) &&
                TryCreateGeometry(bounds, out geometry);
@@ -124,22 +98,4 @@ internal static class OverlayBoundsResolver
         };
     }
 
-    [DllImport("user32.dll", SetLastError = true)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool GetClientRect(
-        nint window,
-        out Rect rect);
-
-    [DllImport("user32.dll", SetLastError = true)]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    private static extern bool ClientToScreen(
-        nint window,
-        ref NativePoint point);
-
-    [StructLayout(LayoutKind.Sequential)]
-    private struct NativePoint(int x, int y)
-    {
-        public int X = x;
-        public int Y = y;
-    }
 }

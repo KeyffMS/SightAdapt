@@ -10,10 +10,10 @@ public sealed class ProfilePreviewCacheTests
     [TestMethod]
     public void ColorPreviewReusesAndInvalidatesCachedBitmap()
     {
-        RunOnSta(() =>
+        StaTest.Run(() =>
         {
             var profile =
-                VisualProfile.CreateDefaultSoftInvert();
+                VisualProfileCatalog.Default.CreateBuiltInProfile(VisualProfileCatalog.DefaultSoftInvertId);
             using var preview = new ColorProfilePreview
             {
                 Profile = profile,
@@ -41,10 +41,10 @@ public sealed class ProfilePreviewCacheTests
     [TestMethod]
     public void OutputPreviewReusesCacheAndDisposesOwnedBitmap()
     {
-        RunOnSta(() =>
+        StaTest.Run(() =>
         {
             var profile =
-                VisualProfile.CreateDefaultSoftInvert();
+                VisualProfileCatalog.Default.CreateBuiltInProfile(VisualProfileCatalog.DefaultSoftInvertId);
             var preview = new OutputLimitPreview
             {
                 Profile = profile,
@@ -77,30 +77,4 @@ public sealed class ProfilePreviewCacheTests
             control.ClientRectangle);
     }
 
-    private static void RunOnSta(Action scenario)
-    {
-        Exception? failure = null;
-        var thread = new Thread(() =>
-        {
-            try
-            {
-                scenario();
-            }
-            catch (Exception exception)
-            {
-                failure = exception;
-            }
-        });
-        thread.SetApartmentState(ApartmentState.STA);
-        thread.Start();
-
-        Assert.IsTrue(
-            thread.Join(TimeSpan.FromSeconds(10)),
-            "The profile-preview cache test did not finish in time.");
-
-        if (failure is not null)
-        {
-            Assert.Fail(failure.ToString());
-        }
-    }
 }
