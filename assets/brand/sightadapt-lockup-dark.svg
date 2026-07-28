@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 820 200" role="img" aria-labelledby="title description">
+  <title id="title">SightAdapt trademarked product logo for light backgrounds</title>
+  <desc id="description">The SightAdapt eye mark followed by the word SightAdapt and an unregistered trademark symbol.</desc>
+  <metadata>Copyright 2026 KeyffMS / aiteracja.pl. SightAdapt™ is an unregistered product mark.</metadata>
+  <defs>
+    <linearGradient id="background" x1="28" y1="24" x2="226" y2="232" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#13203B"/>
+      <stop offset="1" stop-color="#202A55"/>
+    </linearGradient>
+    <linearGradient id="iris" x1="88" y1="78" x2="170" y2="176" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#42E8FF"/>
+      <stop offset="0.52" stop-color="#55B8FF"/>
+      <stop offset="1" stop-color="#B38CFF"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="150%">
+      <feDropShadow dx="0" dy="6" stdDeviation="4" flood-color="#050817" flood-opacity="0.45"/>
+    </filter>
+  </defs>
+
+  <g transform="translate(20 20) scale(.625)">
+    <rect x="12" y="12" width="232" height="232" rx="58" fill="url(#background)"/>
+    <rect x="19" y="19" width="218" height="218" rx="51" fill="none" stroke="#FFFFFF" stroke-opacity="0.16" stroke-width="6"/>
+    <path d="M42 128 C66 84 96 64 128 64 C160 64 190 84 214 128 C190 172 160 192 128 192 C96 192 66 172 42 128 Z" fill="#F7FAFF" filter="url(#shadow)"/>
+    <circle cx="128" cy="128" r="47" fill="url(#iris)"/>
+    <path d="M86 143 A47 47 0 0 0 170 143 A47 47 0 0 1 86 143 Z" fill="#16304D" fill-opacity="0.36"/>
+    <circle cx="128" cy="128" r="22" fill="#10182F"/>
+    <circle cx="115" cy="112" r="9" fill="#FFFFFF" fill-opacity="0.92"/>
+    <path d="M182 80 L190 72 L204 86 L196 94 Z" fill="#7FF1FF"/>
+  </g>
+
+  <text x="205" y="124" fill="#0F172A" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="82" font-weight="700" letter-spacing="-2">SightAdapt</text>
+  <text x="656" y="66" fill="#0F172A" font-family="Inter, Segoe UI, Arial, sans-serif" font-size="27" font-weight="600">™</text>
+</svg>
