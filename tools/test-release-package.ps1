@@ -12,6 +12,10 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+if ($null -eq ('System.IO.Compression.ZipFile' -as [type])) {
+    Add-Type -AssemblyName System.IO.Compression.FileSystem
+}
+
 $resolvedArchive = (Resolve-Path -LiteralPath $ArchivePath).Path
 $resolvedManifest = (Resolve-Path -LiteralPath $ManifestPath).Path
 
