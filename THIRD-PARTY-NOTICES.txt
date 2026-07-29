@@ -1,0 +1,35 @@
+SIGHTADAPT THIRD-PARTY NOTICES
+
+This file identifies third-party technology included in, or required by, the SightAdapt Windows binary distribution. It is intended to remain human-readable in every package. Official releases must also use the exact-version notice-generation and review process for the runtime packs selected by that build.
+
+1. MICROSOFT .NET 8
+
+SightAdapt is built with .NET 8 and is distributed as a self-contained Windows x64 application. Depending on the selected SDK and runtime patch level, the published application contains components from the following Microsoft runtime packs:
+
+- Microsoft.NETCore.App.Runtime.win-x64
+- Microsoft.WindowsDesktop.App.Runtime.win-x64
+
+The .NET project includes Microsoft and third-party open-source components. The authoritative notice material for the exact runtime revision must be obtained from the official .NET distribution or the corresponding dotnet/runtime revision.
+
+Official sources:
+https://github.com/dotnet/runtime/blob/main/LICENSE.TXT
+https://github.com/dotnet/runtime/blob/main/THIRD-PARTY-NOTICES.TXT
+https://github.com/dotnet/core/blob/main/license-information.md
+
+The Microsoft redistribution terms applicable to the Windows runtime distribution are identified in DOTNET-LICENSE-NOTICE.txt.
+
+2. WINDOWS PLATFORM APIS
+
+SightAdapt uses Windows platform APIs, including Windows Forms, the Magnification API, window-management APIs and process metadata APIs. These operating-system components are supplied by Windows and are not copied into the SightAdapt package as independent third-party libraries.
+
+3. APPLICATION-LEVEL PACKAGES
+
+The SightAdapt application project currently has no direct third-party NuGet PackageReference dependencies. Test-only packages are not included in binary distributions and are listed in DEPENDENCIES.md for development transparency.
+
+4. EXACT-VERSION RELEASE REQUIREMENT
+
+The .NET SDK and runtime patch selected by a build can change the native and managed components placed in a self-contained package. Before an official release is published, maintainers must generate or import authoritative third-party notices tied to the exact runtime-pack versions, record their source and checksum, and verify that the final archive contains the reviewed result.
+
+This baseline file must not be treated as a permanent substitute for exact-version notice generation.
+
+Notice reviewed: 2026-07-29
