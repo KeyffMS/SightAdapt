@@ -52,11 +52,11 @@ foreach ($expectation in $noticeExpectations) {
 }
 
 $analysisExpectations = @(
-    "| .NET SDK | `$sdkVersion` |",
-    "| .NET Runtime | `$runtimeVersion` |",
-    "| Windows Desktop Runtime | `$runtimeVersion` |",
-    "| Target framework | `$targetFramework` |",
-    "| Runtime identifier | `$rid` |",
+    ('| .NET SDK | `{0}` |' -f $sdkVersion),
+    ('| .NET Runtime | `{0}` |' -f $runtimeVersion),
+    ('| Windows Desktop Runtime | `{0}` |' -f $runtimeVersion),
+    ('| Target framework | `{0}` |' -f $targetFramework),
+    ('| Runtime identifier | `{0}` |' -f $rid),
     "Microsoft.NETCore.App.Runtime.$rid/$runtimeVersion",
     "Microsoft.WindowsDesktop.App.Runtime.$rid/$runtimeVersion",
     'Maintainer review date | 2026-07-29',
