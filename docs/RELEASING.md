@@ -52,6 +52,12 @@ Where a purpose clarification is appropriate, use:
 
 A feature, category or marketing change that creates a potential medical purpose requires a new written assessment from a qualified EU medical-device regulatory professional before publication.
 
+## Commercialization and patent statements
+
+The current release is approved only for free/open-source development and alpha distribution. Before paid licensing, enterprise warranties, investor representations or large-scale commercial deployment, reopen and complete [the patent FTO commercialization gate](legal/PATENT-FTO-GATE.md).
+
+Do not state that SightAdapt is patent-free, patent-cleared or non-infringing. Do not provide a contractual patent warranty or indemnity without a written professional opinion covering the exact version, activity and territory.
+
 ## Required mark notice
 
 Include this notice once in the release description or linked legal material:
