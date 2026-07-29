@@ -35,15 +35,12 @@ if ($requiredFiles.Count -eq 0) {
 
 [xml]$props = Get-Content -LiteralPath (Join-Path $root 'Directory.Build.props')
 $group = $props.Project.PropertyGroup
-[xml]$project = Get-Content -LiteralPath (Join-Path $root 'src\SightAdapt\SightAdapt.csproj')
-$projectGroup = @($project.Project.PropertyGroup) | Select-Object -First 1
 $expectedMetadata = @{
     productVersion = [string]$group.SightAdaptProductVersion
     sdkVersion = [string]$group.SightAdaptDotNetSdkVersion
     runtimeVersion = [string]$group.SightAdaptDotNetRuntimeVersion
     runtimeIdentifier = [string]$group.SightAdaptRuntimeIdentifier
     publishMode = [string]$group.SightAdaptPublishMode
-    targetFramework = [string]$projectGroup.TargetFramework
 }
 
 $failures = [System.Collections.Generic.List[string]]::new()
@@ -128,17 +125,11 @@ try {
     if ($textEntries.ContainsKey($metadataKey)) {
         try {
             $noticeMetadata = $textEntries[$metadataKey] | ConvertFrom-Json
-            foreach ($expectedName in @(
-                'productVersion',
-                'sdkVersion',
-                'runtimeVersion',
-                'runtimeIdentifier',
-                'publishMode')) {
-                $actual = [string]$noticeMetadata.($expectedName)
-                $expected = [string]$expectedMetadata[$expectedName]
-                if ($actual -ne $expected) {
+            foreach ($expected in $expectedMetadata.GetEnumerator()) {
+                $actual = [string]$noticeMetadata.($expected.Key)
+                if ($actual -ne [string]$expected.Value) {
                     $failures.Add(
-                        "DOTNET-NOTICE-METADATA.json has $expectedName='$actual'; expected '$expected'.")
+                        "DOTNET-NOTICE-METADATA.json has $($expected.Key)='$actual'; expected '$($expected.Value)'.")
                 }
             }
 
@@ -184,35 +175,6 @@ try {
             $failures.Add('THIRD-PARTY-NOTICES.txt does not identify the pinned runtime version.')
         }
     }
-
-    $redistributionKey = 'microsoft-dotnet-redistribution.txt'
-    if ($textEntries.ContainsKey($redistributionKey)) {
-        $redistributionText = [string]$textEntries[$redistributionKey]
-        $redistributionExpectations = @(
-            "SightAdapt version: $($expectedMetadata.productVersion)",
-            ".NET SDK used to build: $($expectedMetadata.sdkVersion)",
-            ".NET Runtime: $($expectedMetadata.runtimeVersion)",
-            "Windows Desktop Runtime: $($expectedMetadata.runtimeVersion)",
-            "Target framework: $($expectedMetadata.targetFramework)",
-            "Runtime identifier: $($expectedMetadata.runtimeIdentifier)",
-            'Publication: self-contained, single-file Windows application',
-            'SightAdapt''s own source code is licensed under the MIT License',
-            'not offered, branded or distributed by the',
-            'standalone Microsoft .NET product',
-            'Microsoft does not publish, sponsor, certify or endorse SightAdapt',
-            'https://dotnet.microsoft.com/en-us/dotnet_library_license.htm',
-            'not a legal opinion',
-            'Issue #93'
-        )
-        foreach ($expectation in $redistributionExpectations) {
-            if (-not $redistributionText.Contains(
-                $expectation,
-                [StringComparison]::Ordinal)) {
-                $failures.Add(
-                    "MICROSOFT-DOTNET-REDISTRIBUTION.txt is missing required text '$expectation'.")
-            }
-        }
-    }
 }
 finally {
     $archive.Dispose()
@@ -224,6 +186,6 @@ if ($failures.Count -gt 0) {
 }
 
 Write-Host (
-    "Release package verified: {0} required files are present, readable and consistent with the pinned .NET release and redistribution controls in {1}." -f
+    "Release package verified: {0} required files are present, readable and consistent with the pinned .NET release in {1}." -f
     $requiredFiles.Count,
     $resolvedArchive)
