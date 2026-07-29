@@ -16,7 +16,7 @@ Every package must place the following files at the package root so they can be 
 |---|---|
 | `SightAdapt.exe` | Application executable |
 | `LICENSE.txt` | SightAdapt MIT License |
-| `THIRD-PARTY-NOTICES.txt` | Exact-version notices imported from the reviewed Microsoft .NET distribution |
+| `THIRD-PARTY-NOTICES.txt` | Exact-version notices imported from the reviewed Microsoft .NET release distribution |
 | `DOTNET-LICENSE-NOTICE.txt` | Exact-version Microsoft .NET license text and source metadata |
 | `DOTNET-NOTICE-METADATA.json` | Machine-readable SDK, runtime, RID, runtime-pack, source and checksum evidence |
 | `DEPENDENCIES.md` | Human-readable inventory of shipped, platform and development dependencies |
@@ -78,16 +78,18 @@ The validation script opens the final ZIP and checks the entries listed in `rele
 
 ## Microsoft .NET notices
 
-SightAdapt is a self-contained Windows application. The exact SDK and runtime are pinned in `global.json` and `Directory.Build.props`. The generator obtains the exact official Windows Desktop Runtime ZIP through Microsoft's release metadata, verifies the published SHA-512 hash and imports the license and third-party notice files from that archive.
+SightAdapt is a self-contained Windows application. `global.json` pins the SDK, while `Directory.Build.props` records the expected SDK/runtime release mapping. The actual restore graph in `project.assets.json` identifies the exact runtime packs selected by the build.
+
+The generator obtains the matching official .NET SDK ZIP through Microsoft's release metadata, verifies its published SHA-512 hash and imports `LICENSE.txt` and `ThirdPartyNotices.txt` from that archive. The SDK ZIP is used because the standalone Windows Desktop Runtime ZIP does not contain those legal files; the restore graph, not the SDK ZIP contents, remains the authority for which runtime packs are associated with the SightAdapt publication.
 
 The package record identifies:
 
 - exact .NET SDK version;
 - exact runtime and Windows Desktop Runtime versions;
 - runtime identifier and publish mode;
-- restored runtime packages;
-- authoritative release-metadata and package URLs;
-- official package SHA-512;
+- restored runtime packages and framework;
+- authoritative release-metadata and SDK-package URLs;
+- official SDK package SHA-512;
 - SHA-256 values for the imported license and notice text;
 - generation time and product version.
 
@@ -100,7 +102,7 @@ Before publishing or mirroring a binary package:
 1. verify the pinned release metadata;
 2. restore, build and test the application;
 3. publish into a clean staging directory;
-4. generate exact-version .NET notices from the verified official package;
+4. generate exact-version .NET notices from the hash-verified official SDK package and actual restore graph;
 5. inspect the generated notice metadata and any newly mapped runtime component;
 6. create the final archive or platform package;
 7. validate the final archive with `tools/test-release-package.ps1`;
