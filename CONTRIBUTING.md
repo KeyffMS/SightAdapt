@@ -32,7 +32,9 @@ Create a self-contained executable with the steps in [docs/BUILD.md](docs/BUILD.
 
 - keep changes focused;
 - describe Windows versions and DPI configurations tested;
-- do not add DLL injection, kernel drivers, or screen-content telemetry;
+- do not add DLL injection or kernel drivers;
+- do not add telemetry, analytics, remote crash reporting, automatic diagnostic upload, update checks, cloud synchronization or another network/data-collection feature without completing the privacy review defined in [PRIVACY.md](PRIVACY.md);
+- update `PRIVACY.md` in the same pull request when local processing, network behavior, support-data handling or retention changes;
 - preserve the emergency overlay shutdown path;
 - document known limitations;
 - include manual test steps for visual or input-related changes;
@@ -49,4 +51,4 @@ Include:
 - exact steps to reproduce;
 - whether the emergency tray command still worked.
 
-Do not attach screenshots containing private information.
+Before attaching paths, settings, logs, screenshots or recordings, follow the redaction and private-reporting guidance in [PRIVACY.md](PRIVACY.md). Do not publish passwords, tokens, confidential documents, personal paths or screenshots containing unrelated private information. For sensitive material, contact the repository owner through GitHub and request a private communication channel first.
