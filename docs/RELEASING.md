@@ -1,6 +1,6 @@
 # SightAdapt release naming
 
-This document defines the public naming, attribution and minimum package-compliance rules for SightAdapt releases.
+This document defines the public naming, attribution, intended-purpose and minimum package-compliance rules for SightAdapt releases.
 
 ## Public release identity
 
@@ -34,6 +34,24 @@ Then identify:
 - publisher: `KeyffMS / aiteracja.pl`;
 - license: `MIT License`.
 
+## Intended-purpose and store claims
+
+Release notes, store listings, directories, screenshots, metadata and support materials must follow [the intended-purpose and medical-device claims policy](legal/INTENDED-PURPOSE-AND-MDR.md).
+
+The current approved position is general-purpose accessibility and display-personalization software, not software intended for a medical purpose. Do not:
+
+- select a medical-device category;
+- target a named disease, disorder, impairment or patient group;
+- claim diagnosis, treatment, therapy, prevention, monitoring or clinical alleviation;
+- describe display/color correction as clinical vision correction;
+- claim clinical effectiveness or professional endorsement.
+
+Where a purpose clarification is appropriate, use:
+
+> SightAdapt is general-purpose accessibility and display-personalization software. It is not intended to diagnose, treat, prevent, monitor or clinically alleviate any disease, injury or disability, and it is not a substitute for professional medical or eye-care advice.
+
+A feature, category or marketing change that creates a potential medical purpose requires a new written assessment from a qualified EU medical-device regulatory professional before publication.
+
 ## Required mark notice
 
 Include this notice once in the release description or linked legal material:
@@ -50,17 +68,11 @@ Do not use `®`.
 - Link public website references to `https://aiteracja.pl/sightadapt/`.
 - Do not use `https://sightadapt.aiteracja.pl/` as a canonical URL; it is reserved as an optional redirect.
 - Use `Publisher`, not alternating `Author`, `Vendor`, or `Company`, on public release surfaces.
-- Follow [the product identity standard](BRAND.md) for descriptions, attribution, and mark usage.
+- Follow [the product identity standard](BRAND.md) for descriptions, attribution, mark usage and claims control.
 
 ## Binary release gate
 
-Every binary distribution must comply with [the binary packaging standard](PACKAGING.md). The final archive or platform package must include the files listed in `release/required-files.txt`, including:
-
-- `LICENSE.txt`;
-- `THIRD-PARTY-NOTICES.txt`;
-- `DOTNET-LICENSE-NOTICE.txt`;
-- `DEPENDENCIES.md`;
-- `PRIVACY.md`.
+Every binary distribution must comply with [the binary packaging standard](PACKAGING.md). The final archive or platform package must include every file listed in `release/required-files.txt`, including the license, exact-version notices, Microsoft redistribution notice, privacy notice, dependency inventory, SBOM and license report.
 
 The legal documents must be readable without starting the application. The final ZIP must pass:
 
@@ -81,6 +93,8 @@ SightAdapt is a free, open-source Windows application for per-application visual
 - Source: https://github.com/KeyffMS/SightAdapt
 - Publisher: KeyffMS / aiteracja.pl
 - License: MIT License
+
+SightAdapt is general-purpose accessibility and display-personalization software. It is not intended to diagnose, treat, prevent, monitor or clinically alleviate any disease, injury or disability.
 
 SightAdapt™ is an unregistered product mark used by KeyffMS / aiteracja.pl.
 ```
