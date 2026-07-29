@@ -35,7 +35,7 @@ cd SightAdapt
 .\tools\verify-release-metadata.ps1
 ```
 
-This check verifies the synchronized product, SDK, runtime, RID and publish-mode inputs.
+This check verifies the synchronized product, expected SDK/runtime, RID and publish-mode inputs.
 
 ## 4. Restore dependencies
 
@@ -44,7 +44,7 @@ dotnet restore .\src\SightAdapt\SightAdapt.csproj
 dotnet restore .\tests\SightAdapt.Tests\SightAdapt.Tests.csproj
 ```
 
-The application restore creates the authoritative runtime-pack inventory used by notice generation.
+The application restore creates the authoritative runtime-pack inventory used by notice generation. The generator rejects runtime-pack versions that differ from `Directory.Build.props`.
 
 ## 5. Run the tests
 
@@ -58,7 +58,7 @@ All tests must pass before publication.
 
 ## 6. Publish a self-contained single-file executable
 
-The exact runtime identifier, runtime patch, self-contained mode and single-file setting are defined by `Directory.Build.props` and `SightAdapt.csproj`.
+The runtime identifier, self-contained mode and single-file setting are defined by `Directory.Build.props` and `SightAdapt.csproj`. The exact runtime patch is selected by the pinned SDK and verified against the restored `project.assets.json` before packaging.
 
 ```powershell
 dotnet publish .\src\SightAdapt\SightAdapt.csproj `
@@ -76,7 +76,7 @@ The project copies the repository legal-document baseline into the publish direc
     -PublishDirectory .\artifacts\win-x64
 ```
 
-The generator verifies the official Microsoft Windows Desktop Runtime package hash and replaces the baseline .NET files with exact-version material. It writes:
+The generator verifies the runtime packs selected by restore, downloads the matching official Microsoft .NET SDK ZIP, verifies its published SHA-512 hash and replaces the baseline .NET files with exact-version legal material. It writes:
 
 - `THIRD-PARTY-NOTICES.txt`;
 - `DOTNET-LICENSE-NOTICE.txt`;
@@ -138,7 +138,7 @@ $process = Get-Process SightAdapt
     Format-List ProductVersion, FileVersion
 ```
 
-The expected product values and exact .NET release inputs are generated from the sources of truth in `Directory.Build.props` and `global.json`.
+The expected product values and exact .NET release inputs are generated from the sources of truth in `Directory.Build.props`, `global.json` and the restore graph.
 
 ## Clean rebuild
 
