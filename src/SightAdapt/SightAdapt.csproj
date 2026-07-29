@@ -47,6 +47,10 @@
           Link="DOTNET-LICENSE-NOTICE.txt"
           CopyToOutputDirectory="PreserveNewest"
           CopyToPublishDirectory="PreserveNewest" />
+    <None Include="..\..\MICROSOFT-DOTNET-REDISTRIBUTION.txt"
+          Link="MICROSOFT-DOTNET-REDISTRIBUTION.txt"
+          CopyToOutputDirectory="PreserveNewest"
+          CopyToPublishDirectory="PreserveNewest" />
     <None Include="..\..\DEPENDENCIES.md"
           Link="DEPENDENCIES.md"
           CopyToOutputDirectory="PreserveNewest"
