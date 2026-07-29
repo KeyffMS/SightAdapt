@@ -71,6 +71,7 @@ jobs:
             build-output.txt
             test-output.txt
             TestResults/SightAdapt.trx
+            src/SightAdapt/obj/project.assets.json
           if-no-files-found: warn
           retention-days: 7
 
