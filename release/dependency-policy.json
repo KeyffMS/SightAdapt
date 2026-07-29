@@ -1,0 +1,146 @@
+{
+  "schemaVersion": 1,
+  "allowedLicenseExpressions": [
+    "MIT",
+    "LicenseRef-Microsoft-DotNet-Distribution",
+    "LicenseRef-Microsoft-Windows-SDK-Reference-Terms"
+  ],
+  "deniedLicenseExpressions": [
+    "GPL-2.0-only",
+    "GPL-3.0-only",
+    "AGPL-3.0-only",
+    "CC-BY-NC-4.0",
+    "NOASSERTION",
+    "UNKNOWN"
+  ],
+  "components": {
+    "SightAdapt": {
+      "expectedVersionSource": "product",
+      "scope": "shipped",
+      "shipped": true,
+      "supplier": "Organization: KeyffMS / aiteracja.pl",
+      "license": "MIT",
+      "source": "https://github.com/KeyffMS/SightAdapt",
+      "purpose": "APPLICATION",
+      "expectedVersion": ""
+    },
+    "Microsoft.NETCore.App.Runtime.win-x64": {
+      "expectedVersionSource": "runtime",
+      "scope": "shipped",
+      "shipped": true,
+      "supplier": "Organization: Microsoft Corporation",
+      "license": "LicenseRef-Microsoft-DotNet-Distribution",
+      "source": "https://github.com/dotnet/runtime",
+      "purpose": "LIBRARY",
+      "expectedVersion": ""
+    },
+    "Microsoft.WindowsDesktop.App.Runtime.win-x64": {
+      "expectedVersionSource": "runtime",
+      "scope": "shipped",
+      "shipped": true,
+      "supplier": "Organization: Microsoft Corporation",
+      "license": "LicenseRef-Microsoft-DotNet-Distribution",
+      "source": "https://github.com/dotnet/windowsdesktop",
+      "purpose": "LIBRARY",
+      "expectedVersion": ""
+    },
+    "Microsoft.AspNetCore.App.Runtime.win-x64": {
+      "expectedVersionSource": "runtime",
+      "scope": "restore-only",
+      "shipped": false,
+      "supplier": "Organization: Microsoft Corporation",
+      "license": "LicenseRef-Microsoft-DotNet-Distribution",
+      "source": "https://github.com/dotnet/aspnetcore",
+      "purpose": "LIBRARY",
+      "expectedVersion": ""
+    },
+    "Microsoft.NET.Test.Sdk": {
+      "expectedVersion": "17.11.1",
+      "scope": "test",
+      "shipped": false,
+      "supplier": "Organization: Microsoft Corporation",
+      "license": "MIT",
+      "source": "https://github.com/microsoft/vstest",
+      "purpose": "OTHER",
+      "expectedVersionSource": ""
+    },
+    "MSTest.TestAdapter": {
+      "expectedVersion": "3.6.4",
+      "scope": "test",
+      "shipped": false,
+      "supplier": "Organization: Microsoft Corporation",
+      "license": "MIT",
+      "source": "https://github.com/microsoft/testfx",
+      "purpose": "OTHER",
+      "expectedVersionSource": ""
+    },
+    "MSTest.TestFramework": {
+      "expectedVersion": "3.6.4",
+      "scope": "test",
+      "shipped": false,
+      "supplier": "Organization: Microsoft Corporation",
+      "license": "MIT",
+      "source": "https://github.com/microsoft/testfx",
+      "purpose": "OTHER",
+      "expectedVersionSource": ""
+    },
+    "actions/checkout": {
+      "expectedVersion": "v4",
+      "scope": "build",
+      "shipped": false,
+      "supplier": "Organization: GitHub, Inc.",
+      "license": "MIT",
+      "source": "https://github.com/actions/checkout",
+      "purpose": "OTHER",
+      "expectedVersionSource": ""
+    },
+    "actions/setup-dotnet": {
+      "expectedVersion": "v4",
+      "scope": "build",
+      "shipped": false,
+      "supplier": "Organization: GitHub, Inc.",
+      "license": "MIT",
+      "source": "https://github.com/actions/setup-dotnet",
+      "purpose": "OTHER",
+      "expectedVersionSource": ""
+    },
+    "actions/upload-artifact": {
+      "expectedVersion": "v4",
+      "scope": "build",
+      "shipped": false,
+      "supplier": "Organization: GitHub, Inc.",
+      "license": "MIT",
+      "source": "https://github.com/actions/upload-artifact",
+      "purpose": "OTHER",
+      "expectedVersionSource": ""
+    },
+    "Microsoft .NET SDK": {
+      "expectedVersion": "",
+      "expectedVersionSource": "sdk",
+      "scope": "build",
+      "shipped": false,
+      "supplier": "Organization: Microsoft Corporation",
+      "license": "LicenseRef-Microsoft-DotNet-Distribution",
+      "source": "https://github.com/dotnet/sdk",
+      "purpose": "OTHER"
+    },
+    "Microsoft.Windows.SDK.NET.Ref": {
+      "expectedVersion": "10.0.19041.56",
+      "expectedVersionSource": "",
+      "scope": "build-reference",
+      "shipped": false,
+      "supplier": "Organization: Microsoft Corporation",
+      "license": "LicenseRef-Microsoft-Windows-SDK-Reference-Terms",
+      "source": "https://www.nuget.org/packages/Microsoft.Windows.SDK.NET.Ref",
+      "purpose": "LIBRARY"
+    }
+  },
+  "reviewLicenseExpressions": [
+    "LGPL-2.1-only",
+    "LGPL-3.0-only",
+    "MPL-2.0",
+    "EPL-2.0",
+    "CDDL-1.0",
+    "LicenseRef-*"
+  ]
+}
