@@ -61,6 +61,12 @@ SightAdapt processes window, process and executable information locally and stor
 
 Executable paths, settings, logs and screenshots can contain personal or confidential information. Redact them before publishing a support report and request a private channel from the repository owner before sending sensitive material. See the complete [privacy notice and support-data policy](PRIVACY.md).
 
+## Intended purpose
+
+SightAdapt is general-purpose accessibility and display-personalization software. It is not intended to diagnose, treat, prevent, monitor or clinically alleviate any disease, injury or disability, and it is not a substitute for professional medical or eye-care advice.
+
+`Color correction` and `visual correction` refer to display presentation, not clinical vision correction. The project does not claim clinical effectiveness or target a named medical condition. See the controlled [intended-purpose and medical-device claims policy](docs/legal/INTENDED-PURPOSE-AND-MDR.md).
+
 ## Build a standalone EXE
 
 The application can be published as a self-contained single-file executable. It does not need to be started with `dotnet run`, and the target computer does not need a separately installed .NET runtime.
@@ -100,6 +106,7 @@ Create and validate the final archive according to [the binary packaging standar
 ## Documentation
 
 - [Product identity and brand usage](docs/BRAND.md)
+- [Intended purpose and medical-device claims policy](docs/legal/INTENDED-PURPOSE-AND-MDR.md)
 - [Release naming and attribution](docs/RELEASING.md)
 - [Binary packaging standard](docs/PACKAGING.md)
 - [Complete functionality](docs/FEATURES.md)
