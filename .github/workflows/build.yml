@@ -37,6 +37,10 @@ jobs:
         shell: pwsh
         run: .\tools\verify-release-metadata.ps1 -WriteGitHubOutput
 
+      - name: Verify Microsoft .NET redistribution controls
+        shell: pwsh
+        run: .\tools\verify-dotnet-redistribution.ps1
+
       - name: Restore application
         run: dotnet restore src/SightAdapt/SightAdapt.csproj
 
