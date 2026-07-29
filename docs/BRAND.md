@@ -54,6 +54,20 @@ SightAdapt is positioned as general-purpose accessibility and display-personaliz
 
 All website, README, release, store, directory, screenshot, support and social copy must follow [the intended-purpose and medical-device claims policy](legal/INTENDED-PURPOSE-AND-MDR.md). A disclaimer cannot be used to contradict an actual medical purpose communicated elsewhere.
 
+## Third-party names, affiliation and compatibility
+
+Third-party product names and trademarks belong to their respective owners and may be used only as needed to identify an application selected/configured by the user or to state factual compatibility. Such use does not imply ownership, partnership, certification, sponsorship or endorsement.
+
+Unless a written relationship expressly provides otherwise, state or remain consistent with:
+
+> SightAdapt is not affiliated with, sponsored by, certified by or endorsed by Microsoft or by the owners of user-selected applications.
+
+Preferred factual phrases include `works with`, `compatible with supported application windows` and `tested with <product/version>`. Do not use `official integration`, `partner`, `approved by`, `certified by` or similar relationship language without written authorization.
+
+Do not use third-party logos, branded icons, trade dress or promotional artwork in SightAdapt-controlled branding, screenshots, listings or packages without permission or another documented lawful basis. Compatibility wording and assets must follow [the third-party names, affiliation and protected-content policy](legal/THIRD-PARTY-NAMES-AFFILIATION-AND-DRM.md).
+
+SightAdapt is not intended to circumvent DRM, protected-content restrictions or access controls. Protected content may remain unavailable, blank or unfilterable; this must be described as a limitation, never as a restriction to bypass.
+
 ## Publisher wording
 
 Use this exact publisher identity in product-controlled metadata and public attribution:
@@ -87,6 +101,7 @@ The GitHub repository is the canonical source-code URL:
 - Link to the canonical product website and repository.
 - Include the required public notice in a brand or legal section.
 - Keep claims within the approved general-purpose intended purpose.
+- Include the third-party affiliation/DRM notice where compatibility is discussed.
 
 ### Application UI
 
@@ -95,6 +110,7 @@ The GitHub repository is the canonical source-code URL:
 - Display `Publisher: KeyffMS / aiteracja.pl`.
 - Link to the canonical website and source repository.
 - Do not add clinical or condition-specific claims without renewed regulatory review.
+- Do not add third-party names, logos or relationship claims to the About surface without review.
 
 ### Releases and stores
 
@@ -103,13 +119,14 @@ The GitHub repository is the canonical source-code URL:
 - Begin release notes with the canonical one-line description.
 - Include the canonical product website, repository, publisher, license, and unregistered-mark notice.
 - Do not select a medical-device category or target a named condition under the current positioning.
+- Use neutral compatibility wording and include the lack-of-affiliation/DRM summary when naming third-party applications.
 
 ### Website
 
 - Use the supplied SVG lockup containing `™` for the most prominent identity.
 - Use plain `SightAdapt` in repetitive navigation and accessible names when that improves screen-reader output.
 - Use the canonical URL in canonical tags, structured data, sitemaps, downloads, and directory references.
-- Review rendered copy, metadata, screenshots, testimonials and download descriptions against the intended-purpose policy before publication.
+- Review rendered copy, metadata, screenshots, testimonials and download descriptions against the intended-purpose and third-party-names policies before publication.
 
 ## Brand assets
 
@@ -121,4 +138,4 @@ Do not stretch, skew, rotate, recolor, or remove the `™` notation from the sup
 
 ## Change control
 
-Changes to the product name, canonical descriptions, publisher attribution, intended purpose, medical positioning, trademark notation, website URL or primary brand assets must update this document first. Dependent README, UI, release, website, store and directory text must be updated in the same change or tracked explicitly.
+Changes to the product name, canonical descriptions, publisher attribution, intended purpose, medical positioning, third-party compatibility/affiliation wording, trademark notation, website URL or primary brand assets must update this document first. Dependent README, UI, release, website, store and directory text must be updated in the same change or tracked explicitly.
