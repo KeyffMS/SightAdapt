@@ -2,8 +2,9 @@
 
 The documentation describes the current SightAdapt implementation and the canonical public product identity.
 
-- [Product identity and brand usage](BRAND.md) — canonical name, `™` notation, descriptions, publisher attribution, website URL, and asset rules.
-- [Release naming and attribution](RELEASING.md) — public release-title, tag, artifact, website, publisher, and mark conventions.
+- [Product identity and brand usage](BRAND.md) — canonical name, `™` notation, descriptions, publisher attribution, intended purpose, website URL, and asset rules.
+- [Intended purpose and medical-device claims policy](legal/INTENDED-PURPOSE-AND-MDR.md) — approved general-purpose positioning, prohibited medical claims, terminology, reviewed surfaces and renewed-assessment triggers.
+- [Release naming and attribution](RELEASING.md) — public release-title, tag, artifact, website, publisher, store-claim and mark conventions.
 - [Binary packaging standard](PACKAGING.md) — required legal files, redistribution notice, SBOM, exact-version notices, archive validation and distribution-format rules.
 - [Microsoft .NET redistribution analysis](legal/DOTNET-REDISTRIBUTION.md) — Microsoft-origin component inventory, applicable terms, package implementation, review triggers and professional-review gate.
 - [Exact-version .NET notice generation](legal/DOTNET-NOTICE-GENERATION.md) — pinned SDK/runtime inputs, official package verification, notice import, checksums and update triggers.
