@@ -1,6 +1,13 @@
-# SightAdapt 0.5.0.50 Alpha
+# SightAdapt™ 0.5.0.50 Alpha
 
-SightAdapt is an open-source visual-accessibility application for Windows 10 and Windows 11. It applies configurable visual correction to selected application windows through a separate input-transparent overlay. It does not modify another application's files or process memory.
+SightAdapt is a free, open-source Windows application for per-application visual accessibility and color correction.
+
+SightAdapt applies configurable color correction to selected application windows through a separate input-transparent overlay. It does not modify another application's files or process memory.
+
+- Product website: <https://aiteracja.pl/sightadapt/>
+- Source repository: <https://github.com/KeyffMS/SightAdapt>
+- Publisher: `KeyffMS / aiteracja.pl`
+- License: `MIT License`
 
 ## Current version
 
@@ -75,6 +82,8 @@ artifacts\win-x64\SightAdapt.exe
 
 ## Documentation
 
+- [Product identity and brand usage](docs/BRAND.md)
+- [Release naming and attribution](docs/RELEASING.md)
 - [Complete functionality](docs/FEATURES.md)
 - [Current architecture](docs/ARCHITECTURE.md)
 - [Build a standalone EXE](docs/BUILD.md)
@@ -94,6 +103,10 @@ artifacts\win-x64\SightAdapt.exe
 - remote-desktop sessions and some graphics drivers may not support the magnifier control correctly;
 - endurance and broad compatibility testing are not complete.
 
-## License
+## Product identity and license
+
+The product identity is always written as `SightAdapt`. The first or most prominent public use may be written as `SightAdapt™`; technical identifiers such as `SightAdapt.exe`, namespaces, URLs, tags, and package identifiers remain plain `SightAdapt`. The registered-mark symbol `®` must not be used unless a valid registration is obtained.
+
+SightAdapt™ is an unregistered product mark used by KeyffMS / aiteracja.pl.
 
 SightAdapt is licensed under the MIT License. See [LICENSE](LICENSE).
