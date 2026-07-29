@@ -137,25 +137,25 @@ if ([string]$release.windowsdesktop.version -ne $runtimeVersion) {
     throw "Windows Desktop Runtime metadata does not match $runtimeVersion."
 }
 
-$desktopPackage = @($release.windowsdesktop.files | Where-Object {
+$legalSourcePackage = @($release.sdk.files | Where-Object {
     [string]$_.rid -eq $rid -and
     [string]$_.name -like '*.zip'
 }) | Select-Object -First 1
-if ($null -eq $desktopPackage) {
-    throw "No official Windows Desktop Runtime ZIP was found for $runtimeVersion/$rid."
+if ($null -eq $legalSourcePackage) {
+    throw "No official .NET SDK ZIP was found for SDK $sdkVersion/$rid."
 }
 
 $tempRoot = Join-Path ([System.IO.Path]::GetTempPath()) (
     'sightadapt-dotnet-notices-' + [Guid]::NewGuid().ToString('N'))
 [System.IO.Directory]::CreateDirectory($tempRoot) | Out-Null
-$packagePath = Join-Path $tempRoot ([string]$desktopPackage.name)
+$packagePath = Join-Path $tempRoot ([string]$legalSourcePackage.name)
 
 try {
-    Invoke-WebRequest -Uri ([string]$desktopPackage.url) -OutFile $packagePath
+    Invoke-WebRequest -Uri ([string]$legalSourcePackage.url) -OutFile $packagePath
     $actualPackageHash = (Get-FileHash -LiteralPath $packagePath -Algorithm SHA512).Hash
-    $expectedPackageHash = ([string]$desktopPackage.hash).ToUpperInvariant()
+    $expectedPackageHash = ([string]$legalSourcePackage.hash).ToUpperInvariant()
     if ($actualPackageHash -ne $expectedPackageHash) {
-        throw "Windows Desktop Runtime package SHA-512 mismatch. Expected $expectedPackageHash; received $actualPackageHash."
+        throw "Official .NET SDK package SHA-512 mismatch. Expected $expectedPackageHash; received $actualPackageHash."
     }
 
     Add-Type -AssemblyName System.IO.Compression.FileSystem
@@ -168,7 +168,7 @@ try {
             [System.IO.Path]::GetFileName($_.FullName) -ieq 'ThirdPartyNotices.txt'
         }) | Select-Object -First 1
         if ($null -eq $licenseEntry -or $null -eq $noticeEntry) {
-            throw 'The official Windows Desktop Runtime archive does not contain LICENSE.txt and ThirdPartyNotices.txt.'
+            throw 'The official .NET SDK archive does not contain LICENSE.txt and ThirdPartyNotices.txt.'
         }
 
         function Read-ZipText([System.IO.Compression.ZipArchiveEntry]$Entry) {
@@ -205,7 +205,7 @@ try {
     $thirdPartyHeader = @"
 SIGHTADAPT EXACT-VERSION THIRD-PARTY NOTICES
 
-Generated from the official Microsoft .NET Windows Desktop Runtime distribution used by this build.
+Generated from the official Microsoft .NET SDK distribution associated with the exact runtime packs used by this build.
 
 SightAdapt product version: $productVersion
 .NET SDK: $sdkVersion
@@ -214,11 +214,11 @@ Runtime identifier: $rid
 Publish mode: $publishMode
 Generated at (UTC): $generatedAt
 Release metadata: $metadataUrl
-Source package: $($desktopPackage.url)
+Source package: $($legalSourcePackage.url)
 Source package SHA-512: $actualPackageHash
 Imported ThirdPartyNotices.txt SHA-256: $noticeSha256
 
-The notice text below is imported without substantive modification from the exact official runtime archive.
+The notice text below is imported without substantive modification from the exact official SDK archive.
 
 ================================================================================
 
@@ -226,7 +226,7 @@ The notice text below is imported without substantive modification from the exac
     $licenseHeader = @"
 MICROSOFT .NET REDISTRIBUTION LICENSE NOTICE
 
-SightAdapt redistributes components from the exact Microsoft .NET Windows Desktop Runtime package identified below as part of a self-contained SightAdapt application. Microsoft components are not offered as a standalone product and remain governed by Microsoft's terms, separate from SightAdapt's MIT License.
+SightAdapt redistributes components from the exact Microsoft .NET runtime packs identified below as part of a self-contained SightAdapt application. The authoritative license text is imported from the matching official SDK archive. Microsoft components are not offered as a standalone product and remain governed by Microsoft's terms, separate from SightAdapt's MIT License.
 
 SightAdapt product version: $productVersion
 .NET SDK: $sdkVersion
@@ -235,11 +235,11 @@ Runtime identifier: $rid
 Publish mode: $publishMode
 Generated at (UTC): $generatedAt
 Release metadata: $metadataUrl
-Source package: $($desktopPackage.url)
+Source package: $($legalSourcePackage.url)
 Source package SHA-512: $actualPackageHash
 Imported LICENSE.txt SHA-256: $licenseSha256
 
-The license text below is imported without substantive modification from the exact official runtime archive.
+The license text below is imported without substantive modification from the exact official SDK archive.
 
 ================================================================================
 
@@ -268,8 +268,8 @@ The license text below is imported without substantive modification from the exa
             releaseMetadataUrl = $metadataUrl
             releaseVersion = [string]$release.'release-version'
             releaseDate = [string]$release.'release-date'
-            packageName = [string]$desktopPackage.name
-            packageUrl = [string]$desktopPackage.url
+            packageName = [string]$legalSourcePackage.name
+            packageUrl = [string]$legalSourcePackage.url
             packageSha512 = $actualPackageHash
             importedLicenseSha256 = $licenseSha256
             importedThirdPartyNoticesSha256 = $noticeSha256
