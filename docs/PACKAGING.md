@@ -16,12 +16,13 @@ Every package must place the following files at the package root so they can be 
 |---|---|
 | `SightAdapt.exe` | Application executable |
 | `LICENSE.txt` | SightAdapt MIT License |
-| `THIRD-PARTY-NOTICES.txt` | Third-party notices and exact-version notice requirement |
-| `DOTNET-LICENSE-NOTICE.txt` | Applicable Microsoft .NET redistribution terms and official references |
+| `THIRD-PARTY-NOTICES.txt` | Exact-version notices imported from the reviewed Microsoft .NET distribution |
+| `DOTNET-LICENSE-NOTICE.txt` | Exact-version Microsoft .NET license text and source metadata |
+| `DOTNET-NOTICE-METADATA.json` | Machine-readable SDK, runtime, RID, runtime-pack, source and checksum evidence |
 | `DEPENDENCIES.md` | Human-readable inventory of shipped, platform and development dependencies |
 | `PRIVACY.md` | Application privacy and local-data notice |
 
-A package is incomplete if a required file is missing, empty, unreadable or nested only inside another container that the recipient cannot inspect directly.
+A package is incomplete if a required file is missing, empty, unreadable, stale, inconsistent with the pinned build inputs or nested only inside another container that the recipient cannot inspect directly.
 
 ## Distribution formats covered
 
@@ -40,7 +41,7 @@ Release mirrors must copy the verified archive without removing, renaming or rep
 
 ## Publish behavior
 
-`src/SightAdapt/SightAdapt.csproj` copies the legal files into the final publish directory. The repository `LICENSE` file is linked into publication as `LICENSE.txt`; the remaining legal documents retain their repository filenames.
+`src/SightAdapt/SightAdapt.csproj` copies the legal baseline into the publish directory. `tools/generate-dotnet-notices.ps1` must then replace the baseline .NET files with exact-version material and add the metadata record before packaging.
 
 The expected publish layout begins with:
 
@@ -50,11 +51,12 @@ artifacts/win-x64/
 ├── LICENSE.txt
 ├── THIRD-PARTY-NOTICES.txt
 ├── DOTNET-LICENSE-NOTICE.txt
+├── DOTNET-NOTICE-METADATA.json
 ├── DEPENDENCIES.md
 └── PRIVACY.md
 ```
 
-Additional runtime files may be present depending on the .NET SDK, runtime patch level and publish settings.
+Additional reviewed runtime files may be present depending on the publish settings.
 
 ## Archive creation and validation
 
@@ -72,31 +74,37 @@ Compress-Archive `
 .\tools\test-release-package.ps1 -ArchivePath $archive
 ```
 
-The validation script opens the final ZIP and checks the entries listed in `release/required-files.txt`. It does not merely check the repository or staging directory. Required text documents must contain readable UTF-8 text.
+The validation script opens the final ZIP and checks the entries listed in `release/required-files.txt`. Required documents must be readable UTF-8 text. The .NET metadata must match the exact release inputs in `Directory.Build.props`, contain valid checksums and map both required runtime packs.
 
 ## Microsoft .NET notices
 
-SightAdapt is a self-contained Windows application. The exact .NET runtime-pack contents can change when the SDK or runtime patch changes. The baseline notice files in the repository identify the applicable Microsoft terms and authoritative sources, but an official release must also complete the exact-version notice-generation and review process before publication.
+SightAdapt is a self-contained Windows application. The exact SDK and runtime are pinned in `global.json` and `Directory.Build.props`. The generator obtains the exact official Windows Desktop Runtime ZIP through Microsoft's release metadata, verifies the published SHA-512 hash and imports the license and third-party notice files from that archive.
 
-The release record must identify:
+The package record identifies:
 
 - exact .NET SDK version;
-- exact runtime-pack versions;
-- authoritative notice source and revision;
-- checksum of imported notice material;
-- validation result for the final archive.
+- exact runtime and Windows Desktop Runtime versions;
+- runtime identifier and publish mode;
+- restored runtime packages;
+- authoritative release-metadata and package URLs;
+- official package SHA-512;
+- SHA-256 values for the imported license and notice text;
+- generation time and product version.
+
+See [Exact-version .NET notice generation](legal/DOTNET-NOTICE-GENERATION.md).
 
 ## Release checklist
 
 Before publishing or mirroring a binary package:
 
-1. build and test the application;
-2. publish into a clean staging directory;
-3. confirm the exact SDK and runtime versions;
-4. refresh and review exact-version third-party notices;
-5. create the final archive or platform package;
-6. validate the final archive with `tools/test-release-package.ps1`;
-7. inspect the package manually to confirm that every legal document opens without running SightAdapt;
-8. publish the same verified bytes to every official mirror.
+1. verify the pinned release metadata;
+2. restore, build and test the application;
+3. publish into a clean staging directory;
+4. generate exact-version .NET notices from the verified official package;
+5. inspect the generated notice metadata and any newly mapped runtime component;
+6. create the final archive or platform package;
+7. validate the final archive with `tools/test-release-package.ps1`;
+8. inspect the package manually to confirm that every legal document opens without running SightAdapt;
+9. publish the same verified bytes to every official mirror.
 
-Do not publish an official binary release when the legal bundle or exact-version notice review is incomplete.
+Do not publish an official binary release when the legal bundle, exact-version generation, package checksum, runtime mapping or final-archive validation is incomplete.
