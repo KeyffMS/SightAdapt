@@ -4,10 +4,15 @@ These steps create a self-contained Windows x64 executable and a verified ZIP ar
 
 ## 1. Install prerequisites
 
-Use a 64-bit Windows 10 or Windows 11 computer and install one of:
+Use a 64-bit Windows 10 or Windows 11 computer and install the exact SDK selected in `global.json`.
 
-- the .NET 8 SDK; or
-- Visual Studio with the **.NET desktop development** workload.
+For the current release candidate:
+
+```text
+.NET SDK 8.0.423
+.NET Runtime 8.0.29
+Windows Desktop Runtime 8.0.29
+```
 
 Verify the SDK:
 
@@ -15,7 +20,7 @@ Verify the SDK:
 dotnet --version
 ```
 
-The displayed version should begin with `8.`. Record the exact version when producing an official release.
+The command must print `8.0.423`. SDK roll-forward is disabled so an unreviewed SDK cannot silently change the release composition.
 
 ## 2. Clone the repository
 
@@ -24,14 +29,24 @@ git clone https://github.com/KeyffMS/SightAdapt.git
 cd SightAdapt
 ```
 
-## 3. Restore dependencies
+## 3. Verify release metadata
+
+```powershell
+.\tools\verify-release-metadata.ps1
+```
+
+This check verifies the synchronized product, SDK, runtime, RID and publish-mode inputs.
+
+## 4. Restore dependencies
 
 ```powershell
 dotnet restore .\src\SightAdapt\SightAdapt.csproj
 dotnet restore .\tests\SightAdapt.Tests\SightAdapt.Tests.csproj
 ```
 
-## 4. Run the tests
+The application restore creates the authoritative runtime-pack inventory used by notice generation.
+
+## 5. Run the tests
 
 ```powershell
 dotnet test .\tests\SightAdapt.Tests\SightAdapt.Tests.csproj `
@@ -41,20 +56,35 @@ dotnet test .\tests\SightAdapt.Tests\SightAdapt.Tests.csproj `
 
 All tests must pass before publication.
 
-## 5. Publish a self-contained single-file executable
+## 6. Publish a self-contained single-file executable
+
+The exact runtime identifier, runtime patch, self-contained mode and single-file setting are defined by `Directory.Build.props` and `SightAdapt.csproj`.
 
 ```powershell
 dotnet publish .\src\SightAdapt\SightAdapt.csproj `
     --configuration Release `
-    --runtime win-x64 `
-    --self-contained true `
-    -p:PublishSingleFile=true `
+    --no-restore `
     --output .\artifacts\win-x64
 ```
 
-The project automatically copies the required legal-document bundle into the publish directory.
+The project copies the repository legal-document baseline into the publish directory.
 
-## 6. Inspect the publish directory
+## 7. Generate exact-version .NET notices
+
+```powershell
+.\tools\generate-dotnet-notices.ps1 `
+    -PublishDirectory .\artifacts\win-x64
+```
+
+The generator verifies the official Microsoft Windows Desktop Runtime package hash and replaces the baseline .NET files with exact-version material. It writes:
+
+- `THIRD-PARTY-NOTICES.txt`;
+- `DOTNET-LICENSE-NOTICE.txt`;
+- `DOTNET-NOTICE-METADATA.json`.
+
+The process and update rules are documented in [Exact-version .NET notice generation](legal/DOTNET-NOTICE-GENERATION.md).
+
+## 8. Inspect the publish directory
 
 At minimum, the directory must contain:
 
@@ -64,13 +94,14 @@ artifacts\win-x64\
 ├── LICENSE.txt
 ├── THIRD-PARTY-NOTICES.txt
 ├── DOTNET-LICENSE-NOTICE.txt
+├── DOTNET-NOTICE-METADATA.json
 ├── DEPENDENCIES.md
 └── PRIVACY.md
 ```
 
-Additional runtime files may be present depending on the .NET SDK, runtime patch and publish settings. See [the binary packaging standard](PACKAGING.md).
+Additional runtime files may be present depending on reviewed publish settings. See [the binary packaging standard](PACKAGING.md).
 
-## 7. Create and verify the final archive
+## 9. Create and verify the final archive
 
 Create the ZIP from the contents of the publish directory so the required files remain at the archive root:
 
@@ -86,9 +117,9 @@ Compress-Archive `
 .\tools\test-release-package.ps1 -ArchivePath $archive
 ```
 
-The validation script opens the final ZIP and checks the canonical manifest in `release/required-files.txt`. It does not only inspect repository files or the staging directory.
+The validation script opens the final ZIP, checks the canonical manifest, verifies notice metadata against the pinned release inputs and confirms that the runtime packs are mapped.
 
-## 8. Start the executable
+## 10. Start the executable
 
 ```powershell
 .\artifacts\win-x64\SightAdapt.exe
@@ -96,7 +127,7 @@ The validation script opens the final ZIP and checks the canonical manifest in `
 
 The application appears in the Windows notification area.
 
-## 9. Verify the built version
+## 11. Verify the built version
 
 While SightAdapt is running:
 
@@ -107,16 +138,7 @@ $process = Get-Process SightAdapt
     Format-List ProductVersion, FileVersion
 ```
 
-The expected values are generated from the single source of truth in `Directory.Build.props`:
-
-```text
-SightAdaptProductVersion
-SightAdaptFileVersion
-SightAdaptInformationalVersion
-SightAdaptAssemblyVersion
-```
-
-`SightAdapt.csproj`, the executable metadata, CI artifact names, and the generated README version block consume or verify these properties rather than maintaining independent version numbers.
+The expected product values and exact .NET release inputs are generated from the sources of truth in `Directory.Build.props` and `global.json`.
 
 ## Clean rebuild
 
@@ -124,12 +146,15 @@ SightAdaptAssemblyVersion
 Remove-Item .\artifacts\win-x64 -Recurse -Force -ErrorAction SilentlyContinue
 Remove-Item .\artifacts\SightAdapt-*-win-x64.zip -Force -ErrorAction SilentlyContinue
 
+dotnet restore .\src\SightAdapt\SightAdapt.csproj
+
 dotnet publish .\src\SightAdapt\SightAdapt.csproj `
     --configuration Release `
-    --runtime win-x64 `
-    --self-contained true `
-    -p:PublishSingleFile=true `
+    --no-restore `
     --output .\artifacts\win-x64
+
+.\tools\generate-dotnet-notices.ps1 `
+    -PublishDirectory .\artifacts\win-x64
 ```
 
-An official release must not be published until the exact .NET runtime notices have been generated and reviewed for that build.
+An official release must not be published if exact-version notice generation or final-archive validation fails.
