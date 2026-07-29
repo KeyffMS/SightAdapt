@@ -58,6 +58,16 @@ The current release is approved only for free/open-source development and alpha 
 
 Do not state that SightAdapt is patent-free, patent-cleared or non-infringing. Do not provide a contractual patent warranty or indemnity without a written professional opinion covering the exact version, activity and territory.
 
+## Third-party names and protected content
+
+When release or store materials name a third-party application, use only neutral factual compatibility wording such as `works with` or `tested with <product/version>`. Do not imply official integration, partnership, certification, support or endorsement without a written relationship.
+
+Include this summary whenever third-party compatibility is discussed:
+
+> Third-party product names and trademarks are the property of their respective owners and are used only to identify applications selected or configured by the user. SightAdapt is not affiliated with, sponsored by or endorsed by Microsoft or those owners unless an explicit written relationship is identified. SightAdapt does not circumvent DRM or other access controls, and protected content may remain unavailable or unfilterable.
+
+Do not use third-party logos, branded icons, trade dress or promotional assets without permission or another documented lawful basis. Follow [the third-party names, affiliation and protected-content policy](legal/THIRD-PARTY-NAMES-AFFILIATION-AND-DRM.md).
+
 ## Required mark notice
 
 Include this notice once in the release description or linked legal material:
@@ -78,7 +88,7 @@ Do not use `®`.
 
 ## Binary release gate
 
-Every binary distribution must comply with [the binary packaging standard](PACKAGING.md). The final archive or platform package must include every file listed in `release/required-files.txt`, including the license, exact-version notices, Microsoft redistribution notice, privacy notice, dependency inventory, SBOM and license report.
+Every binary distribution must comply with [the binary packaging standard](PACKAGING.md). The final archive or platform package must include every file listed in `release/required-files.txt`, including the license, exact-version notices, Microsoft redistribution notice, third-party names/DRM notice, privacy notice, dependency inventory, SBOM and license report.
 
 Before publication, validate the final staged directory and package and retain the resulting report:
 
@@ -106,6 +116,8 @@ SightAdapt is a free, open-source Windows application for per-application visual
 - License: MIT License
 
 SightAdapt is general-purpose accessibility and display-personalization software. It is not intended to diagnose, treat, prevent, monitor or clinically alleviate any disease, injury or disability.
+
+Third-party names identify user-selected applications only. SightAdapt is not affiliated with or endorsed by those owners and does not circumvent DRM or other access controls.
 
 SightAdapt™ is an unregistered product mark used by KeyffMS / aiteracja.pl.
 ```
