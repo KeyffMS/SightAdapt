@@ -1,6 +1,6 @@
 # SightAdapt release naming
 
-This document defines the public naming and attribution rules for SightAdapt release notes. Build, packaging, legal, and artifact validation remain covered by the release and compliance issues linked from the project tracker.
+This document defines the public naming, attribution and minimum package-compliance rules for SightAdapt releases.
 
 ## Public release identity
 
@@ -51,6 +51,24 @@ Do not use `®`.
 - Do not use `https://sightadapt.aiteracja.pl/` as a canonical URL; it is reserved as an optional redirect.
 - Use `Publisher`, not alternating `Author`, `Vendor`, or `Company`, on public release surfaces.
 - Follow [the product identity standard](BRAND.md) for descriptions, attribution, and mark usage.
+
+## Binary release gate
+
+Every binary distribution must comply with [the binary packaging standard](PACKAGING.md). The final archive or platform package must include the files listed in `release/required-files.txt`, including:
+
+- `LICENSE.txt`;
+- `THIRD-PARTY-NOTICES.txt`;
+- `DOTNET-LICENSE-NOTICE.txt`;
+- `DEPENDENCIES.md`;
+- `PRIVACY.md`.
+
+The legal documents must be readable without starting the application. The final ZIP must pass:
+
+```powershell
+.\tools\test-release-package.ps1 -ArchivePath <archive-path>
+```
+
+Do not publish an official binary release until the exact .NET SDK and runtime-pack versions have been recorded and the corresponding exact-version notice material has been generated and reviewed.
 
 ## Minimal release header
 
