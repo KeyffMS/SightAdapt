@@ -61,63 +61,66 @@ if ($LASTEXITCODE -ne 0 -or $actualSdkVersion -ne $sdkVersion) {
 }
 
 $assets = Get-Content -LiteralPath $resolvedAssets -Raw | ConvertFrom-Json
-$runtimeTarget = @(
-    $assets.targets.PSObject.Properties |
-        Where-Object {
-            ([string]$_.Name).EndsWith(
-                "/$rid",
-                [StringComparison]::OrdinalIgnoreCase)
-        }
+$assetsFramework = @(
+    $assets.project.frameworks.PSObject.Properties
 ) | Select-Object -First 1
-if ($null -eq $runtimeTarget) {
-    $availableTargets = @($assets.targets.PSObject.Properties.Name)
-    throw "The restored assets do not contain an RID-specific target for '$rid'. Available targets:`n$($availableTargets -join "`n")"
+if ($null -eq $assetsFramework) {
+    throw 'The restored assets do not contain project framework metadata.'
 }
 
-$packageKeys = @($runtimeTarget.Value.PSObject.Properties.Name)
+$downloadDependencies = @($assetsFramework.Value.downloadDependencies)
+if ($downloadDependencies.Count -eq 0) {
+    throw 'The restored assets do not record framework download dependencies.'
+}
+
+$reviewedRuntimePackNames = @(
+    "Microsoft.AspNetCore.App.Runtime.$rid",
+    "Microsoft.NETCore.App.Runtime.$rid",
+    "Microsoft.WindowsDesktop.App.Runtime.$rid"
+)
+$runtimePackEntries = @(
+    $downloadDependencies | Where-Object {
+        ([string]$_.name).EndsWith(
+            ".Runtime.$rid",
+            [StringComparison]::OrdinalIgnoreCase)
+    }
+)
+$runtimePackages = @(
+    foreach ($entry in $runtimePackEntries) {
+        $name = [string]$entry.name
+        if ($reviewedRuntimePackNames -notcontains $name) {
+            throw "Unreviewed runtime pack '$name' was selected by restore."
+        }
+
+        $versionRange = [string]$entry.version
+        $match = [regex]::Match(
+            $versionRange,
+            '^\[([^,\]]+),\s*\1\]$')
+        if (-not $match.Success) {
+            throw "Runtime pack '$name' does not use an exact version range: '$versionRange'."
+        }
+
+        "$name/$($match.Groups[1].Value)"
+    }
+)
+
 $requiredRuntimePacks = @(
     "Microsoft.NETCore.App.Runtime.$rid/$runtimeVersion",
     "Microsoft.WindowsDesktop.App.Runtime.$rid/$runtimeVersion"
 )
 foreach ($requiredPack in $requiredRuntimePacks) {
-    if (-not ($packageKeys -contains $requiredPack)) {
-        $matchingPacks = @(
-            $packageKeys | Where-Object {
-                $_ -match '^Microsoft\.(NETCore|WindowsDesktop)\.App\.Runtime\.'
-            }
-        )
-        throw "The restored RID-specific assets do not contain required runtime pack '$requiredPack'. Restored runtime packs:`n$($matchingPacks -join "`n")"
+    if (-not ($runtimePackages -contains $requiredPack)) {
+        throw "The restored assets do not contain required runtime pack '$requiredPack'. Restored packs:`n$($runtimePackages -join "`n")"
     }
 }
 
-$reviewedRuntimePackagePatterns = @(
-    '^Microsoft\.NETCore\.App\.Host\.',
-    '^Microsoft\.NETCore\.App\.Runtime\.',
-    '^Microsoft\.WindowsDesktop\.App\.Runtime\.',
-    '^runtime\.[^.]+-[^.]+\.Microsoft\.NETCore\.DotNet'
-)
-$reviewedRuntimePackageNames = @(
-    "Microsoft.NETCore.App.Host.$rid/$runtimeVersion",
-    "Microsoft.NETCore.App.Runtime.$rid/$runtimeVersion",
-    "Microsoft.WindowsDesktop.App.Runtime.$rid/$runtimeVersion",
-    "runtime.$rid.Microsoft.NETCore.DotNetAppHost/$runtimeVersion",
-    "runtime.$rid.Microsoft.NETCore.DotNetHost/$runtimeVersion",
-    "runtime.$rid.Microsoft.NETCore.DotNetHostPolicy/$runtimeVersion",
-    "runtime.$rid.Microsoft.NETCore.DotNetHostResolver/$runtimeVersion"
-)
-$runtimePackages = @(
-    $packageKeys | Where-Object {
-        $candidate = $_
-        @($reviewedRuntimePackagePatterns | Where-Object {
-            $candidate -match $_
-        }).Count -gt 0
+$wrongVersionPacks = @(
+    $runtimePackages | Where-Object {
+        ($_ -split '/', 2)[1] -ne $runtimeVersion
     }
 )
-$unknownRuntimePackages = @(
-    $runtimePackages | Where-Object { $reviewedRuntimePackageNames -notcontains $_ }
-)
-if ($unknownRuntimePackages.Count -gt 0) {
-    throw "Unreviewed runtime packages were restored:`n$($unknownRuntimePackages -join "`n")"
+if ($wrongVersionPacks.Count -gt 0) {
+    throw "Runtime packs do not match pinned runtime $runtimeVersion:`n$($wrongVersionPacks -join "`n")"
 }
 
 $releaseMetadata = Invoke-RestMethod -Uri $metadataUrl -Method Get
@@ -259,7 +262,7 @@ The license text below is imported without substantive modification from the exa
         runtimeIdentifier = $rid
         publishMode = $publishMode
         generatedAtUtc = $generatedAt
-        assetsTarget = [string]$runtimeTarget.Name
+        assetsFramework = [string]$assetsFramework.Name
         runtimePackages = @($runtimePackages | Sort-Object)
         source = [ordered]@{
             releaseMetadataUrl = $metadataUrl
