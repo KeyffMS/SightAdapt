@@ -80,11 +80,16 @@ Do not use `®`.
 
 Every binary distribution must comply with [the binary packaging standard](PACKAGING.md). The final archive or platform package must include every file listed in `release/required-files.txt`, including the license, exact-version notices, Microsoft redistribution notice, privacy notice, dependency inventory, SBOM and license report.
 
-The legal documents must be readable without starting the application. The final ZIP must pass:
+Before publication, validate the final staged directory and package and retain the resulting report:
 
 ```powershell
-.\tools\test-release-package.ps1 -ArchivePath <archive-path>
+.\tools\verify-release-compliance.ps1 `
+    -DirectoryPath <staged-directory> `
+    -ArchivePath <archive-path> `
+    -ReportPath <compliance-report-path>
 ```
+
+The package and compliance report must be published together. GitHub Releases, installers, store packages, portable packages and mirrors must use the same canonical manifest and equivalent final-package gate. Do not upload or publish when the report result is not `pass`.
 
 Do not publish an official binary release until the exact .NET SDK and runtime-pack versions have been recorded and the corresponding exact-version notice material has been generated and reviewed.
 

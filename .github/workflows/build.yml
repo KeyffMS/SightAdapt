@@ -94,21 +94,32 @@ jobs:
           .\tools\generate-sbom.ps1
           -PublishDirectory artifacts/win-x64
 
+      - name: Verify incomplete packages are rejected
+        shell: pwsh
+        run: .\tools\test-release-compliance-negative.ps1
+
       - name: Create and verify Windows alpha archive
         shell: pwsh
         run: |
           $archivePath = "artifacts/${{ steps.release.outputs.artifact_name }}.zip"
+          $reportPath = "artifacts/${{ steps.release.outputs.artifact_name }}-compliance.json"
           Remove-Item $archivePath -Force -ErrorAction SilentlyContinue
+          Remove-Item $reportPath -Force -ErrorAction SilentlyContinue
           Compress-Archive `
               -Path "artifacts/win-x64/*" `
               -DestinationPath $archivePath `
               -CompressionLevel Optimal
-          .\tools\test-release-package.ps1 -ArchivePath $archivePath
+          .\tools\verify-release-compliance.ps1 `
+              -DirectoryPath artifacts/win-x64 `
+              -ArchivePath $archivePath `
+              -ReportPath $reportPath
 
-      - name: Upload Windows alpha
+      - name: Upload verified Windows alpha and compliance report
         uses: actions/upload-artifact@v4
         with:
           name: ${{ steps.release.outputs.artifact_name }}-${{ github.run_id }}
-          path: artifacts/${{ steps.release.outputs.artifact_name }}.zip
+          path: |
+            artifacts/${{ steps.release.outputs.artifact_name }}.zip
+            artifacts/${{ steps.release.outputs.artifact_name }}-compliance.json
           if-no-files-found: error
           retention-days: 7

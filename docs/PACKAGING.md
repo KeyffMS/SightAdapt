@@ -64,23 +64,38 @@ artifacts/win-x64/
 
 Additional reviewed runtime files may be present depending on the publish settings.
 
-## Archive creation and validation
+## Final package compliance gate
 
-Create the archive from the contents of the publish directory so the required files remain at the ZIP root:
+Create the archive from the contents of the publish directory so the required files remain at the ZIP root, then validate both the staged directory and final archive:
 
 ```powershell
 $archive = '.\artifacts\SightAdapt-0.5.0.50-alpha-win-x64.zip'
+$report = '.\artifacts\SightAdapt-0.5.0.50-alpha-win-x64-compliance.json'
 
 Remove-Item $archive -Force -ErrorAction SilentlyContinue
+Remove-Item $report -Force -ErrorAction SilentlyContinue
 Compress-Archive `
     -Path '.\artifacts\win-x64\*' `
     -DestinationPath $archive `
     -CompressionLevel Optimal
 
-.\tools\test-release-package.ps1 -ArchivePath $archive
+.\tools\verify-release-compliance.ps1 `
+    -DirectoryPath '.\artifacts\win-x64' `
+    -ArchivePath $archive `
+    -ReportPath $report
 ```
 
-The validation script opens the final ZIP and checks the entries listed in `release/required-files.txt`. Required documents must be readable UTF-8 text. The exact .NET metadata must match the pinned release inputs and map the required runtime packs. SBOM generation has already failed the workflow if a dependency is absent from the reviewed policy, uses a different version or has a denied/unreviewed license.
+The gate consumes the canonical manifest and existing notice, license-report and SBOM outputs. It verifies the staged directory, final ZIP, build identity, archive name, exact-version metadata, license-policy result and shipped-file coverage. It writes a machine-readable report containing the final archive SHA-256 and validation result.
+
+The negative check must also pass:
+
+```powershell
+.\tools\test-release-compliance-negative.ps1
+```
+
+This creates a deliberately incomplete temporary package and proves that the validator rejects it.
+
+See [Release compliance gate](legal/RELEASE-COMPLIANCE-GATE.md).
 
 ## Microsoft .NET notices and redistribution position
 
@@ -96,20 +111,28 @@ The reviewed redistribution position is documented in [Microsoft .NET redistribu
 
 The generated SPDX document contains component relationships and SHA-256 checksums for every separately shipped file. `SightAdapt.exe` is the documented single-file container for embedded managed and native runtime components. See [SBOM and dependency-license review](legal/SBOM-AND-LICENSE-REVIEW.md).
 
+## Installers, stores and mirrors
+
+Every maintained installer or store workflow must run the same logical gate after the final installed/unpacked file set is staged. The installed application directory must satisfy `release/required-files.txt`, and the outer installer/store container checksum must be retained in its compliance report.
+
+Portable packages use the ZIP gate directly. Release mirrors publish the same verified bytes and compliance report; they must not rebuild, strip or rename required legal/compliance files.
+
 ## Release checklist
 
 Before publishing or mirroring a binary package:
 
 1. verify the pinned release metadata;
 2. verify the Microsoft .NET redistribution analysis and package notice;
-3. restore, build and test the application;
+3. restore, build and run the maintained project checks;
 4. publish into a clean staging directory;
 5. generate exact-version .NET notices from the hash-verified official SDK package and actual restore graph;
 6. generate the SPDX SBOM, license report and human-readable dependency inventory;
 7. resolve every component or license-policy failure;
-8. create the final archive or platform package;
-9. validate the final archive with `tools/test-release-package.ps1`;
-10. inspect the package manually to confirm that every legal document opens without running SightAdapt;
-11. publish the same verified bytes to every official mirror.
+8. confirm the deliberately incomplete package is rejected;
+9. create the final archive or platform package;
+10. run `verify-release-compliance.ps1` against the staged directory and final package;
+11. retain and publish the compliance report with the package;
+12. inspect the package manually to confirm that every legal document opens without running SightAdapt;
+13. publish the same verified bytes to every official mirror.
 
-Do not publish an official binary release when the legal bundle, redistribution notice, exact-version generation, SBOM, license report, package checksum, runtime mapping or final-archive validation is incomplete. Production or paid distribution additionally remains blocked until the qualified legal review required by Issue #93 is recorded.
+Do not publish an official binary release when the legal bundle, redistribution notice, exact-version generation, SBOM, license report, package checksum, runtime mapping or final compliance gate is incomplete. Production or paid distribution additionally remains blocked until the qualified legal review required by Issue #93 is recorded.

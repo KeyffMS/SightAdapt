@@ -6,7 +6,8 @@ The documentation describes the current SightAdapt implementation and the canoni
 - [Intended purpose and medical-device claims policy](legal/INTENDED-PURPOSE-AND-MDR.md) — approved general-purpose positioning, prohibited medical claims, terminology, reviewed surfaces and renewed-assessment triggers.
 - [Patent FTO commercialization gate](legal/PATENT-FTO-GATE.md) — technical feature map, current non-commercial decision, professional-review requirements and re-opening triggers.
 - [Release naming and attribution](RELEASING.md) — public release-title, tag, artifact, website, publisher, store-claim and mark conventions.
-- [Binary packaging standard](PACKAGING.md) — required legal files, redistribution notice, SBOM, exact-version notices, archive validation and distribution-format rules.
+- [Binary packaging standard](PACKAGING.md) — required legal files, redistribution notice, SBOM, exact-version notices, final compliance gate and distribution-format rules.
+- [Release compliance gate](legal/RELEASE-COMPLIANCE-GATE.md) — staged-directory/final-package verification, negative test and retained compliance report.
 - [Microsoft .NET redistribution analysis](legal/DOTNET-REDISTRIBUTION.md) — Microsoft-origin component inventory, applicable terms, package implementation, review triggers and professional-review gate.
 - [Exact-version .NET notice generation](legal/DOTNET-NOTICE-GENERATION.md) — pinned SDK/runtime inputs, official package verification, notice import, checksums and update triggers.
 - [SBOM and dependency-license review](legal/SBOM-AND-LICENSE-REVIEW.md) — SPDX inventory, license policy, generated reports and release failure rules.
