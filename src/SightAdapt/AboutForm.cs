@@ -1,4 +1,3 @@
-
 namespace SightAdapt;
 
 internal sealed class AboutForm : Form
@@ -13,7 +12,7 @@ internal sealed class AboutForm : Form
         _windowIcon = (Icon)sourceIcon.Clone();
         _logo = _windowIcon.ToBitmap();
 
-        Text = $"About {ProductInfo.ProductName}";
+        Text = $"About {ProductInfo.MarkedProductName}";
         StartPosition = FormStartPosition.CenterScreen;
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
@@ -26,7 +25,7 @@ internal sealed class AboutForm : Form
         BackColor = AppTheme.WindowBackground;
         AccessibleName = $"About {ProductInfo.ProductName}";
         AccessibleDescription =
-            "Product name, milestone, version, author, license, and repository information.";
+            "Product name, milestone, version, publisher, website, license, and repository information.";
         AppTheme.ApplyTo(this);
 
         Controls.Add(CreateRootLayout());
@@ -88,7 +87,7 @@ internal sealed class AboutForm : Form
             ColumnCount = 1,
             Dock = DockStyle.Fill,
             Margin = Padding.Empty,
-            RowCount = 7,
+            RowCount = 8,
         };
         identity.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         identity.RowStyles.Add(new RowStyle(SizeType.Absolute, 58));
@@ -97,9 +96,10 @@ internal sealed class AboutForm : Form
         identity.RowStyles.Add(new RowStyle(SizeType.Absolute, 42));
         identity.RowStyles.Add(new RowStyle(SizeType.Absolute, 38));
         identity.RowStyles.Add(new RowStyle(SizeType.Absolute, 38));
+        identity.RowStyles.Add(new RowStyle(SizeType.Absolute, 38));
         identity.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         identity.Controls.Add(CreateLabel(
-            ProductInfo.ProductName,
+            ProductInfo.MarkedProductName,
             23f,
             FontStyle.Bold,
             AppTheme.TextPrimary), 0, 0);
@@ -119,16 +119,17 @@ internal sealed class AboutForm : Form
             FontStyle.Regular,
             AppTheme.TextSecondary), 0, 3);
         identity.Controls.Add(CreateLabel(
-            $"Author: {ProductInfo.Author}",
+            $"Publisher: {ProductInfo.Publisher}",
             9.2f,
             FontStyle.Regular,
             AppTheme.TextSecondary), 0, 4);
-        identity.Controls.Add(CreateRepositoryLink(), 0, 5);
+        identity.Controls.Add(CreateWebsiteLink(), 0, 5);
+        identity.Controls.Add(CreateRepositoryLink(), 0, 6);
         identity.Controls.Add(CreateLabel(
             ProductInfo.License,
             9.2f,
             FontStyle.Bold,
-            AppTheme.TextPrimary), 0, 6);
+            AppTheme.TextPrimary), 0, 7);
 
         var layout = new TableLayoutPanel
         {
@@ -155,11 +156,30 @@ internal sealed class AboutForm : Form
         return card;
     }
 
+    private LinkLabel CreateWebsiteLink()
+    {
+        return CreateLink(
+            "Open the SightAdapt product website",
+            ProductInfo.WebsiteDisplay,
+            ProductInfo.WebsiteUrl);
+    }
+
     private LinkLabel CreateRepositoryLink()
+    {
+        return CreateLink(
+            "Open the SightAdapt repository on GitHub",
+            ProductInfo.RepositoryDisplay,
+            ProductInfo.RepositoryUrl);
+    }
+
+    private LinkLabel CreateLink(
+        string accessibleName,
+        string text,
+        string url)
     {
         var link = new LinkLabel
         {
-            AccessibleName = "Open SightAdapt repository on GitHub",
+            AccessibleName = accessibleName,
             ActiveLinkColor = AppTheme.TextPrimary,
             AutoEllipsis = false,
             AutoSize = true,
@@ -169,11 +189,11 @@ internal sealed class AboutForm : Form
             LinkBehavior = LinkBehavior.HoverUnderline,
             LinkColor = AppTheme.AccentHover,
             TabStop = true,
-            Text = ProductInfo.RepositoryDisplay,
+            Text = text,
             TextAlign = ContentAlignment.MiddleLeft,
             VisitedLinkColor = AppTheme.AccentHover,
         };
-        link.LinkClicked += (_, _) => ShellLauncher.TryOpenUrl(this, ProductInfo.RepositoryUrl);
+        link.LinkClicked += (_, _) => ShellLauncher.TryOpenUrl(this, url);
         return link;
     }
 
@@ -238,6 +258,4 @@ internal sealed class AboutForm : Form
             TextAlign = ContentAlignment.MiddleLeft,
         };
     }
-
-
 }
