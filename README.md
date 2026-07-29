@@ -42,7 +42,7 @@ SightAdapt currently provides:
 - a notification-area menu and configuration panel;
 - immediate explicit and emergency overlay shutdown;
 - schema-versioned JSON settings with migration and atomic persistence;
-- automated build, test, architecture, migration, and Windows publish validation.
+- automated build, test, architecture, migration, Windows publish and final-archive legal-bundle validation.
 
 New application assignments use Soft Invert, inherit that profile for native popup menus, and use client-area scope by default. Selecting `None` for the application and an explicit menu profile leaves the application unchanged while correcting only its native popup menus.
 
@@ -74,19 +74,31 @@ dotnet publish .\src\SightAdapt\SightAdapt.csproj `
     --output .\artifacts\win-x64
 ```
 
-The executable is created at:
+The publish directory contains `SightAdapt.exe` and the legal-document bundle required for binary distribution:
 
 ```text
 artifacts\win-x64\SightAdapt.exe
+artifacts\win-x64\LICENSE.txt
+artifacts\win-x64\THIRD-PARTY-NOTICES.txt
+artifacts\win-x64\DOTNET-LICENSE-NOTICE.txt
+artifacts\win-x64\DEPENDENCIES.md
+artifacts\win-x64\PRIVACY.md
 ```
+
+Create and validate the final archive according to [the binary packaging standard](docs/PACKAGING.md).
 
 ## Documentation
 
 - [Product identity and brand usage](docs/BRAND.md)
 - [Release naming and attribution](docs/RELEASING.md)
+- [Binary packaging standard](docs/PACKAGING.md)
 - [Complete functionality](docs/FEATURES.md)
 - [Current architecture](docs/ARCHITECTURE.md)
-- [Build a standalone EXE](docs/BUILD.md)
+- [Build and package a standalone EXE](docs/BUILD.md)
+- [Privacy notice](PRIVACY.md)
+- [Dependency inventory](DEPENDENCIES.md)
+- [Third-party notices](THIRD-PARTY-NOTICES.txt)
+- [Microsoft .NET redistribution notice](DOTNET-LICENSE-NOTICE.txt)
 - [Documentation index](docs/README.md)
 - [Security policy](SECURITY.md)
 - [Contribution guide](CONTRIBUTING.md)
@@ -109,4 +121,4 @@ The product identity is always written as `SightAdapt`. The first or most promin
 
 SightAdapt™ is an unregistered product mark used by KeyffMS / aiteracja.pl.
 
-SightAdapt is licensed under the MIT License. See [LICENSE](LICENSE).
+SightAdapt is licensed under the MIT License. See [LICENSE](LICENSE). Binary distributions include the same terms as `LICENSE.txt` together with the privacy, dependency and third-party notice files.
