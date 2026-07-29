@@ -73,6 +73,12 @@ Third-party product names and trademarks belong to their respective owners and a
 
 SightAdapt does not circumvent DRM or other access controls. Protected content may remain unavailable, blank or unfilterable. Compatibility statements describe observed technical behavior and do not imply partnership, certification or support from a third party. See [the complete third-party names, affiliation and protected-content policy](docs/legal/THIRD-PARTY-NAMES-AFFILIATION-AND-DRM.md).
 
+## Legal release status
+
+Repository notices, policies, SBOM and package checks are preparation and technical compliance controls; they are not a privileged legal opinion or complete legal clearance.
+
+The current approved stage is free/open-source alpha development and GitHub distribution. SightAdapt is not approved for production-ready claims, paid licensing, major-store production distribution, enterprise legal warranties/indemnities or complete patent/regulatory-compliance claims until qualified counsel signs off on the exact launch scope and artifact. See [the formal legal review and release gate](docs/legal/LEGAL-RELEASE-GATE.md).
+
 ## Build a standalone EXE
 
 The application can be published as a self-contained single-file executable. It does not need to be started with `dotnet run`, and the target computer does not need a separately installed .NET runtime.
@@ -115,6 +121,8 @@ Create and validate the final archive according to [the binary packaging standar
 - [Product identity and brand usage](docs/BRAND.md)
 - [Intended purpose and medical-device claims policy](docs/legal/INTENDED-PURPOSE-AND-MDR.md)
 - [Third-party names, affiliation and protected-content policy](docs/legal/THIRD-PARTY-NAMES-AFFILIATION-AND-DRM.md)
+- [Formal legal review and release gate](docs/legal/LEGAL-RELEASE-GATE.md)
+- [Legal sign-off template](docs/legal/LEGAL-SIGNOFF-TEMPLATE.md)
 - [Release naming and attribution](docs/RELEASING.md)
 - [Binary packaging standard](docs/PACKAGING.md)
 - [Complete functionality](docs/FEATURES.md)
