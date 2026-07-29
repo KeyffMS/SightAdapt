@@ -18,6 +18,7 @@ if ($null -eq ('System.IO.Compression.ZipFile' -as [type])) {
 
 $resolvedArchive = (Resolve-Path -LiteralPath $ArchivePath).Path
 $resolvedManifest = (Resolve-Path -LiteralPath $ManifestPath).Path
+$root = Split-Path -Parent (Split-Path -Parent $resolvedManifest)
 
 $requiredFiles = @(
     Get-Content -LiteralPath $resolvedManifest |
@@ -32,9 +33,44 @@ if ($requiredFiles.Count -eq 0) {
     throw "The release manifest is empty: $resolvedManifest"
 }
 
+[xml]$props = Get-Content -LiteralPath (Join-Path $root 'Directory.Build.props')
+$group = $props.Project.PropertyGroup
+$expectedMetadata = @{
+    productVersion = [string]$group.SightAdaptProductVersion
+    sdkVersion = [string]$group.SightAdaptDotNetSdkVersion
+    runtimeVersion = [string]$group.SightAdaptDotNetRuntimeVersion
+    runtimeIdentifier = [string]$group.SightAdaptRuntimeIdentifier
+    publishMode = [string]$group.SightAdaptPublishMode
+}
+
 $failures = [System.Collections.Generic.List[string]]::new()
 $entries = @{}
+$textEntries = @{}
 $archive = [System.IO.Compression.ZipFile]::OpenRead($resolvedArchive)
+
+function Read-ArchiveText(
+    [System.IO.Compression.ZipArchiveEntry]$Entry,
+    [string]$DisplayName) {
+    $stream = $Entry.Open()
+    try {
+        $utf8 = [System.Text.UTF8Encoding]::new($false, $true)
+        $reader = [System.IO.StreamReader]::new($stream, $utf8, $true)
+        try {
+            return $reader.ReadToEnd()
+        }
+        finally {
+            $reader.Dispose()
+        }
+    }
+    catch {
+        $failures.Add(
+            "Required text file '$DisplayName' is not readable UTF-8: $($_.Exception.Message)")
+        return $null
+    }
+    finally {
+        $stream.Dispose()
+    }
+}
 
 try {
     foreach ($entry in $archive.Entries) {
@@ -71,31 +107,72 @@ try {
         }
 
         if ($normalizedRequired.EndsWith('.txt', [StringComparison]::OrdinalIgnoreCase) -or
-            $normalizedRequired.EndsWith('.md', [StringComparison]::OrdinalIgnoreCase)) {
-            $stream = $entry.Open()
-            try {
-                $utf8 = [System.Text.UTF8Encoding]::new($false, $true)
-                $reader = [System.IO.StreamReader]::new($stream, $utf8, $true)
-                try {
-                    $text = $reader.ReadToEnd()
-                }
-                finally {
-                    $reader.Dispose()
-                }
-            }
-            catch {
-                $failures.Add(
-                    "Required text file '$normalizedRequired' is not readable UTF-8: $($_.Exception.Message)")
+            $normalizedRequired.EndsWith('.md', [StringComparison]::OrdinalIgnoreCase) -or
+            $normalizedRequired.EndsWith('.json', [StringComparison]::OrdinalIgnoreCase)) {
+            $text = Read-ArchiveText $entry $normalizedRequired
+            if ($null -eq $text) {
                 continue
             }
-            finally {
-                $stream.Dispose()
-            }
-
+            $textEntries[$key] = $text
             if ([string]::IsNullOrWhiteSpace($text)) {
                 $failures.Add(
                     "Required text file '$normalizedRequired' contains no readable text.")
             }
+        }
+    }
+
+    $metadataKey = 'dotnet-notice-metadata.json'
+    if ($textEntries.ContainsKey($metadataKey)) {
+        try {
+            $noticeMetadata = $textEntries[$metadataKey] | ConvertFrom-Json
+            foreach ($expected in $expectedMetadata.GetEnumerator()) {
+                $actual = [string]$noticeMetadata.($expected.Key)
+                if ($actual -ne [string]$expected.Value) {
+                    $failures.Add(
+                        "DOTNET-NOTICE-METADATA.json has $($expected.Key)='$actual'; expected '$($expected.Value)'.")
+                }
+            }
+
+            $requiredRuntimePacks = @(
+                "Microsoft.NETCore.App.Runtime.$($expectedMetadata.runtimeIdentifier)/$($expectedMetadata.runtimeVersion)",
+                "Microsoft.WindowsDesktop.App.Runtime.$($expectedMetadata.runtimeIdentifier)/$($expectedMetadata.runtimeVersion)"
+            )
+            foreach ($runtimePack in $requiredRuntimePacks) {
+                if (@($noticeMetadata.runtimePackages) -notcontains $runtimePack) {
+                    $failures.Add(
+                        "DOTNET-NOTICE-METADATA.json does not map runtime pack '$runtimePack'.")
+                }
+            }
+
+            if ([string]::IsNullOrWhiteSpace([string]$noticeMetadata.source.packageUrl)) {
+                $failures.Add('DOTNET-NOTICE-METADATA.json does not record the official source package URL.')
+            }
+            if ([string]$noticeMetadata.source.packageSha512 -notmatch '^[0-9A-Fa-f]{128}$') {
+                $failures.Add('DOTNET-NOTICE-METADATA.json does not contain a valid package SHA-512.')
+            }
+            if ([string]$noticeMetadata.source.importedLicenseSha256 -notmatch '^[0-9A-Fa-f]{64}$' -or
+                [string]$noticeMetadata.source.importedThirdPartyNoticesSha256 -notmatch '^[0-9A-Fa-f]{64}$') {
+                $failures.Add('DOTNET-NOTICE-METADATA.json does not contain valid imported-file SHA-256 values.')
+            }
+        }
+        catch {
+            $failures.Add(
+                "DOTNET-NOTICE-METADATA.json is invalid: $($_.Exception.Message)")
+        }
+    }
+
+    $noticeKey = 'third-party-notices.txt'
+    if ($textEntries.ContainsKey($noticeKey)) {
+        $noticeText = [string]$textEntries[$noticeKey]
+        if (-not $noticeText.StartsWith(
+            'SIGHTADAPT EXACT-VERSION THIRD-PARTY NOTICES',
+            [StringComparison]::Ordinal)) {
+            $failures.Add('THIRD-PARTY-NOTICES.txt is not an exact-version generated notice.')
+        }
+        if (-not $noticeText.Contains(
+            ".NET runtime and Windows Desktop Runtime: $($expectedMetadata.runtimeVersion)",
+            [StringComparison]::Ordinal)) {
+            $failures.Add('THIRD-PARTY-NOTICES.txt does not identify the pinned runtime version.')
         }
     }
 }
@@ -109,6 +186,6 @@ if ($failures.Count -gt 0) {
 }
 
 Write-Host (
-    "Release package verified: {0} required files are present, non-empty and readable in {1}." -f
+    "Release package verified: {0} required files are present, readable and consistent with the pinned .NET release in {1}." -f
     $requiredFiles.Count,
     $resolvedArchive)

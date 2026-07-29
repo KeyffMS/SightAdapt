@@ -1,17 +1,24 @@
 # SightAdapt dependency inventory
 
-This inventory distinguishes components shipped in a SightAdapt binary distribution from build, test and operating-system dependencies. Exact versions for an official release must be recorded by the release process.
+This inventory distinguishes components shipped in a SightAdapt binary distribution from build, test and operating-system dependencies. The machine-readable exact release evidence is stored in `DOTNET-NOTICE-METADATA.json` inside the final package.
 
 ## Components shipped in the Windows x64 package
 
-| Component | Purpose | Distribution status | License or terms |
-|---|---|---|---|
-| SightAdapt application | Per-application visual accessibility and color correction | Shipped as `SightAdapt.exe` | MIT License; see `LICENSE.txt` |
-| Microsoft .NET 8 runtime | Managed runtime and base class libraries for the self-contained application | Embedded in or published with the application | Microsoft .NET Library License on Windows; see `DOTNET-LICENSE-NOTICE.txt` |
-| Microsoft Windows Desktop runtime | Windows Forms and Windows desktop runtime components | Embedded in or published with the application | Microsoft .NET Library License and component notices; see `DOTNET-LICENSE-NOTICE.txt` and `THIRD-PARTY-NOTICES.txt` |
-| Runtime third-party components | Native and managed components included by the selected .NET runtime packs | May be embedded in or published with the application | Exact-version notices must be generated from authoritative .NET notice material |
+| Component | Reviewed version | Purpose | Distribution status | License or terms |
+|---|---|---|---|---|
+| SightAdapt application | `0.5.0.50-alpha` | Per-application visual accessibility and color correction | Shipped as `SightAdapt.exe` | MIT License; see `LICENSE.txt` |
+| Microsoft .NET runtime | `8.0.29` | Managed runtime, host and base class libraries | Embedded in the self-contained application | Exact Microsoft license and notices; see `DOTNET-LICENSE-NOTICE.txt`, `THIRD-PARTY-NOTICES.txt` and `DOTNET-NOTICE-METADATA.json` |
+| Microsoft Windows Desktop runtime | `8.0.29` | Windows Forms and Windows desktop runtime components | Embedded in the self-contained application | Exact Microsoft license and notices; see the generated package files |
+| Runtime third-party components | mapped to the `.NET 8.0.29 / SDK 8.0.423` release train | Native and managed components included by the runtime packs | Embedded in the self-contained application | Exact legal text imported from the hash-verified official SDK archive and mapped to the actual restore graph |
 
 The application project currently has no direct third-party NuGet `PackageReference` dependencies.
+
+The restored release inventory must include:
+
+- `Microsoft.NETCore.App.Runtime.win-x64/8.0.29`;
+- `Microsoft.WindowsDesktop.App.Runtime.win-x64/8.0.29`.
+
+The SDK-selected ASP.NET Core runtime pack is recorded when present in restore metadata, but it is not classified as shipped unless corresponding components appear in the final package inventory. The notice generator rejects an unreviewed runtime pack, a non-exact range or a version different from `8.0.29`.
 
 ## Operating-system components used but not redistributed
 
@@ -26,9 +33,9 @@ These components are required at runtime but are not copied into the SightAdapt 
 
 ## Build and test dependencies not shipped
 
-| Component | Current repository version or range | Purpose |
+| Component | Current repository version | Purpose |
 |---|---|---|
-| .NET SDK | `8.0.x` in CI | Restore, build, test and publish |
+| .NET SDK | `8.0.423` | Restore, build, test, publish and authoritative legal-text source for the matching release train |
 | Microsoft.NET.Test.Sdk | `17.11.1` | Test host |
 | MSTest.TestAdapter | `3.6.4` | Test discovery and execution |
 | MSTest.TestFramework | `3.6.4` | Test framework |
@@ -42,7 +49,8 @@ Build and test dependencies are development infrastructure and are not part of t
 
 For every official binary release, maintainers must:
 
-1. record the exact .NET SDK and runtime-pack versions selected by the build;
-2. review the files in the final publish directory and archive;
-3. refresh exact-version third-party notices from official Microsoft/.NET sources;
-4. verify that all files listed in `release/required-files.txt` are present and non-empty in the final archive.
+1. keep `global.json` and the expected .NET properties in `Directory.Build.props` synchronized;
+2. restore and review the exact runtime-pack inventory in `project.assets.json`;
+3. verify the official SDK ZIP SHA-512 and import its license and third-party notice files;
+4. review `DOTNET-NOTICE-METADATA.json` and any newly mapped runtime component;
+5. verify the final archive against `release/required-files.txt`.

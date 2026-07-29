@@ -23,10 +23,14 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
-      - name: Set up .NET
+      - name: Set up pinned .NET SDK
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: 8.0.x
+          dotnet-version: 8.0.423
+
+      - name: Record .NET environment
+        shell: pwsh
+        run: dotnet --info | Set-Content -Path dotnet-info.txt -Encoding utf8
 
       - name: Verify release metadata
         id: release
@@ -63,9 +67,11 @@ jobs:
         with:
           name: SightAdapt-build-diagnostics-${{ github.run_id }}
           path: |
+            dotnet-info.txt
             build-output.txt
             test-output.txt
             TestResults/SightAdapt.trx
+            src/SightAdapt/obj/project.assets.json
           if-no-files-found: warn
           retention-days: 7
 
@@ -73,10 +79,14 @@ jobs:
         run: >-
           dotnet publish src/SightAdapt/SightAdapt.csproj
           --configuration Release
-          --runtime win-x64
-          --self-contained true
-          -p:PublishSingleFile=true
+          --no-restore
           --output artifacts/win-x64
+
+      - name: Generate exact-version .NET notices
+        shell: pwsh
+        run: >-
+          .\tools\generate-dotnet-notices.ps1
+          -PublishDirectory artifacts/win-x64
 
       - name: Create and verify Windows alpha archive
         shell: pwsh
