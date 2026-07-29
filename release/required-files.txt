@@ -1,0 +1,8 @@
+# Root-relative files required in every SightAdapt binary distribution.
+# Keep this manifest synchronized with docs/PACKAGING.md and the project publish items.
+SightAdapt.exe
+LICENSE.txt
+THIRD-PARTY-NOTICES.txt
+DOTNET-LICENSE-NOTICE.txt
+DEPENDENCIES.md
+PRIVACY.md
