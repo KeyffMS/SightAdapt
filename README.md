@@ -55,6 +55,12 @@ New application assignments use Soft Invert, inherit that profile for native pop
 
 Emergency shutdown is available from the notification-area menu.
 
+## Privacy
+
+SightAdapt processes window, process and executable information locally and stores configuration in `%LOCALAPPDATA%\SightAdapt\settings.json`. The current release has no telemetry, analytics, remote crash reporting, automatic diagnostic upload, account/cloud synchronization or automatic update check. Product and repository links open only after user action.
+
+Executable paths, settings, logs and screenshots can contain personal or confidential information. Redact them before publishing a support report and request a private channel from the repository owner before sending sensitive material. See the complete [privacy notice and support-data policy](PRIVACY.md).
+
 ## Build a standalone EXE
 
 The application can be published as a self-contained single-file executable. It does not need to be started with `dotnet run`, and the target computer does not need a separately installed .NET runtime.
@@ -74,14 +80,18 @@ dotnet publish .\src\SightAdapt\SightAdapt.csproj `
     --output .\artifacts\win-x64
 ```
 
-The publish directory contains `SightAdapt.exe` and the legal-document bundle required for binary distribution:
+The publish directory contains `SightAdapt.exe` and the legal/compliance bundle required for binary distribution, including:
 
 ```text
 artifacts\win-x64\SightAdapt.exe
 artifacts\win-x64\LICENSE.txt
 artifacts\win-x64\THIRD-PARTY-NOTICES.txt
 artifacts\win-x64\DOTNET-LICENSE-NOTICE.txt
+artifacts\win-x64\DOTNET-NOTICE-METADATA.json
+artifacts\win-x64\MICROSOFT-DOTNET-REDISTRIBUTION.txt
 artifacts\win-x64\DEPENDENCIES.md
+artifacts\win-x64\SBOM.spdx.json
+artifacts\win-x64\LICENSE-REPORT.json
 artifacts\win-x64\PRIVACY.md
 ```
 
@@ -95,7 +105,7 @@ Create and validate the final archive according to [the binary packaging standar
 - [Complete functionality](docs/FEATURES.md)
 - [Current architecture](docs/ARCHITECTURE.md)
 - [Build and package a standalone EXE](docs/BUILD.md)
-- [Privacy notice](PRIVACY.md)
+- [Privacy notice and support-data policy](PRIVACY.md)
 - [Dependency inventory](DEPENDENCIES.md)
 - [Third-party notices](THIRD-PARTY-NOTICES.txt)
 - [Microsoft .NET redistribution notice](DOTNET-LICENSE-NOTICE.txt)
@@ -121,4 +131,4 @@ The product identity is always written as `SightAdapt`. The first or most promin
 
 SightAdapt™ is an unregistered product mark used by KeyffMS / aiteracja.pl.
 
-SightAdapt is licensed under the MIT License. See [LICENSE](LICENSE). Binary distributions include the same terms as `LICENSE.txt` together with the privacy, dependency and third-party notice files.
+SightAdapt is licensed under the MIT License. See [LICENSE](LICENSE). Binary distributions include the same terms as `LICENSE.txt` together with the privacy, dependency, SBOM, license-report and third-party notice files.
