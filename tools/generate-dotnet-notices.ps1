@@ -61,19 +61,32 @@ if ($LASTEXITCODE -ne 0 -or $actualSdkVersion -ne $sdkVersion) {
 }
 
 $assets = Get-Content -LiteralPath $resolvedAssets -Raw | ConvertFrom-Json
-$packageKeys = @(
-    $assets.libraries.PSObject.Properties |
-        Where-Object { [string]$_.Value.type -eq 'package' } |
-        ForEach-Object { [string]$_.Name }
-)
+$runtimeTarget = @(
+    $assets.targets.PSObject.Properties |
+        Where-Object {
+            ([string]$_.Name).EndsWith(
+                "/$rid",
+                [StringComparison]::OrdinalIgnoreCase)
+        }
+) | Select-Object -First 1
+if ($null -eq $runtimeTarget) {
+    $availableTargets = @($assets.targets.PSObject.Properties.Name)
+    throw "The restored assets do not contain an RID-specific target for '$rid'. Available targets:`n$($availableTargets -join "`n")"
+}
 
+$packageKeys = @($runtimeTarget.Value.PSObject.Properties.Name)
 $requiredRuntimePacks = @(
     "Microsoft.NETCore.App.Runtime.$rid/$runtimeVersion",
     "Microsoft.WindowsDesktop.App.Runtime.$rid/$runtimeVersion"
 )
 foreach ($requiredPack in $requiredRuntimePacks) {
     if (-not ($packageKeys -contains $requiredPack)) {
-        throw "The restored assets do not contain required runtime pack '$requiredPack'."
+        $matchingPacks = @(
+            $packageKeys | Where-Object {
+                $_ -match '^Microsoft\.(NETCore|WindowsDesktop)\.App\.Runtime\.'
+            }
+        )
+        throw "The restored RID-specific assets do not contain required runtime pack '$requiredPack'. Restored runtime packs:`n$($matchingPacks -join "`n")"
     }
 }
 
@@ -95,7 +108,9 @@ $reviewedRuntimePackageNames = @(
 $runtimePackages = @(
     $packageKeys | Where-Object {
         $candidate = $_
-        $reviewedRuntimePackagePatterns | Where-Object { $candidate -match $_ }
+        @($reviewedRuntimePackagePatterns | Where-Object {
+            $candidate -match $_
+        }).Count -gt 0
     }
 )
 $unknownRuntimePackages = @(
@@ -244,6 +259,7 @@ The license text below is imported without substantive modification from the exa
         runtimeIdentifier = $rid
         publishMode = $publishMode
         generatedAtUtc = $generatedAt
+        assetsTarget = [string]$runtimeTarget.Name
         runtimePackages = @($runtimePackages | Sort-Object)
         source = [ordered]@{
             releaseMetadataUrl = $metadataUrl
