@@ -12,6 +12,9 @@ internal static class ProductInfo
             attribute => attribute.Product,
             "SightAdapt");
 
+    public static string MarkedProductName { get; } =
+        $"{ProductName}™";
+
     private static readonly string FullVersion =
         GetVersion();
 
@@ -32,21 +35,29 @@ internal static class ProductInfo
     public static string Tagline { get; } =
         GetAttribute<AssemblyDescriptionAttribute>(
             attribute => attribute.Description,
-            "Automatic visual accessibility for Windows applications");
+            "Free, open-source per-application visual accessibility and color correction for Windows.");
 
     public static string License { get; } =
         GetMetadata("License", "MIT License");
 
-    public static string Author { get; } =
+    public static string Publisher { get; } =
         GetAttribute<AssemblyCompanyAttribute>(
             attribute => attribute.Company,
             string.Empty);
+
+    public static string Author => Publisher;
+
+    public static string WebsiteUrl { get; } =
+        GetMetadata("WebsiteUrl", string.Empty);
+
+    public static string WebsiteDisplay { get; } =
+        CreateWebDisplay(WebsiteUrl);
 
     public static string RepositoryUrl { get; } =
         GetMetadata("RepositoryUrl", string.Empty);
 
     public static string RepositoryDisplay { get; } =
-        CreateRepositoryDisplay(RepositoryUrl);
+        CreateWebDisplay(RepositoryUrl);
 
     public static int SettingsSchemaVersion { get; } =
         GetIntegerMetadata("SettingsSchema");
@@ -116,7 +127,6 @@ internal static class ProductInfo
             ?.Value ?? fallback;
     }
 
-
     private static int GetIntegerMetadata(string key)
     {
         var value = GetMetadata(key, string.Empty);
@@ -130,14 +140,14 @@ internal static class ProductInfo
                 $"Assembly metadata '{key}' must be a positive integer.");
     }
 
-    private static string CreateRepositoryDisplay(string repositoryUrl)
+    private static string CreateWebDisplay(string url)
     {
         if (!Uri.TryCreate(
-                repositoryUrl,
+                url,
                 UriKind.Absolute,
                 out var uri))
         {
-            return repositoryUrl;
+            return url;
         }
 
         return uri.Host + uri.AbsolutePath.TrimEnd('/');

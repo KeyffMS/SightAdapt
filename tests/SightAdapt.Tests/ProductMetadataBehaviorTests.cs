@@ -10,12 +10,18 @@ public sealed class ProductMetadataBehaviorTests
     {
         Assert.IsFalse(
             string.IsNullOrWhiteSpace(ProductInfo.ProductName));
+        Assert.AreEqual(
+            $"{ProductInfo.ProductName}™",
+            ProductInfo.MarkedProductName);
         Assert.IsFalse(
             string.IsNullOrWhiteSpace(ProductInfo.VersionLabel));
         Assert.IsFalse(
             string.IsNullOrWhiteSpace(ProductInfo.MilestoneLabel));
         Assert.IsFalse(
-            string.IsNullOrWhiteSpace(ProductInfo.Author));
+            string.IsNullOrWhiteSpace(ProductInfo.Publisher));
+        Assert.AreEqual(
+            ProductInfo.Publisher,
+            ProductInfo.Author);
         Assert.IsFalse(
             string.IsNullOrWhiteSpace(ProductInfo.License));
         Assert.IsFalse(
@@ -25,16 +31,27 @@ public sealed class ProductMetadataBehaviorTests
     }
 
     [TestMethod]
-    public void RepositoryMetadataIsAnAbsoluteWebAddress()
+    public void PublicWebMetadataUsesAbsoluteAddresses()
+    {
+        AssertAbsoluteWebAddress(
+            ProductInfo.WebsiteUrl,
+            ProductInfo.WebsiteDisplay);
+        AssertAbsoluteWebAddress(
+            ProductInfo.RepositoryUrl,
+            ProductInfo.RepositoryDisplay);
+    }
+
+    private static void AssertAbsoluteWebAddress(
+        string url,
+        string display)
     {
         Assert.IsTrue(Uri.TryCreate(
-            ProductInfo.RepositoryUrl,
+            url,
             UriKind.Absolute,
-            out var repository));
+            out var address));
         Assert.IsTrue(
-            repository.Scheme is "http" or "https");
+            address.Scheme is "http" or "https");
         Assert.IsFalse(
-            string.IsNullOrWhiteSpace(
-                ProductInfo.RepositoryDisplay));
+            string.IsNullOrWhiteSpace(display));
     }
 }
