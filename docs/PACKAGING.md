@@ -20,7 +20,9 @@ Every package must place the following files at the package root so they can be 
 | `DOTNET-LICENSE-NOTICE.txt` | Exact-version Microsoft .NET license text and source metadata |
 | `DOTNET-NOTICE-METADATA.json` | Machine-readable SDK, runtime, RID, runtime-pack, source and checksum evidence |
 | `MICROSOFT-DOTNET-REDISTRIBUTION.txt` | End-user and downstream-distributor conditions that keep Microsoft components separate from SightAdapt's MIT license |
-| `DEPENDENCIES.md` | Human-readable inventory of shipped, platform and development dependencies |
+| `DEPENDENCIES.md` | Human-readable inventory generated from the evaluated dependency list |
+| `SBOM.spdx.json` | SPDX 2.3 component and shipped-file inventory |
+| `LICENSE-REPORT.json` | Automated dependency-license policy result |
 | `PRIVACY.md` | Application privacy and local-data notice |
 
 A package is incomplete if a required file is missing, empty, unreadable, stale, inconsistent with the pinned build inputs or nested only inside another container that the recipient cannot inspect directly.
@@ -42,7 +44,7 @@ Release mirrors must copy the verified archive without removing, renaming or rep
 
 ## Publish behavior
 
-`src/SightAdapt/SightAdapt.csproj` copies the legal baseline and redistribution notice into the publish directory. `tools/generate-dotnet-notices.ps1` then replaces the baseline .NET files with exact-version material and adds the metadata record before packaging.
+`src/SightAdapt/SightAdapt.csproj` copies the legal baseline and redistribution notice into the publish directory. `tools/generate-dotnet-notices.ps1` replaces the baseline .NET files with exact-version material. `tools/generate-sbom.ps1` then evaluates dependency licenses and generates `DEPENDENCIES.md`, `SBOM.spdx.json` and `LICENSE-REPORT.json` before packaging.
 
 The expected publish layout begins with:
 
@@ -55,6 +57,8 @@ artifacts/win-x64/
 ├── DOTNET-NOTICE-METADATA.json
 ├── MICROSOFT-DOTNET-REDISTRIBUTION.txt
 ├── DEPENDENCIES.md
+├── SBOM.spdx.json
+├── LICENSE-REPORT.json
 └── PRIVACY.md
 ```
 
@@ -76,26 +80,21 @@ Compress-Archive `
 .\tools\test-release-package.ps1 -ArchivePath $archive
 ```
 
-The validation script opens the final ZIP and checks the entries listed in `release/required-files.txt`. Required documents must be readable UTF-8 text. The .NET metadata must match the exact release inputs in `Directory.Build.props`, contain valid checksums and map both required runtime packs. The redistribution notice must identify the same product, SDK, runtime, target framework, RID and publish mode, clearly separate Microsoft's terms from MIT, prohibit standalone redistribution and disclaim Microsoft endorsement.
+The validation script opens the final ZIP and checks the entries listed in `release/required-files.txt`. Required documents must be readable UTF-8 text. The exact .NET metadata must match the pinned release inputs and map the required runtime packs. SBOM generation has already failed the workflow if a dependency is absent from the reviewed policy, uses a different version or has a denied/unreviewed license.
 
 ## Microsoft .NET notices and redistribution position
 
 SightAdapt is a self-contained Windows application. `global.json` pins the SDK, while `Directory.Build.props` records the expected SDK/runtime release mapping. The actual restore graph in `project.assets.json` identifies the exact runtime packs selected by the build.
 
-The generator obtains the matching official .NET SDK ZIP through Microsoft's release metadata, verifies its published SHA-512 hash and imports `LICENSE.txt` and `ThirdPartyNotices.txt` from that archive. The SDK ZIP is used because the standalone Windows Desktop Runtime ZIP does not contain those legal files; the restore graph, not the SDK ZIP contents, remains the authority for which runtime packs are associated with the SightAdapt publication.
-
-The package record identifies:
-
-- exact .NET SDK version;
-- exact runtime and Windows Desktop Runtime versions;
-- runtime identifier and publish mode;
-- restored runtime packages and framework;
-- authoritative release-metadata and SDK-package URLs;
-- official SDK package SHA-512;
-- SHA-256 values for the imported license and notice text;
-- generation time and product version.
+The notice generator obtains the matching official .NET SDK ZIP through Microsoft's release metadata, verifies its published SHA-512 hash and imports `LICENSE.txt` and `ThirdPartyNotices.txt` from that archive. The SDK ZIP is used because the standalone Windows Desktop Runtime ZIP does not contain those legal files; the restore graph, not the SDK ZIP contents, remains the authority for which runtime packs are associated with the SightAdapt publication.
 
 The reviewed redistribution position is documented in [Microsoft .NET redistribution analysis](legal/DOTNET-REDISTRIBUTION.md). `MICROSOFT-DOTNET-REDISTRIBUTION.txt` implements the recipient and downstream-distributor notice in each binary package. See also [Exact-version .NET notice generation](legal/DOTNET-NOTICE-GENERATION.md).
+
+## SBOM and license review
+
+`release/dependency-policy.json` records the reviewed component versions, suppliers, sources, scopes and license decisions. `tools/generate-sbom.ps1` combines that policy with the actual restore graph, project references, workflow actions, .NET notice metadata and final publish files.
+
+The generated SPDX document contains component relationships and SHA-256 checksums for every separately shipped file. `SightAdapt.exe` is the documented single-file container for embedded managed and native runtime components. See [SBOM and dependency-license review](legal/SBOM-AND-LICENSE-REVIEW.md).
 
 ## Release checklist
 
@@ -106,10 +105,11 @@ Before publishing or mirroring a binary package:
 3. restore, build and test the application;
 4. publish into a clean staging directory;
 5. generate exact-version .NET notices from the hash-verified official SDK package and actual restore graph;
-6. inspect the generated notice metadata and any newly mapped runtime component;
-7. create the final archive or platform package;
-8. validate the final archive with `tools/test-release-package.ps1`;
-9. inspect the package manually to confirm that every legal document opens without running SightAdapt;
-10. publish the same verified bytes to every official mirror.
+6. generate the SPDX SBOM, license report and human-readable dependency inventory;
+7. resolve every component or license-policy failure;
+8. create the final archive or platform package;
+9. validate the final archive with `tools/test-release-package.ps1`;
+10. inspect the package manually to confirm that every legal document opens without running SightAdapt;
+11. publish the same verified bytes to every official mirror.
 
-Do not publish an official binary release when the legal bundle, redistribution notice, exact-version generation, package checksum, runtime mapping or final-archive validation is incomplete. Production or paid distribution additionally remains blocked until the qualified legal review required by Issue #93 is recorded.
+Do not publish an official binary release when the legal bundle, redistribution notice, exact-version generation, SBOM, license report, package checksum, runtime mapping or final-archive validation is incomplete. Production or paid distribution additionally remains blocked until the qualified legal review required by Issue #93 is recorded.

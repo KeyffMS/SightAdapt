@@ -1,6 +1,6 @@
 # SightAdapt dependency inventory
 
-This inventory distinguishes components shipped in a SightAdapt binary distribution from build, test and operating-system dependencies. The machine-readable exact release evidence is stored in `DOTNET-NOTICE-METADATA.json` inside the final package.
+This repository copy documents the currently reviewed dependency set. Release builds regenerate `DEPENDENCIES.md` inside the final package from `release/dependency-policy.json`, the actual restore graph, exact .NET notice metadata, project references and workflow actions. The same evaluated inventory is written to `SBOM.spdx.json` and `LICENSE-REPORT.json`.
 
 ## Components shipped in the Windows x64 package
 
@@ -36,6 +36,7 @@ These components are required at runtime but are not copied into the SightAdapt 
 | Component | Current repository version | Purpose |
 |---|---|---|
 | .NET SDK | `8.0.423` | Restore, build, test, publish and authoritative legal-text source for the matching release train |
+| Microsoft Windows SDK .NET reference package | `10.0.19041.56` | Compile-time Windows API references |
 | Microsoft.NET.Test.Sdk | `17.11.1` | Test host |
 | MSTest.TestAdapter | `3.6.4` | Test discovery and execution |
 | MSTest.TestFramework | `3.6.4` | Test framework |
@@ -43,7 +44,7 @@ These components are required at runtime but are not copied into the SightAdapt 
 | GitHub Actions .NET setup | `actions/setup-dotnet@v4` | CI SDK installation |
 | GitHub Actions artifact upload | `actions/upload-artifact@v4` | CI artifact publication |
 
-Build and test dependencies are development infrastructure and are not part of the final SightAdapt binary archive unless explicitly listed in the shipped-components table.
+Build and test dependencies are development infrastructure and are not part of the final SightAdapt binary archive unless explicitly marked as shipped by the generated inventory.
 
 ## Release maintenance
 
@@ -52,5 +53,6 @@ For every official binary release, maintainers must:
 1. keep `global.json` and the expected .NET properties in `Directory.Build.props` synchronized;
 2. restore and review the exact runtime-pack inventory in `project.assets.json`;
 3. verify the official SDK ZIP SHA-512 and import its license and third-party notice files;
-4. review `DOTNET-NOTICE-METADATA.json` and any newly mapped runtime component;
-5. verify the final archive against `release/required-files.txt`.
+4. update `release/dependency-policy.json` for every dependency, version, supplier or license change;
+5. generate and review `SBOM.spdx.json`, `LICENSE-REPORT.json` and the package `DEPENDENCIES.md`;
+6. verify the final archive against `release/required-files.txt`.
