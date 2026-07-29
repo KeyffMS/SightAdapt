@@ -10,12 +10,13 @@
     <RootNamespace>SightAdapt</RootNamespace>
     <Product>SightAdapt</Product>
     <Title>SightAdapt</Title>
-    <Description>Automatic visual accessibility for Windows applications</Description>
+    <Description>Free, open-source per-application visual accessibility and color correction for Windows.</Description>
     <Company>KeyffMS / aiteracja.pl</Company>
     <Authors>$(Company)</Authors>
     <Copyright>Copyright © $(Company)</Copyright>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <RepositoryUrl>https://github.com/KeyffMS/SightAdapt</RepositoryUrl>
+    <ProductWebsiteUrl>https://aiteracja.pl/sightadapt/</ProductWebsiteUrl>
     <PlatformTarget>x64</PlatformTarget>
     <Platforms>x64</Platforms>
     <SupportedOSPlatformVersion>10.0.19041.0</SupportedOSPlatformVersion>
@@ -25,6 +26,7 @@
   <ItemGroup>
     <AssemblyMetadata Include="License" Value="MIT License" />
     <AssemblyMetadata Include="RepositoryUrl" Value="$(RepositoryUrl)" />
+    <AssemblyMetadata Include="WebsiteUrl" Value="$(ProductWebsiteUrl)" />
     <AssemblyMetadata Include="Milestone" Value="$(SightAdaptMilestone)" />
     <AssemblyMetadata Include="SettingsSchema" Value="$(SightAdaptSettingsSchema)" />
   </ItemGroup>
