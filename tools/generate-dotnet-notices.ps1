@@ -120,7 +120,7 @@ $wrongVersionPacks = @(
     }
 )
 if ($wrongVersionPacks.Count -gt 0) {
-    throw "Runtime packs do not match pinned runtime $runtimeVersion:`n$($wrongVersionPacks -join "`n")"
+    throw "Runtime packs do not match pinned runtime ${runtimeVersion}:`n$($wrongVersionPacks -join "`n")"
 }
 
 $releaseMetadata = Invoke-RestMethod -Uri $metadataUrl -Method Get
