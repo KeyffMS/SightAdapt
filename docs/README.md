@@ -4,9 +4,13 @@ The documentation describes the current SightAdapt implementation and the canoni
 
 - [Product identity and brand usage](BRAND.md) — canonical name, `™` notation, descriptions, publisher attribution, website URL, and asset rules.
 - [Release naming and attribution](RELEASING.md) — public release-title, tag, artifact, website, publisher, and mark conventions.
+- [Binary packaging standard](PACKAGING.md) — required legal files, publish behavior, archive validation and distribution-format rules.
 - [Complete functionality](FEATURES.md) — user-visible behavior, profiles, application assignments, overlay scopes, switching, settings, safety, and limitations.
 - [Current architecture](ARCHITECTURE.md) — authorities, sources of truth, settings transaction, foreground switching, overlay lifecycle, geometry, UI boundaries, and failure behavior.
-- [Build a standalone EXE](BUILD.md) — step-by-step local self-contained Windows x64 publication.
+- [Build and package a standalone EXE](BUILD.md) — step-by-step local self-contained Windows x64 publication and archive verification.
+- [Privacy notice](../PRIVACY.md)
+- [Dependency inventory](../DEPENDENCIES.md)
+- [Third-party notices](../THIRD-PARTY-NOTICES.txt)
 - [Security policy](../SECURITY.md)
 - [Contribution guide](../CONTRIBUTING.md)
 - [License](../LICENSE)

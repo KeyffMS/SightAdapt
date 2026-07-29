@@ -1,0 +1,17 @@
+MICROSOFT .NET REDISTRIBUTION NOTICE
+
+SightAdapt is published as a self-contained Windows application and redistributes Microsoft .NET runtime components with the application.
+
+Microsoft documents that .NET product distributions on Windows, including runtime packs and components embedded in self-contained applications, are governed by the Microsoft .NET Library License.
+
+Applicable Microsoft license terms:
+https://dotnet.microsoft.com/en-us/dotnet_library_license.htm
+
+Microsoft .NET licensing overview:
+https://github.com/dotnet/core/blob/main/license-information.md
+
+The exact runtime-pack versions and exact-version third-party notices used by an official release must be recorded and reviewed by the release process. This notice does not replace component-specific third-party notices contained in THIRD-PARTY-NOTICES.txt.
+
+Microsoft and .NET are trademarks of the Microsoft group of companies. SightAdapt is not affiliated with, sponsored by, or endorsed by Microsoft.
+
+Notice reviewed: 2026-07-29

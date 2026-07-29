@@ -30,4 +30,27 @@
     <AssemblyMetadata Include="Milestone" Value="$(SightAdaptMilestone)" />
     <AssemblyMetadata Include="SettingsSchema" Value="$(SightAdaptSettingsSchema)" />
   </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\..\LICENSE"
+          Link="LICENSE.txt"
+          CopyToOutputDirectory="PreserveNewest"
+          CopyToPublishDirectory="PreserveNewest" />
+    <None Include="..\..\THIRD-PARTY-NOTICES.txt"
+          Link="THIRD-PARTY-NOTICES.txt"
+          CopyToOutputDirectory="PreserveNewest"
+          CopyToPublishDirectory="PreserveNewest" />
+    <None Include="..\..\DOTNET-LICENSE-NOTICE.txt"
+          Link="DOTNET-LICENSE-NOTICE.txt"
+          CopyToOutputDirectory="PreserveNewest"
+          CopyToPublishDirectory="PreserveNewest" />
+    <None Include="..\..\DEPENDENCIES.md"
+          Link="DEPENDENCIES.md"
+          CopyToOutputDirectory="PreserveNewest"
+          CopyToPublishDirectory="PreserveNewest" />
+    <None Include="..\..\PRIVACY.md"
+          Link="PRIVACY.md"
+          CopyToOutputDirectory="PreserveNewest"
+          CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
 </Project>
