@@ -4,6 +4,7 @@ The documentation describes the current SightAdapt implementation and the canoni
 
 - [Product identity and brand usage](BRAND.md) — canonical name, `™` notation, descriptions, publisher attribution, intended purpose, website URL, and asset rules.
 - [Intended purpose and medical-device claims policy](legal/INTENDED-PURPOSE-AND-MDR.md) — approved general-purpose positioning, prohibited medical claims, terminology, reviewed surfaces and renewed-assessment triggers.
+- [Patent FTO commercialization gate](legal/PATENT-FTO-GATE.md) — technical feature map, current non-commercial decision, professional-review requirements and re-opening triggers.
 - [Release naming and attribution](RELEASING.md) — public release-title, tag, artifact, website, publisher, store-claim and mark conventions.
 - [Binary packaging standard](PACKAGING.md) — required legal files, redistribution notice, SBOM, exact-version notices, archive validation and distribution-format rules.
 - [Microsoft .NET redistribution analysis](legal/DOTNET-REDISTRIBUTION.md) — Microsoft-origin component inventory, applicable terms, package implementation, review triggers and professional-review gate.
