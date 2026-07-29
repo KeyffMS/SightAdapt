@@ -56,14 +56,7 @@ if ([string]$globalJson.sdk.version -ne $sdkVersion -or
 }
 
 [xml]$project = Get-Content (Join-Path $root 'src/SightAdapt/SightAdapt.csproj')
-$metadata = @(
-    $project.Project.ItemGroup |
-        ForEach-Object {
-            if ($null -ne $_.AssemblyMetadata) {
-                @($_.AssemblyMetadata)
-            }
-        }
-)
+$metadata = @($project.SelectNodes('/Project/ItemGroup/AssemblyMetadata'))
 if (-not ($metadata | Where-Object {
     $_.Include -eq 'Milestone' -and
     $_.Value -eq '$(SightAdaptMilestone)'
