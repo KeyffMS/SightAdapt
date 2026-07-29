@@ -7,6 +7,12 @@
     <SightAdaptSettingsSchema>5</SightAdaptSettingsSchema>
     <SightAdaptArtifactName>SightAdapt-$(SightAdaptProductVersion)-win-x64</SightAdaptArtifactName>
 
+    <SightAdaptDotNetSdkVersion>8.0.423</SightAdaptDotNetSdkVersion>
+    <SightAdaptDotNetRuntimeVersion>8.0.29</SightAdaptDotNetRuntimeVersion>
+    <SightAdaptRuntimeIdentifier>win-x64</SightAdaptRuntimeIdentifier>
+    <SightAdaptPublishMode>self-contained-single-file</SightAdaptPublishMode>
+    <SightAdaptDotNetReleaseMetadataUrl>https://builds.dotnet.microsoft.com/dotnet/release-metadata/8.0/releases.json</SightAdaptDotNetReleaseMetadataUrl>
+
     <Version>$(SightAdaptProductVersion)</Version>
     <AssemblyVersion>$(SightAdaptAssemblyVersion)</AssemblyVersion>
     <FileVersion>$(SightAdaptFileVersion)</FileVersion>
