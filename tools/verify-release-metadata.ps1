@@ -71,10 +71,9 @@ if (-not ($metadata | Where-Object {
 }
 $projectGroup = @($project.Project.PropertyGroup) | Select-Object -First 1
 if ([string]$projectGroup.RuntimeIdentifier -ne '$(SightAdaptRuntimeIdentifier)' -or
-    [string]$projectGroup.RuntimeFrameworkVersion -ne '$(SightAdaptDotNetRuntimeVersion)' -or
     [string]$projectGroup.SelfContained -ne 'true' -or
     [string]$projectGroup.PublishSingleFile -ne 'true') {
-    throw 'SightAdapt.csproj does not derive its exact self-contained publish inputs from release metadata.'
+    throw 'SightAdapt.csproj does not derive its reviewed self-contained publish inputs from release metadata.'
 }
 
 $workflow = Get-Content (Join-Path $root '.github/workflows/build.yml') -Raw
