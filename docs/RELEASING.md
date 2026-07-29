@@ -68,6 +68,14 @@ Include this summary whenever third-party compatibility is discussed:
 
 Do not use third-party logos, branded icons, trade dress or promotional assets without permission or another documented lawful basis. Follow [the third-party names, affiliation and protected-content policy](legal/THIRD-PARTY-NAMES-AFFILIATION-AND-DRM.md).
 
+## Formal legal release gate
+
+Repository notices, SBOMs, policies and CI checks are not a professional legal opinion. Before describing a release as production-ready, selling/licensing it, publishing a production package through a major store, supplying enterprise legal warranties/indemnities or claiming complete legal clearance, follow [the formal legal review and release gate](legal/LEGAL-RELEASE-GATE.md).
+
+A valid approval requires a dated non-confidential record based on [the legal sign-off template](legal/LEGAL-SIGNOFF-TEMPLATE.md) and tied to the exact artifact checksum, territories, channels, revenue model, customer groups and materials reviewed. Privileged advice remains outside the public repository.
+
+The current alpha stage has no formal counsel sign-off. Do not use `legally cleared`, `fully compliant`, `non-infringing`, `production approved` or equivalent wording.
+
 ## Required mark notice
 
 Include this notice once in the release description or linked legal material:
