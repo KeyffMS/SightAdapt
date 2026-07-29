@@ -67,6 +67,12 @@ SightAdapt is general-purpose accessibility and display-personalization software
 
 `Color correction` and `visual correction` refer to display presentation, not clinical vision correction. The project does not claim clinical effectiveness or target a named medical condition. See the controlled [intended-purpose and medical-device claims policy](docs/legal/INTENDED-PURPOSE-AND-MDR.md).
 
+## Third-party names and protected content
+
+Third-party product names and trademarks belong to their respective owners and are used only to identify applications selected or configured by the user. SightAdapt is not affiliated with, sponsored by or endorsed by Microsoft or those owners unless an explicit written relationship is identified.
+
+SightAdapt does not circumvent DRM or other access controls. Protected content may remain unavailable, blank or unfilterable. Compatibility statements describe observed technical behavior and do not imply partnership, certification or support from a third party. See [the complete third-party names, affiliation and protected-content policy](docs/legal/THIRD-PARTY-NAMES-AFFILIATION-AND-DRM.md).
+
 ## Build a standalone EXE
 
 The application can be published as a self-contained single-file executable. It does not need to be started with `dotnet run`, and the target computer does not need a separately installed .NET runtime.
@@ -95,6 +101,7 @@ artifacts\win-x64\THIRD-PARTY-NOTICES.txt
 artifacts\win-x64\DOTNET-LICENSE-NOTICE.txt
 artifacts\win-x64\DOTNET-NOTICE-METADATA.json
 artifacts\win-x64\MICROSOFT-DOTNET-REDISTRIBUTION.txt
+artifacts\win-x64\THIRD-PARTY-NAMES-AND-DRM-NOTICE.txt
 artifacts\win-x64\DEPENDENCIES.md
 artifacts\win-x64\SBOM.spdx.json
 artifacts\win-x64\LICENSE-REPORT.json
@@ -107,6 +114,7 @@ Create and validate the final archive according to [the binary packaging standar
 
 - [Product identity and brand usage](docs/BRAND.md)
 - [Intended purpose and medical-device claims policy](docs/legal/INTENDED-PURPOSE-AND-MDR.md)
+- [Third-party names, affiliation and protected-content policy](docs/legal/THIRD-PARTY-NAMES-AFFILIATION-AND-DRM.md)
 - [Release naming and attribution](docs/RELEASING.md)
 - [Binary packaging standard](docs/PACKAGING.md)
 - [Complete functionality](docs/FEATURES.md)
@@ -114,7 +122,8 @@ Create and validate the final archive according to [the binary packaging standar
 - [Build and package a standalone EXE](docs/BUILD.md)
 - [Privacy notice and support-data policy](PRIVACY.md)
 - [Dependency inventory](DEPENDENCIES.md)
-- [Third-party notices](THIRD-PARTY-NOTICES.txt)
+- [Third-party software notices](THIRD-PARTY-NOTICES.txt)
+- [Third-party names and DRM notice](THIRD-PARTY-NAMES-AND-DRM-NOTICE.txt)
 - [Microsoft .NET redistribution notice](DOTNET-LICENSE-NOTICE.txt)
 - [Documentation index](docs/README.md)
 - [Security policy](SECURITY.md)

@@ -1,0 +1,45 @@
+SIGHTADAPT THIRD-PARTY NAMES, AFFILIATION AND PROTECTED-CONTENT NOTICE
+
+Last reviewed: 2026-07-29
+Publisher: KeyffMS / aiteracja.pl
+
+1. Third-party names and trademarks
+
+Third-party product names, company names, service names, trademarks and other marks are the property of their respective owners. SightAdapt uses a third-party application name, executable name, file description or path only to identify an application selected or configured by the user.
+
+Use of a name does not claim ownership of that name or mark. Unless an explicit written relationship is identified, SightAdapt is not affiliated with, sponsored by, certified by or endorsed by Microsoft or by the owner, publisher or developer of a user-selected application.
+
+Microsoft, Windows and .NET are trademarks of the Microsoft group of companies. Their names identify the operating-system platform, runtime components or technical compatibility only.
+
+2. Compatibility statements
+
+Product-controlled materials may use neutral factual wording such as:
+
+- "works with user-selected Windows applications";
+- "compatible with supported Windows application windows";
+- "uses Windows Magnification API";
+- "applies an overlay to an application selected by the user".
+
+Do not use wording such as "official integration", "partner", "approved by", "certified by", "supported by" or similar language that implies a commercial, technical or endorsement relationship unless a current written agreement authorizes that statement.
+
+Compatibility statements describe observed technical behavior, not a guarantee from the third-party application owner. Application updates, protected surfaces, permissions or graphics behavior may affect compatibility.
+
+3. Logos, icons and trade dress
+
+SightAdapt does not require third-party logos, branded icons, screenshots, trade dress or other protected brand assets to identify a configured application. Do not include such material in SightAdapt-controlled documentation, store listings, promotional assets or packages without permission or another documented lawful basis.
+
+A user's local operating system may display metadata or an icon associated with an application. That local identification does not make the asset part of the SightAdapt brand and must not be reused in project-controlled marketing without review.
+
+4. DRM, protected content and access controls
+
+SightAdapt is not intended to circumvent, disable, avoid or interfere with digital-rights management (DRM), protected-content restrictions, authentication, licensing checks, encryption or other access controls.
+
+SightAdapt uses operating-system display and magnification facilities to render an overlay for content that Windows makes available to that mechanism. It does not grant access to content, remove usage restrictions or alter authorization decisions made by Windows or a third-party application.
+
+Protected or DRM-controlled content may remain unavailable, blank, excluded, unfilterable or otherwise unaffected. SightAdapt does not promise compatibility with protected content and must not be represented as a means of bypassing technical restrictions.
+
+5. Distribution and reuse
+
+Keep this notice with every SightAdapt binary distribution and relevant store or directory description. A downstream distributor must preserve this notice and must not add third-party endorsement claims, unauthorized brand assets or DRM-circumvention statements.
+
+This notice complements, and does not replace, the exact third-party software notices, Microsoft .NET terms, SightAdapt trademark record and other package legal documents.

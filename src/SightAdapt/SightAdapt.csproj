@@ -51,6 +51,10 @@
           Link="MICROSOFT-DOTNET-REDISTRIBUTION.txt"
           CopyToOutputDirectory="PreserveNewest"
           CopyToPublishDirectory="PreserveNewest" />
+    <None Include="..\..\THIRD-PARTY-NAMES-AND-DRM-NOTICE.txt"
+          Link="THIRD-PARTY-NAMES-AND-DRM-NOTICE.txt"
+          CopyToOutputDirectory="PreserveNewest"
+          CopyToPublishDirectory="PreserveNewest" />
     <None Include="..\..\DEPENDENCIES.md"
           Link="DEPENDENCIES.md"
           CopyToOutputDirectory="PreserveNewest"
