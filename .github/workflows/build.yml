@@ -127,6 +127,8 @@ jobs:
               -DirectoryPath artifacts/win-x64 `
               -ArchivePath $archivePath `
               -ReportPath $reportPath
+          .\tools\verify-dotnet-component-coverage.ps1 `
+              -ArchivePath $archivePath
 
       - name: Upload verified Windows alpha and compliance report
         uses: actions/upload-artifact@v4
