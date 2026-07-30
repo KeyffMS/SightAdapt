@@ -43,9 +43,88 @@ $expectedMetadata = @{
     publishMode = [string]$group.SightAdaptPublishMode
 }
 
+[xml]$project = Get-Content -LiteralPath (Join-Path $root 'src\SightAdapt\SightAdapt.csproj')
+$projectGroup = @($project.Project.PropertyGroup) | Select-Object -First 1
+$targetFramework = [string]$projectGroup.TargetFramework
+
 $failures = [System.Collections.Generic.List[string]]::new()
 $entries = @{}
 $textEntries = @{}
+
+function Get-NormalizedTextSha256([string]$Path) {
+    $text = Get-Content -LiteralPath $Path -Raw
+    $normalized = $text.Replace("`r`n", "`n").Replace("`r", "`n")
+    $bytes = [System.Text.UTF8Encoding]::new($false).GetBytes($normalized)
+    $sha256 = [System.Security.Cryptography.SHA256]::Create()
+    try {
+        return [System.BitConverter]::ToString(
+            $sha256.ComputeHash($bytes)).Replace('-', '').ToLowerInvariant()
+    }
+    finally {
+        $sha256.Dispose()
+    }
+}
+
+$reviewPath = Join-Path $root 'release\dotnet-redistribution-review.json'
+try {
+    $review = Get-Content -LiteralPath $reviewPath -Raw | ConvertFrom-Json
+    if ([int]$review.schemaVersion -ne 1) {
+        $failures.Add("Unsupported .NET redistribution review schema '$($review.schemaVersion)'.")
+    }
+    if ([string]$review.reviewedAt -notmatch '^\d{4}-\d{2}-\d{2}$') {
+        $failures.Add('The .NET redistribution review date must use YYYY-MM-DD.')
+    }
+
+    $reviewExpected = @{
+        sdkVersion = $expectedMetadata.sdkVersion
+        runtimeVersion = $expectedMetadata.runtimeVersion
+        targetFramework = $targetFramework
+        runtimeIdentifier = $expectedMetadata.runtimeIdentifier
+        publishMode = $expectedMetadata.publishMode
+    }
+    foreach ($expected in $reviewExpected.GetEnumerator()) {
+        $actual = [string]$review.reviewedConfiguration.($expected.Key)
+        if ($actual -ne [string]$expected.Value) {
+            $failures.Add(
+                "Redistribution review has $($expected.Key)='$actual'; expected '$($expected.Value)'.")
+        }
+    }
+
+    $templatePath = Join-Path $root ([string]$review.noticeTemplate.path)
+    if (-not [System.IO.File]::Exists($templatePath)) {
+        $failures.Add("Reviewed redistribution template is missing: $($review.noticeTemplate.path)")
+    }
+    else {
+        $templateHash = Get-NormalizedTextSha256 $templatePath
+        if ($templateHash -ne ([string]$review.noticeTemplate.sha256).ToLowerInvariant()) {
+            $failures.Add('The redistribution notice template differs from the reviewed SHA-256.')
+        }
+    }
+
+    $professionalStatus = [string]$review.professionalReview.status
+    $professionalIssue = [int]$review.professionalReview.trackingIssue
+    $professionalRecord = [string]$review.professionalReview.publicRecord
+    if (@('not-obtained', 'approved-with-conditions', 'approved') -notcontains $professionalStatus) {
+        $failures.Add("Unsupported professional-review status '$professionalStatus'.")
+    }
+    if ($professionalIssue -ne 93) {
+        $failures.Add('The professional review is not linked to Issue #93.')
+    }
+    if ($professionalStatus -eq 'not-obtained' -and
+        -not [string]::IsNullOrWhiteSpace($professionalRecord)) {
+        $failures.Add('Status not-obtained must not identify a professional approval record.')
+    }
+    if ($professionalStatus -ne 'not-obtained' -and
+        ([string]::IsNullOrWhiteSpace($professionalRecord) -or
+         -not [System.IO.File]::Exists((Join-Path $root $professionalRecord)))) {
+        $failures.Add("Professional-review status '$professionalStatus' lacks an existing public record.")
+    }
+}
+catch {
+    $failures.Add("The .NET redistribution review record is invalid: $($_.Exception.Message)")
+    $review = $null
+}
+
 $archive = [System.IO.Compression.ZipFile]::OpenRead($resolvedArchive)
 
 function Read-ArchiveText(
@@ -70,6 +149,17 @@ function Read-ArchiveText(
     finally {
         $stream.Dispose()
     }
+}
+
+function Get-HeaderValue(
+    [string]$Text,
+    [string]$Name) {
+    $pattern = '(?m)^' + [regex]::Escape($Name) + ':\s*(?<value>[^\r\n]+?)\s*$'
+    $match = [regex]::Match($Text, $pattern)
+    if (-not $match.Success) {
+        return $null
+    }
+    return $match.Groups['value'].Value.Trim()
 }
 
 try {
@@ -173,6 +263,46 @@ try {
             ".NET runtime and Windows Desktop Runtime: $($expectedMetadata.runtimeVersion)",
             [StringComparison]::Ordinal)) {
             $failures.Add('THIRD-PARTY-NOTICES.txt does not identify the pinned runtime version.')
+        }
+    }
+
+    $redistributionKey = 'microsoft-dotnet-redistribution.txt'
+    if ($textEntries.ContainsKey($redistributionKey) -and $null -ne $review) {
+        $redistributionText = [string]$textEntries[$redistributionKey]
+        if ($redistributionText -match '\{\{[A-Z0-9_]+\}\}') {
+            $failures.Add('MICROSOFT-DOTNET-REDISTRIBUTION.txt contains an unresolved template marker.')
+        }
+
+        $professionalRecord = [string]$review.professionalReview.publicRecord
+        $professionalRecordDisplay = if ([string]::IsNullOrWhiteSpace($professionalRecord)) {
+            'none'
+        }
+        else {
+            $professionalRecord
+        }
+        $expectedHeaders = [ordered]@{
+            'Product version' = $expectedMetadata.productVersion
+            'SDK version' = $expectedMetadata.sdkVersion
+            'Runtime version' = $expectedMetadata.runtimeVersion
+            'Windows Desktop Runtime version' = $expectedMetadata.runtimeVersion
+            'Target framework' = $targetFramework
+            'Runtime identifier' = $expectedMetadata.runtimeIdentifier
+            'Publish mode' = $expectedMetadata.publishMode
+            'Maintainer review date' = [string]$review.reviewedAt
+            'Professional review status' = [string]$review.professionalReview.status
+            'Professional review tracking issue' = "#$([int]$review.professionalReview.trackingIssue)"
+            'Professional review public record' = $professionalRecordDisplay
+        }
+        foreach ($expectedHeader in $expectedHeaders.GetEnumerator()) {
+            $actual = Get-HeaderValue $redistributionText ([string]$expectedHeader.Key)
+            if ([string]::IsNullOrWhiteSpace($actual)) {
+                $failures.Add(
+                    "MICROSOFT-DOTNET-REDISTRIBUTION.txt is missing header '$($expectedHeader.Key)'.")
+            }
+            elseif ($actual -ne [string]$expectedHeader.Value) {
+                $failures.Add(
+                    "MICROSOFT-DOTNET-REDISTRIBUTION.txt has $($expectedHeader.Key)='$actual'; expected '$($expectedHeader.Value)'.")
+            }
         }
     }
 }

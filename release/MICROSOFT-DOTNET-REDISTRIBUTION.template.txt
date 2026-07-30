@@ -2,14 +2,17 @@ SIGHTADAPT MICROSOFT .NET REDISTRIBUTION NOTICE
 
 Reviewed release configuration
 
-SightAdapt version: 0.5.0.50-alpha
-.NET SDK used to build: 8.0.423
-.NET Runtime: 8.0.29
-Windows Desktop Runtime: 8.0.29
-Target framework: net8.0-windows10.0.19041.0
-Runtime identifier: win-x64
-Publication: self-contained, single-file Windows application
-Maintainer review date: 2026-07-29
+Product version: {{PRODUCT_VERSION}}
+SDK version: {{SDK_VERSION}}
+Runtime version: {{RUNTIME_VERSION}}
+Windows Desktop Runtime version: {{RUNTIME_VERSION}}
+Target framework: {{TARGET_FRAMEWORK}}
+Runtime identifier: {{RUNTIME_IDENTIFIER}}
+Publish mode: {{PUBLISH_MODE}}
+Maintainer review date: {{REVIEW_DATE}}
+Professional review status: {{PROFESSIONAL_REVIEW_STATUS}}
+Professional review tracking issue: #{{PROFESSIONAL_REVIEW_ISSUE}}
+Professional review public record: {{PROFESSIONAL_REVIEW_RECORD}}
 
 1. Separate licenses
 
@@ -86,13 +89,17 @@ https://dotnet.microsoft.com/en-us/dotnet_library_license.htm
 The exact source package, version mapping and checksums used by this build are
 recorded in DOTNET-NOTICE-METADATA.json.
 
+The reviewed technical configuration and template checksum are recorded in the
+repository file release/dotnet-redistribution-review.json.
+
 7. Review status and release gate
 
-This notice records the project's technical compliance implementation and a
-maintainer review of the identified distribution terms. It is not a legal
-opinion and does not claim review by qualified legal counsel.
+This notice was rendered from the reviewed template and the canonical release
+metadata for this package. It records the project's technical compliance
+implementation and maintainer review. It is not a legal opinion and does not
+claim review by qualified legal counsel.
 
-Before any official production or paid distribution, the complete resulting
-text and package must receive the qualified legal review required by SightAdapt
-Issue #93. Until that sign-off exists, production and paid distribution remain
-blocked.
+The professional-review status and public-record path are stated above.
+A status of "not-obtained" means that official production and paid distribution
+remain blocked under the tracking issue until a qualified review is completed
+and a non-confidential public decision record is linked.

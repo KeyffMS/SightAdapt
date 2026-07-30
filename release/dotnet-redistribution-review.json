@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "reviewedAt": "2026-07-30",
+  "reviewedConfiguration": {
+    "sdkVersion": "8.0.423",
+    "runtimeVersion": "8.0.29",
+    "targetFramework": "net8.0-windows10.0.19041.0",
+    "runtimeIdentifier": "win-x64",
+    "publishMode": "self-contained-single-file"
+  },
+  "noticeTemplate": {
+    "path": "release/MICROSOFT-DOTNET-REDISTRIBUTION.template.txt",
+    "sha256": "eb01dc1357f0b933cd047ad9b2cf9ce93a265bbfd79ae9a8bd5c07c4d0fe8134"
+  },
+  "professionalReview": {
+    "status": "not-obtained",
+    "trackingIssue": 93,
+    "publicRecord": null
+  }
+}

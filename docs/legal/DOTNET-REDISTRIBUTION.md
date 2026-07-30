@@ -4,25 +4,23 @@
 
 | Field | Value |
 |---|---|
-| Maintainer review date | 2026-07-29 |
-| SightAdapt version | `0.5.0.50-alpha` |
-| .NET SDK | `8.0.423` |
-| .NET Runtime | `8.0.29` |
-| Windows Desktop Runtime | `8.0.29` |
-| Target framework | `net8.0-windows10.0.19041.0` |
-| Runtime identifier | `win-x64` |
-| Publish mode | self-contained, single-file |
-| Professional legal review | Required before production or paid distribution under Issue #93; not yet claimed by this document |
+| Maintainer review record | `release/dotnet-redistribution-review.json` |
+| Reviewed configuration | Exact SDK, runtime, target framework, runtime identifier and publish mode recorded in the review record |
+| Reviewed notice wording | `release/MICROSOFT-DOTNET-REDISTRIBUTION.template.txt`, protected by the SHA-256 in the review record |
+| Package notice | Generated as `MICROSOFT-DOTNET-REDISTRIBUTION.txt` from the reviewed template and canonical release metadata |
+| Professional legal review | Status and public record are controlled by the review record and Issue #93 |
 
 This document records the project's technical redistribution analysis. It is not legal advice and is not evidence of review by qualified legal counsel.
+
+The machine-readable review record is the source of truth for the exact technical configuration covered by the maintainer review. A change to the SDK, runtime, target framework, runtime identifier or publish mode fails release validation until that record is deliberately updated.
 
 ## Authoritative sources
 
 The review uses these official Microsoft sources:
 
-1. [.NET license information](https://github.com/dotnet/core/blob/main/license-information.md), which states that Windows product distributions and runtime packs use the .NET Library License and that self-contained applications embed parts of the runtime;
+1. [.NET license information](https://github.com/dotnet/core/blob/main/license-information.md), which describes the licensing model for .NET product distributions and runtime packs and explains that self-contained applications embed runtime components;
 2. [.NET Library License Terms](https://dotnet.microsoft.com/en-us/dotnet_library_license.htm), which contains the applicable distribution rights, requirements, restrictions, warranty terms and regional qualifications;
-3. the exact [.NET 8 release metadata](https://builds.dotnet.microsoft.com/dotnet/release-metadata/8.0/releases.json), which maps runtime `8.0.29`, Windows Desktop Runtime `8.0.29` and SDK `8.0.423`;
+3. the exact release metadata URL recorded in `Directory.Build.props`, which maps the reviewed runtime, Windows Desktop Runtime and SDK release train;
 4. the hash-verified official SDK archive identified in each package's `DOTNET-NOTICE-METADATA.json`, which supplies the exact imported Microsoft license and third-party notice text;
 5. the actual `project.assets.json` produced by restore, which identifies the runtime packs selected for the release build.
 
@@ -32,24 +30,24 @@ The generated files in the final package preserve the authoritative text and evi
 
 ### Included in the self-contained binary
 
-The current application has no direct third-party NuGet package references. The Microsoft-origin runtime content is selected by the SDK through these exact runtime-pack identities:
+The Microsoft-origin runtime content is selected by the pinned SDK through the runtime-pack identities recorded in `DOTNET-NOTICE-METADATA.json`:
 
-| Component family | Exact release identity | Included purpose | Distribution position |
+| Component family | Release identity authority | Included purpose | Distribution position |
 |---|---|---|---|
-| .NET application host and host policy | `Microsoft.NETCore.App.Runtime.win-x64/8.0.29` and associated host assets | Starts and hosts the self-contained managed application | Distributed in object-code form only as part of SightAdapt under the .NET Library License |
-| .NET managed runtime and base libraries | `Microsoft.NETCore.App.Runtime.win-x64/8.0.29` | CLR, garbage collector, framework libraries and native runtime support | Distributed in object-code form only as part of SightAdapt under the .NET Library License and imported third-party notices |
-| Windows Desktop / Windows Forms runtime | `Microsoft.WindowsDesktop.App.Runtime.win-x64/8.0.29` | Windows Forms UI and Windows desktop framework support | Distributed in object-code form only as part of SightAdapt under the .NET Library License and imported third-party notices |
-| Runtime third-party components | Components covered by the official `ThirdPartyNotices.txt` for the `.NET 8.0.29 / SDK 8.0.423` release train | Native and managed dependencies incorporated into the Microsoft runtime packs | Governed by the separate licenses and notices preserved in `THIRD-PARTY-NOTICES.txt` |
+| .NET application host and host policy | `Microsoft.NETCore.App.Runtime` entry from the exact restore graph | Starts and hosts the self-contained managed application | Distributed in object-code form only as part of SightAdapt under the .NET Library License |
+| .NET managed runtime and base libraries | Exact `Microsoft.NETCore.App.Runtime` version from the restore graph | CLR, garbage collector, framework libraries and native runtime support | Distributed in object-code form only as part of SightAdapt under the .NET Library License and imported third-party notices |
+| Windows Desktop / Windows Forms runtime | Exact `Microsoft.WindowsDesktop.App.Runtime` version from the restore graph | Windows Forms UI and Windows desktop framework support | Distributed in object-code form only as part of SightAdapt under the .NET Library License and imported third-party notices |
+| Runtime third-party components | Official `ThirdPartyNotices.txt` from the reviewed SDK/runtime release train | Native and managed dependencies incorporated into Microsoft runtime packs | Governed by the separate licenses and notices preserved in `THIRD-PARTY-NOTICES.txt` |
 
 The precise restore identities are recorded in `DOTNET-NOTICE-METADATA.json`. The single-file publisher may embed managed assemblies and native components inside `SightAdapt.exe`; embedding does not change their separate licensing status.
 
-The SDK may record `Microsoft.AspNetCore.App.Runtime.win-x64/8.0.29` as a framework download dependency. SightAdapt does not use ASP.NET Core APIs. That restore record is preserved for auditability, but a component is classified as shipped only when the final package/SBOM identifies it as present.
+A framework download dependency recorded during restore is preserved for auditability, but a component is classified as shipped only when the final package and SBOM identify it as present or embedded in the documented single-file container.
 
 ### Microsoft-origin dependencies not redistributed as product components
 
 | Component | Role | Distribution status |
 |---|---|---|
-| .NET SDK `8.0.423` | Restore, compile, test and publish; source of matching legal-text bundle | Build infrastructure, not shipped as the SightAdapt application |
+| Pinned .NET SDK | Restore, compile, test and publish; source of matching legal-text bundle | Build infrastructure, not shipped as the SightAdapt application |
 | `Microsoft.Windows.SDK.NET.Ref` reference pack | Compile-time Windows API metadata | Reference/build input, not shipped as an independent runtime component |
 | `Microsoft.NET.Test.Sdk`, MSTest adapter/framework | Automated test infrastructure | Test-only dependencies, not shipped |
 | GitHub Actions maintained by GitHub/Microsoft | CI checkout, SDK setup and artifact upload | CI infrastructure, not shipped in the application |
@@ -78,17 +76,17 @@ Every SightAdapt binary package must include these separate files at its root:
 | File | Function |
 |---|---|
 | `LICENSE.txt` | MIT License for SightAdapt project code |
-| `MICROSOFT-DOTNET-REDISTRIBUTION.txt` | Operational end-user and downstream-distributor notice for Microsoft components |
+| `MICROSOFT-DOTNET-REDISTRIBUTION.txt` | Generated operational end-user and downstream-distributor notice for Microsoft components |
 | `DOTNET-LICENSE-NOTICE.txt` | Exact Microsoft license text imported from the hash-verified official SDK archive |
 | `THIRD-PARTY-NOTICES.txt` | Exact Microsoft/.NET third-party notices imported from the same archive |
 | `DOTNET-NOTICE-METADATA.json` | Exact versions, runtime packs, source URLs and checksums |
 | `DEPENDENCIES.md` | Human-readable shipped/build/platform dependency inventory |
 
-The files are readable without executing SightAdapt. `release/required-files.txt` and `tools/test-release-package.ps1` enforce their presence and consistency in the final ZIP.
+`tools/generate-dotnet-redistribution-notice.ps1` validates the review record and reviewed template checksum, confirms that exact-version .NET metadata already exists, and renders the package notice from canonical release values. `tools/test-release-package.ps1` independently checks the generated notice headers inside the final ZIP.
 
 ## Review triggers
 
-Repeat this analysis and update the package notice when any of the following changes:
+Repeat the maintainer analysis and update `release/dotnet-redistribution-review.json` when any of the following changes:
 
 - .NET SDK version;
 - .NET Runtime or Windows Desktop Runtime version;
@@ -101,16 +99,18 @@ Repeat this analysis and update the package notice when any of the following cha
 - product name, Microsoft compatibility claims or distribution channels;
 - Microsoft licensing, privacy, export or support terms.
 
-The verifier intentionally embeds the reviewed versions and configuration in the package notice. A version or publish-setting change therefore fails CI until the redistribution notice and analysis are reviewed and updated.
+Changing the reviewed notice wording also requires updating the template SHA-256 in the review record. Product-version changes are rendered automatically from `Directory.Build.props`, but the generated package notice must still match the exact artifact.
+
+The early release-metadata check, notice generator and final-package validator all reject a reviewed-configuration mismatch. The negative package check also mutates the runtime version in a generated notice and proves that stale wording cannot pass the release workflow.
 
 ## Professional review gate
 
-This implementation satisfies the repository's engineering and documentation controls, but it does not replace professional legal advice. Before an official production release, paid distribution, commercial support offering or bundled redistribution by a commercial partner, qualified legal counsel must review:
+Repository automation proves configuration and package consistency; it does not replace professional legal advice. Before an official production release, paid distribution, commercial support offering or bundled redistribution by a commercial partner, qualified legal counsel must review:
 
-- this analysis;
-- `MICROSOFT-DOTNET-REDISTRIBUTION.txt`;
+- this analysis and the machine-readable review record;
+- the reviewed notice template and generated package notice;
 - the exact generated package legal bundle;
 - the intended distribution channels and end-user terms;
 - any regional consumer, export or commercial-law implications.
 
-That external sign-off is the explicit release gate tracked by Issue #93. No statement in this repository should be interpreted as claiming that the sign-off has already occurred.
+The current professional-review status and any non-confidential decision record are stored in `release/dotnet-redistribution-review.json` and governed by Issue #93. A `not-obtained` status keeps production and paid distribution blocked; no repository document should be interpreted as claiming that the external sign-off has occurred.

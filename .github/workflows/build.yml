@@ -88,15 +88,23 @@ jobs:
           .\tools\generate-dotnet-notices.ps1
           -PublishDirectory artifacts/win-x64
 
+      - name: Generate reviewed .NET redistribution notice
+        shell: pwsh
+        run: >-
+          .\tools\generate-dotnet-redistribution-notice.ps1
+          -PublishDirectory artifacts/win-x64
+
       - name: Generate SBOM and review dependency licenses
         shell: pwsh
         run: >-
           .\tools\generate-sbom.ps1
           -PublishDirectory artifacts/win-x64
 
-      - name: Verify incomplete packages are rejected
+      - name: Verify incomplete and stale packages are rejected
         shell: pwsh
-        run: .\tools\test-release-compliance-negative.ps1
+        run: >-
+          .\tools\test-release-compliance-negative.ps1
+          -PublishDirectory artifacts/win-x64
 
       - name: Create and verify Windows alpha archive
         shell: pwsh
