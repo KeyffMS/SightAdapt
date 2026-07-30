@@ -17,17 +17,19 @@ $tempRoot = Join-Path ([System.IO.Path]::GetTempPath()) (
 function Assert-PackageRejected(
     [string]$ArchivePath,
     [string]$Scenario) {
-    $failedAsExpected = $false
+    $rejected = $false
     try {
         & (Join-Path $PSScriptRoot 'test-release-package.ps1') `
             -ArchivePath $ArchivePath
+        & (Join-Path $PSScriptRoot 'verify-dotnet-component-coverage.ps1') `
+            -ArchivePath $ArchivePath
     }
     catch {
-        $failedAsExpected = $true
+        $rejected = $true
         Write-Host "$Scenario was rejected as expected: $($_.Exception.Message)"
     }
 
-    if (-not $failedAsExpected) {
+    if (-not $rejected) {
         throw "$Scenario unexpectedly passed validation."
     }
 }
@@ -57,10 +59,6 @@ try {
             -Force
 
         $noticePath = Join-Path $staleDirectory 'MICROSOFT-DOTNET-REDISTRIBUTION.txt'
-        if (-not [System.IO.File]::Exists($noticePath)) {
-            throw 'The published redistribution notice is unavailable for the stale-notice test.'
-        }
-
         [xml]$props = Get-Content -LiteralPath (Join-Path $root 'Directory.Build.props')
         $runtimeVersion = [string]$props.Project.PropertyGroup.SightAdaptDotNetRuntimeVersion
         $currentHeader = "Runtime version: $runtimeVersion"
@@ -68,14 +66,10 @@ try {
         if (-not $notice.Contains($currentHeader, [StringComparison]::Ordinal)) {
             throw "The stale-notice test could not locate '$currentHeader'."
         }
-        $mutated = $notice.Replace(
-            $currentHeader,
-            'Runtime version: 0.0.0-stale')
         [System.IO.File]::WriteAllText(
             $noticePath,
-            $mutated,
+            $notice.Replace($currentHeader, 'Runtime version: 0.0.0-stale'),
             [System.Text.UTF8Encoding]::new($false))
-
         [System.IO.Compression.ZipFile]::CreateFromDirectory(
             $staleDirectory,
             $staleArchive)
@@ -90,9 +84,6 @@ try {
             -Force
 
         $metadataPath = Join-Path $unmappedDirectory 'DOTNET-NOTICE-METADATA.json'
-        if (-not [System.IO.File]::Exists($metadataPath)) {
-            throw 'The .NET notice metadata is unavailable for the unmapped-component test.'
-        }
         $metadata = Get-Content -LiteralPath $metadataPath -Raw | ConvertFrom-Json
         $components = @($metadata.componentCoverage.components)
         $looseComponents = @($components | Where-Object {
@@ -113,9 +104,8 @@ try {
         $metadata.componentCoverage.looseRuntimeComponentCount = $looseComponents.Count - 1
         [System.IO.File]::WriteAllText(
             $metadataPath,
-            ($metadata | ConvertTo-Json -Depth 12) + [Environment]::NewLine,
+            ($metadata | ConvertTo-Json -Depth 14) + [Environment]::NewLine,
             [System.Text.UTF8Encoding]::new($false))
-
         [System.IO.Compression.ZipFile]::CreateFromDirectory(
             $unmappedDirectory,
             $unmappedArchive)
