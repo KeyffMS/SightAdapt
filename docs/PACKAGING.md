@@ -15,12 +15,12 @@ The machine-readable source of truth is `release/required-files.txt`.
 | `DOTNET-NOTICE-METADATA.json` | Exact package, component, notice and checksum evidence |
 | `MICROSOFT-DOTNET-REDISTRIBUTION.txt` | Generated maintainer-reviewed redistribution notice |
 | `THIRD-PARTY-NAMES-AND-DRM-NOTICE.txt` | Mark ownership, no-endorsement and DRM/access-control boundaries |
-| `DEPENDENCIES.md` | Human-readable dependency inventory |
-| `SBOM.spdx.json` | SPDX 2.3 component and shipped-file inventory |
-| `LICENSE-REPORT.json` | Dependency-license policy result |
+| `DEPENDENCIES.md` | Human-readable dependency inventory generated from complete restore graphs |
+| `SBOM.spdx.json` | SPDX 2.3 package graph and shipped-file inventory |
+| `LICENSE-REPORT.json` | Schema-2 dependency-license evidence and policy result |
 | `PRIVACY.md` | Application privacy and local-data notice |
 
-A package is incomplete if a required file is missing, unreadable, stale, inconsistent with pinned inputs or contains a binary without exact component notice evidence.
+A package is incomplete if a required file is missing, unreadable, stale, inconsistent with pinned inputs, contains a binary without exact component notice evidence or has an unresolved dependency/license result.
 
 ## Publish sequence
 
@@ -28,7 +28,8 @@ A package is incomplete if a required file is missing, unreadable, stale, incons
 2. `generate-dotnet-notices.ps1` imports exact official .NET legal text.
 3. `generate-dotnet-component-coverage.ps1` maps all embedded and loose package components and adds package-specific notices.
 4. `generate-dotnet-redistribution-notice.ps1` renders the reviewed redistribution summary.
-5. `generate-sbom.ps1` generates the dependency inventory, SPDX SBOM and license report.
+5. `generate-sbom.ps1` traverses complete application/test restore graphs, collects package license evidence and generates `DEPENDENCIES.md`, `LICENSE-REPORT.json` and `SBOM.spdx.json`.
+6. Negative tests prove rejection of incomplete, stale, unmapped and unknown-license inputs.
 
 ## Exact component coverage
 
@@ -49,6 +50,20 @@ The reviewed alpha contains 452 mapped package components across:
 - `Microsoft.Windows.SDK.NET.Ref/10.0.19041.56`.
 
 `Microsoft.Windows.SDK.NET.Ref` is classified as `shipped-embedded`, because `Microsoft.Windows.SDK.NET.dll` and `WinRT.Runtime.dll` are present in `FilesToBundle`.
+
+## Complete dependency and license inventory
+
+The SBOM generator uses both application and test `project.assets.json` files. Every NuGet package in `libraries`, every package dependency edge in `targets`, every framework download dependency, each package contributing published components, the pinned SDK and each maintained GitHub Action is inventoried.
+
+For NuGet packages the generated evidence retains exact package SHA-512, `.nuspec` SHA-256, declared license metadata, packaged-license SHA-256 where applicable, repository information and direct/transitive scope. `release/dependency-policy.json` supplies allow/deny/review decisions and selected custom-license overrides; it does not define which packages exist.
+
+SPDX root relationships distinguish scopes:
+
+- shipped packages: `SightAdapt DEPENDS_ON package`;
+- test-only packages: `package TEST_DEPENDENCY_OF SightAdapt`;
+- SDK, Actions, restore-only and application-build packages: `package BUILD_DEPENDENCY_OF SightAdapt`.
+
+Package-to-package restore edges remain `DEPENDS_ON` and identify the originating graph.
 
 ## Final package validation
 
@@ -75,12 +90,16 @@ The general compliance gate validates package, metadata, license-report and SBOM
 ## Negative checks
 
 ```powershell
+.\tools\test-sbom-license-negative.ps1 `
+    -PublishDirectory '.\artifacts\win-x64'
+
 .\tools\test-release-compliance-negative.ps1 `
     -PublishDirectory '.\artifacts\win-x64'
 ```
 
 The workflow proves rejection of:
 
+- a transitive package with valid package metadata but no declared/resolved license;
 - an incomplete package;
 - stale redistribution metadata;
 - a package containing a real runtime DLL after its component mapping is deliberately removed.
@@ -92,16 +111,16 @@ The same legal/compliance bundle is required for Actions artifacts, manual ZIPs,
 ## Release checklist
 
 1. verify canonical release metadata and maintainer decision;
-2. restore, build and test;
-3. publish and capture `FilesToBundle`;
+2. restore application and test projects;
+3. build, test, publish and capture `FilesToBundle`;
 4. import exact official .NET notices;
 5. generate exact package/component coverage;
 6. generate the redistribution summary;
-7. generate SBOM, license report and dependency inventory;
-8. resolve every policy or component-mapping failure;
-9. prove incomplete, stale and unmapped packages are rejected;
+7. generate complete SBOM, license report and dependency inventory;
+8. resolve every unknown, denied, review-required or evidence failure;
+9. prove unknown-transitive, incomplete, stale and unmapped inputs are rejected;
 10. create and run both validators against the final package;
 11. retain the package and compliance report;
 12. publish identical verified bytes to official mirrors.
 
-Do not publish when any notice, package hash, component mapping, SBOM, license, metadata or maintainer-decision check fails.
+Do not publish when any notice, package hash, component mapping, restore graph, SBOM, license, metadata or maintainer-decision check fails.
