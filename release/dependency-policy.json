@@ -82,7 +82,7 @@
       "scope": "restore-only",
       "shipped": false,
       "supplier": "Organization: Microsoft Corporation",
-      "license": "LicenseRef-Microsoft-DotNet-Distribution",
+      "license": "MIT",
       "source": "https://github.com/dotnet/aspnetcore",
       "purpose": "LIBRARY",
       "expectedVersion": ""
@@ -126,6 +126,16 @@
       "source": "https://github.com/microsoft/testfx",
       "purpose": "OTHER",
       "expectedVersionSource": ""
+    },
+    "System.Reflection.Metadata": {
+      "expectedVersion": "1.6.0",
+      "expectedVersionSource": "",
+      "scope": "test-transitive",
+      "shipped": false,
+      "supplier": "Organization: Microsoft Corporation",
+      "license": "MIT",
+      "source": "https://www.nuget.org/packages/System.Reflection.Metadata/1.6.0",
+      "purpose": "OTHER"
     },
     "actions/checkout": {
       "expectedVersion": "v4",
