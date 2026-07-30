@@ -103,7 +103,7 @@ if ([string]$projectGroup.RuntimeIdentifier -ne '$(SightAdaptRuntimeIdentifier)'
 
 $reviewPath = Join-Path $root 'release/dotnet-redistribution-review.json'
 $review = Get-Content -LiteralPath $reviewPath -Raw | ConvertFrom-Json
-if ([int]$review.schemaVersion -ne 1) {
+if ([int]$review.schemaVersion -ne 2) {
     throw "Unsupported .NET redistribution review schema '$($review.schemaVersion)'."
 }
 if ([string]$review.reviewedAt -notmatch '^\d{4}-\d{2}-\d{2}$') {
@@ -125,26 +125,23 @@ Assert-Equal 'Reviewed redistribution notice template SHA-256' `
     $templateHash `
     ([string]$review.noticeTemplate.sha256).ToLowerInvariant()
 
-$professional = $review.professionalReview
-$status = [string]$professional.status
-$allowedStatuses = @('not-obtained', 'approved-with-conditions', 'approved')
-if ($allowedStatuses -notcontains $status) {
-    throw "Unsupported professional-review status '$status'."
+$decision = $review.maintainerDecision
+$decisionStatus = [string]$decision.status
+if (@('accepted-for-current-distribution', 'accepted-with-conditions', 'blocked') -notcontains $decisionStatus) {
+    throw "Unsupported .NET redistribution maintainer decision '$decisionStatus'."
 }
-if ([int]$professional.trackingIssue -ne 93) {
-    throw 'The .NET redistribution professional review must remain linked to Issue #93.'
+if ([string]::IsNullOrWhiteSpace([string]$decision.decisionOwner)) {
+    throw 'The .NET redistribution maintainer decision requires a decision owner.'
 }
-$publicRecord = [string]$professional.publicRecord
-if ($status -eq 'not-obtained') {
-    if (-not [string]::IsNullOrWhiteSpace($publicRecord)) {
-        throw 'Professional-review status not-obtained must not identify an approval record.'
-    }
+if ([int]$decision.decisionIssue -le 0) {
+    throw 'The .NET redistribution maintainer decision requires a positive issue number.'
 }
-else {
-    if ([string]::IsNullOrWhiteSpace($publicRecord) -or
-        -not [System.IO.File]::Exists((Join-Path $root $publicRecord))) {
-        throw "Professional-review status '$status' requires an existing public decision record."
-    }
+if ($decisionStatus -eq 'blocked') {
+    throw 'The .NET redistribution maintainer decision blocks release packaging.'
+}
+if ($decisionStatus -eq 'accepted-with-conditions' -and
+    @($decision.conditions).Count -eq 0) {
+    throw 'A conditional .NET redistribution decision must list its conditions.'
 }
 
 $workflow = Get-Content (Join-Path $root '.github/workflows/build.yml') -Raw
@@ -181,4 +178,4 @@ if ($WriteGitHubOutput) {
     "runtime_identifier=$rid" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
 }
 
-Write-Host "Release metadata verified: version=$version; sdk=$sdkVersion; runtime=$runtimeVersion; rid=$rid; artifact=$artifact; redistribution-review=$($review.reviewedAt)"
+Write-Host "Release metadata verified: version=$version; sdk=$sdkVersion; runtime=$runtimeVersion; rid=$rid; artifact=$artifact; redistribution-review=$($review.reviewedAt); decision=$decisionStatus"
