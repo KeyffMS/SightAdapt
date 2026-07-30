@@ -43,7 +43,8 @@ $artifactName = ([string]$group.SightAdaptArtifactName).Replace(
     $productVersion)
 
 [xml]$project = Get-Content -LiteralPath (Join-Path $root 'src\SightAdapt\SightAdapt.csproj')
-$targetFramework = [string](@($project.Project.PropertyGroup) | Select-Object -First 1).TargetFramework
+$projectGroup = @($project.Project.PropertyGroup) | Select-Object -First 1
+$targetFramework = [string]$projectGroup.TargetFramework
 
 $requiredFiles = @(
     Get-Content -LiteralPath $manifest |
