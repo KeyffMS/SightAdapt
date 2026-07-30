@@ -48,7 +48,7 @@ run_verify() {
   PR_ACTOR_ID="$id" \
   PR_ACTOR_TYPE="$type" \
   DCO_BOT_ALLOWLIST_PATH="$ALLOWLIST" \
-    "$VERIFY_SCRIPT"
+    bash "$VERIFY_SCRIPT"
 }
 
 reset_repo() {
