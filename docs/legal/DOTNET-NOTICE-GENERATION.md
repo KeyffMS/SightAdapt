@@ -4,42 +4,30 @@ This document defines the release process for Microsoft .NET license and third-p
 
 ## Authoritative release inputs
 
-The release inputs are intentionally pinned and reviewed in synchronized sources:
-
 - `global.json` pins the .NET SDK and disables roll-forward;
-- `Directory.Build.props` records the expected SDK version, runtime version, runtime identifier, publish mode and official .NET release-metadata URL;
-- `release/dotnet-redistribution-review.json` records the SDK/runtime/TFM/RID/publish configuration covered by the redistribution analysis and the reviewed package-notice template checksum.
+- `Directory.Build.props` records expected SDK/runtime/RID/publish metadata and the official release-metadata URL;
+- `release/dotnet-redistribution-review.json` records the reviewed SDK/runtime/TFM/RID/publish configuration, notice-template SHA-256 and maintainer decision.
 
-For the current release candidate:
+Current inputs:
 
 | Input | Value |
 |---|---|
 | .NET SDK | `8.0.423` |
 | .NET runtime | `8.0.29` |
 | Windows Desktop Runtime | `8.0.29` |
-| Runtime identifier | `win-x64` |
+| RID | `win-x64` |
 | Publish mode | self-contained single-file |
 
-The official .NET 8 release metadata is obtained from:
+## Evidence sources
 
-`https://builds.dotnet.microsoft.com/dotnet/release-metadata/8.0/releases.json`
+1. `project.assets.json` identifies exact runtime packs selected by restore.
+2. The official, hash-verified matching SDK ZIP supplies Microsoft's `LICENSE.txt` and `ThirdPartyNotices.txt`.
 
-The matching Microsoft release notes identify .NET Runtime `8.0.29` and SDK `8.0.423` as one release train:
+The restore graph identifies selected packs; the SDK archive supplies the authoritative legal text for the same release train.
 
-`https://github.com/dotnet/core/blob/main/release-notes/8.0/8.0.29/8.0.29.md`
+## Exact-version generator
 
-## Two authoritative evidence sources
-
-The exact-version generator deliberately uses separate sources for separate facts:
-
-1. `src/SightAdapt/obj/project.assets.json`, produced by the actual restore, identifies the exact runtime packs selected for the release build;
-2. the official, hash-verified `.NET SDK 8.0.423 win-x64` ZIP supplies Microsoft's authoritative `LICENSE.txt` and `ThirdPartyNotices.txt` for that same release train.
-
-The standalone Windows Desktop Runtime ZIP does not contain those two legal files. The matching SDK archive is therefore used as the legal-text source, while the actual application's restore graph remains the authority for which runtime packs and versions are associated with the SightAdapt build.
-
-## Exact-version generator behavior
-
-After `dotnet restore` and `dotnet publish`, run:
+Run after restore and publish:
 
 ```powershell
 .\tools\generate-dotnet-notices.ps1 `
@@ -48,81 +36,60 @@ After `dotnet restore` and `dotnet publish`, run:
 
 The generator:
 
-1. requires the exact SDK selected by `global.json`;
-2. reads `project.frameworks.*.downloadDependencies` from the restored `project.assets.json`;
-3. requires exact-version entries for `Microsoft.NETCore.App.Runtime.win-x64` and `Microsoft.WindowsDesktop.App.Runtime.win-x64`;
-4. records the SDK-selected ASP.NET Core runtime pack when present, but does not claim that ASP.NET components are shipped unless they appear in the final package inventory;
-5. fails if a runtime pack is outside the reviewed mapping, uses a non-exact version range or differs from the pinned runtime version;
-6. confirms that Microsoft's release metadata maps runtime `8.0.29`, Windows Desktop Runtime `8.0.29` and SDK `8.0.423` to the same release;
-7. locates the exact official SDK ZIP for `win-x64`;
-8. downloads that SDK ZIP and verifies its published SHA-512 hash;
-9. imports `LICENSE.txt` and `ThirdPartyNotices.txt` from the verified SDK archive;
-10. records the source URL, package checksum, imported-file checksums, versions, RID, publish mode, restore framework and mapped runtime packs;
-11. writes these package-root files:
-    - `THIRD-PARTY-NOTICES.txt`;
-    - `DOTNET-LICENSE-NOTICE.txt`;
-    - `DOTNET-NOTICE-METADATA.json`.
+- requires the exact pinned SDK;
+- reads exact runtime-pack versions from the restore graph;
+- rejects unreviewed or mismatched packs;
+- confirms the SDK/runtime release mapping;
+- downloads the official SDK ZIP and verifies SHA-512;
+- imports `LICENSE.txt` and `ThirdPartyNotices.txt`;
+- records URLs, versions, packs and checksums;
+- writes `THIRD-PARTY-NOTICES.txt`, `DOTNET-LICENSE-NOTICE.txt` and `DOTNET-NOTICE-METADATA.json`.
 
-The imported Microsoft text is not substantively rewritten. SightAdapt adds a metadata header so a recipient can identify the exact source and release mapping used by the build.
+## Maintainer-reviewed redistribution notice
 
-## Reviewed redistribution notice
-
-After exact-version metadata exists, run:
+Then run:
 
 ```powershell
 .\tools\generate-dotnet-redistribution-notice.ps1 `
     -PublishDirectory .\artifacts\win-x64
 ```
 
-This generator does not invent separate legal text. It renders the reviewed wording from `release/MICROSOFT-DOTNET-REDISTRIBUTION.template.txt` and inserts canonical release metadata. Before writing `MICROSOFT-DOTNET-REDISTRIBUTION.txt`, it verifies:
+It renders `release/MICROSOFT-DOTNET-REDISTRIBUTION.template.txt` using canonical release metadata. Before writing the package notice, it verifies:
 
-- the reviewed SDK/runtime/TFM/RID/publish configuration;
-- the reviewed template SHA-256;
-- the professional-review status and Issue #93 linkage;
-- the previously generated exact-version metadata for the same artifact.
+- reviewed SDK/runtime/TFM/RID/publish values;
+- reviewed template SHA-256;
+- maintainer decision status, owner and issue record;
+- exact-version metadata for the same artifact.
 
-Product-version updates are rendered automatically. A change to SDK, runtime, target framework, RID, publish mode or reviewed wording fails until the review record is deliberately updated.
+A `blocked` maintainer decision fails packaging. No external legal audit is required or planned.
 
 ## Archive validation
 
-`tools/test-release-package.ps1` opens the final ZIP and verifies that:
+`tools/test-release-package.ps1` verifies:
 
-- all required files are present and readable;
-- the notice metadata matches `Directory.Build.props`;
-- the source package and imported-file checksums are recorded;
-- both required runtime packs are mapped at the pinned version;
-- `THIRD-PARTY-NOTICES.txt` is an exact-version generated file rather than the repository baseline;
-- the generated redistribution notice headers match the product, SDK, runtime, TFM, RID, publish mode, review date and professional-review state.
+- required files and UTF-8 readability;
+- exact notice metadata and checksums;
+- required runtime-pack mapping;
+- generated third-party notice identity;
+- redistribution notice headers for product, SDK, runtime, TFM, RID, publish mode, review date and maintainer decision.
 
-The workflow runs this check before artifact upload. CI diagnostics also retain `project.assets.json` so the restore graph used by the generator can be reviewed after the run.
+CI runs the validator before artifact upload and retains `project.assets.json` in diagnostics.
 
 ## Updating .NET
 
-A .NET update must change all related inputs in one pull request:
+A .NET update must:
 
-1. update `global.json`;
-2. update the expected .NET properties in `Directory.Build.props`;
-3. confirm that official release metadata maps the selected runtime and Windows Desktop Runtime to the selected SDK;
-4. update `release/dotnet-redistribution-review.json` after reviewing the new SDK/runtime/TFM/RID/publish configuration;
-5. run restore, publish, exact-version notice generation and reviewed redistribution-notice generation;
-6. inspect the restored `downloadDependencies`, `DOTNET-NOTICE-METADATA.json`, generated redistribution notice and imported notice text;
-7. review any runtime pack that is not already in the explicit mapping;
-8. run the stale-notice negative test and final-package validation;
-9. update this document's reviewed-version table.
-
-Changing only one version causes release-metadata verification, generation or final-package validation to fail.
+1. update `global.json` and `Directory.Build.props`;
+2. confirm the official SDK/runtime mapping;
+3. update `release/dotnet-redistribution-review.json` after maintainer review;
+4. regenerate exact-version and redistribution notices;
+5. inspect restore dependencies, metadata and generated text;
+6. review new runtime packs;
+7. run stale-notice negative validation and final-package validation;
+8. update reviewed-version documentation.
 
 ## Review triggers
 
-Repeat the notice and redistribution review when any of these changes:
+Repeat the maintainer review when SDK/runtime, TFM, RID, publish settings, runtime packs, Microsoft licensing sources or redistribution wording change.
 
-- .NET SDK or runtime patch;
-- target framework;
-- runtime identifier;
-- self-contained/framework-dependent setting;
-- single-file, trimming, ReadyToRun or Native AOT setting;
-- runtime pack or native component mapping;
-- official Microsoft licensing source or distribution terms;
-- reviewed redistribution wording.
-
-Do not publish an official binary when the authoritative package cannot be downloaded, its hash does not match, its notice files are absent, the redistribution review record is stale, or a restored runtime component is not mapped to reviewed notice material.
+Do not publish when the authoritative package cannot be verified, notice files are absent, the review record is stale, the maintainer decision is blocked or a runtime component is not mapped to reviewed notice material.
