@@ -18,7 +18,9 @@ Every human-authored commit in a pull request must contain:
 Signed-off-by: Full Name <email@example.com>
 ```
 
-The name and email must identify the person making the certification. A GitHub no-reply address may be used. Add the trailer automatically with:
+The name and email must identify the commit author or committer making the certification. A GitHub no-reply address may be used. A trailer for an unrelated identity does not satisfy the check.
+
+Add the trailer automatically with:
 
 ```bash
 git commit --signoff
@@ -59,10 +61,18 @@ AI tools do not provide provenance or permission. A contributor using AI assista
 - documenting material AI assistance in the pull request;
 - ensuring that the contributor can make the DCO certification for the final contribution.
 
-## Exceptions
+## Bot exceptions
 
-A DCO exception is not granted merely because adding a sign-off is inconvenient. Bot-generated dependency or maintenance commits may use the documented bot exception when the bot identity and generated source are clear. Any other exception requires a maintainer decision recorded in `docs/legal/CONTRIBUTION-EXCEPTIONS.md`. Supporting permissions that contain confidential information are retained outside the public repository; the public record identifies the scope, reviewer, date and decision without publishing privileged or personal material.
+Bot exceptions are disabled by default. Text such as `[bot]` in commit author metadata does not create an exception.
+
+An unsigned automated commit may be exempt only when the pull-request actor and commit metadata match one exact trusted record in `.github/dco-bot-allowlist.json`. A record contains the GitHub login, numeric account ID, account type and permitted author/committer emails. Adding a bot requires a focused provenance review and update to `docs/legal/CONTRIBUTION-EXCEPTIONS.md`.
+
+Any other exception requires a maintainer decision recorded in `docs/legal/CONTRIBUTION-EXCEPTIONS.md`. Supporting permissions that contain confidential information are retained outside the public repository; the public record identifies the scope, reviewer, date and decision without publishing privileged or personal material.
 
 ## Enforcement
 
-`.github/workflows/dco.yml` checks every non-bot commit in a pull request for a valid `Signed-off-by` trailer. The DCO status should be configured as a required branch-protection check for protected branches. A pull request must not be merged while the DCO check is failing or a required provenance disclosure is unresolved.
+`.github/workflows/dco.yml` runs repository-owned policy fixtures and checks every pull-request commit using `tools/verify-dco.sh`. The check requires an identity-matching sign-off or an exact trusted-bot allowlist match.
+
+The `main` branch must require the `Verify commit sign-offs` status and the build/test status before merge, require pull requests, and block direct/force pushes and deletion as documented in `docs/legal/REPOSITORY-PROTECTION.md`.
+
+A pull request must not be merged while the DCO check is failing or a required provenance disclosure is unresolved.
