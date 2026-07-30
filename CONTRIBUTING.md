@@ -16,7 +16,11 @@ Create signed-off commits with:
 git commit --signoff
 ```
 
-The sign-off certifies that the contributor created the work or is authorized to submit it, and that it may be distributed under the repository's MIT License subject to clearly identified compatible third-party terms. The DCO workflow must pass before merge.
+The sign-off certifies that the contributor created the work or is authorized to submit it, and that it may be distributed under the repository's MIT License subject to clearly identified compatible third-party terms. The trailer must match the commit author or committer identity. The DCO workflow must pass before merge.
+
+Bot exceptions are disabled by default. An author name or email containing `[bot]` is not trusted by itself. A bot may omit a personal sign-off only when the pull-request actor and commit emails match one exact record in `.github/dco-bot-allowlist.json`.
+
+The protected-branch requirements are documented in [Repository protection](docs/legal/REPOSITORY-PROTECTION.md).
 
 ## Product identity
 

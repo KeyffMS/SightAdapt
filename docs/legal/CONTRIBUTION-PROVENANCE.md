@@ -35,15 +35,32 @@ A review of the available commit history did not identify a separately attribute
 
 Existing third-party dependencies, Microsoft runtime content and brand/source assets are governed separately by the dependency, notice and asset records in the repository; they are not treated as contributor-owned merely because they appear in repository or release files.
 
+## Automated enforcement
+
+The repository-owned verifier in `tools/verify-dco.sh` checks each pull-request commit. It requires a `Signed-off-by` trailer matching the commit author or committer identity.
+
+Unsigned bot commits are not recognized from author-name text. A bot exception requires an exact match against `.github/dco-bot-allowlist.json` using the pull-request actor login, numeric GitHub account ID, actor type and commit author/committer emails. The allowlist is empty unless a focused provenance review adds a trusted automation identity.
+
+`tools/test-dco-policy.sh` proves that:
+
+- an identity-matching signed human commit passes;
+- an unsigned human commit fails;
+- a trailer for an unrelated identity fails;
+- spoofed `[bot]` metadata from a human pull-request actor fails;
+- an exact allowlisted GitHub bot identity passes;
+- the same metadata with a different numeric actor ID fails.
+
 ## Maintainer process
 
 Before merging a contribution, maintainers confirm:
 
 1. the DCO check passes for every non-exempt commit;
-2. the pull request contains the required provenance disclosures;
-3. third-party terms are known and compatible;
-4. any employer/client authority is credible;
-5. AI-assisted material has documented human review;
-6. any exception has a public decision record and private evidence where necessary.
+2. each accepted trailer matches the commit author or committer identity;
+3. any bot exception matches an exact trusted allowlist record;
+4. the pull request contains the required provenance disclosures;
+5. third-party terms are known and compatible;
+6. any employer/client authority is credible;
+7. AI-assisted material has documented human review;
+8. any exception has a public decision record and private evidence where necessary.
 
-Repository or branch settings should require the DCO workflow status before merge. Direct pushes to protected branches should be restricted to maintainers and used only under the same provenance obligations.
+The `main` branch must require pull requests, the `Verify commit sign-offs` status and the build/test status, and must block direct/force pushes and deletion. The exact repository settings and evidence requirements are documented in [`REPOSITORY-PROTECTION.md`](REPOSITORY-PROTECTION.md).

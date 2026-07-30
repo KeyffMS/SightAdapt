@@ -9,24 +9,32 @@ Confidential employer permissions, contracts, legal advice and personal informat
 - date;
 - pull request or commit;
 - contribution scope;
-- contributor or bot identity;
+- contributor or automation identity;
 - reason the ordinary DCO path was unavailable;
 - license and provenance reviewed;
 - supporting evidence location or custodian, without publishing confidential contents;
 - maintainer reviewer;
 - decision and conditions.
 
-## Standing bot exception
+## Bot exceptions
 
-Automated commits from clearly identified maintenance bots may omit a personal DCO trailer when:
+There is no standing exception based on an author name or email ending with `[bot]`.
 
-- the bot identity ends with `[bot]`;
+An unsigned automated commit may be exempt only when:
+
+- the pull-request actor login, numeric GitHub ID and actor type match one exact record in `.github/dco-bot-allowlist.json`;
+- the commit author and committer emails match the same record;
 - the generated source and changed dependency or file are clear from the pull request;
 - a human maintainer reviews the resulting diff, license and provenance before merge;
-- the contribution does not introduce unknown or incompatible material.
+- the contribution does not introduce unknown or incompatible material;
+- the allowlist addition or exception decision is reviewed in a focused pull request.
 
-The DCO workflow exempts bot-authored commits on this basis. A bot exception does not exempt the pull request from dependency, license or maintainer review.
+The allowlist is empty by default. A bot exception does not exempt the pull request from dependency, license, build or maintainer review.
+
+## Emergency repository-protection exceptions
+
+A temporary bypass of protected-branch settings requires a record containing the reason, exact duration, affected commit or pull request, reviewer, supporting evidence and restoration confirmation. A standing administrator bypass is not permitted by policy.
 
 ## Recorded exceptions
 
-None as of 2026-07-29.
+None as of 2026-07-30.
