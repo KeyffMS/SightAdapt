@@ -20,42 +20,17 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
 
-      - name: Verify DCO trailers
+      - name: Verify DCO policy fixtures
+        shell: bash
+        run: bash tools/test-dco-policy.sh
+
+      - name: Verify pull-request commit sign-offs
         shell: bash
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-        run: |
-          set -euo pipefail
-
-          missing=0
-          checked=0
-
-          while IFS= read -r commit; do
-            author_name="$(git show -s --format='%an' "$commit")"
-            author_email="$(git show -s --format='%ae' "$commit")"
-
-            if [[ "$author_name" == *"[bot]"* ]] ||
-               [[ "$author_email" == *"[bot]@users.noreply.github.com" ]]; then
-              echo "Bot exception: $commit $author_name <$author_email>"
-              continue
-            fi
-
-            checked=$((checked + 1))
-            if ! git show -s --format='%B' "$commit" |
-                 grep -Eq '^Signed-off-by: .+ <[^<>[:space:]]+@[^<>[:space:]]+>$'; then
-              echo "::error::Commit $commit by $author_name <$author_email> lacks a valid Signed-off-by trailer."
-              missing=1
-            fi
-          done < <(git rev-list "${BASE_SHA}..${HEAD_SHA}")
-
-          if [[ "$checked" -eq 0 ]]; then
-            echo "No human-authored commits require DCO verification."
-          fi
-
-          if [[ "$missing" -ne 0 ]]; then
-            echo "Add a DCO trailer with: git commit --amend --signoff"
-            exit 1
-          fi
-
-          echo "DCO verified for $checked human-authored commit(s)."
+          PR_ACTOR_LOGIN: ${{ github.event.pull_request.user.login }}
+          PR_ACTOR_ID: ${{ github.event.pull_request.user.id }}
+          PR_ACTOR_TYPE: ${{ github.event.pull_request.user.type }}
+          DCO_BOT_ALLOWLIST_PATH: ${{ github.workspace }}/.github/dco-bot-allowlist.json
+        run: bash tools/verify-dco.sh
