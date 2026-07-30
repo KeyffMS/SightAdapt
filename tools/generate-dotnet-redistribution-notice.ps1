@@ -67,7 +67,7 @@ $projectGroup = @($project.Project.PropertyGroup) | Select-Object -First 1
 $targetFramework = [string]$projectGroup.TargetFramework
 
 $review = Get-Content -LiteralPath $resolvedReview -Raw | ConvertFrom-Json
-if ([int]$review.schemaVersion -ne 1) {
+if ([int]$review.schemaVersion -ne 2) {
     throw "Unsupported .NET redistribution review schema '$($review.schemaVersion)'."
 }
 if ([string]$review.reviewedAt -notmatch '^\d{4}-\d{2}-\d{2}$') {
@@ -93,34 +93,29 @@ Assert-Equal 'Redistribution notice template SHA-256' `
     $templateHash `
     ([string]$review.noticeTemplate.sha256).ToLowerInvariant()
 
-$professional = $review.professionalReview
-$status = [string]$professional.status
-$allowedStatuses = @('not-obtained', 'approved-with-conditions', 'approved')
-if ($allowedStatuses -notcontains $status) {
-    throw "Unsupported professional-review status '$status'."
+$decision = $review.maintainerDecision
+$decisionStatus = [string]$decision.status
+$allowedStatuses = @(
+    'accepted-for-current-distribution',
+    'accepted-with-conditions',
+    'blocked')
+if ($allowedStatuses -notcontains $decisionStatus) {
+    throw "Unsupported maintainer decision '$decisionStatus'."
 }
-$trackingIssue = [int]$professional.trackingIssue
-if ($trackingIssue -ne 93) {
-    throw 'The professional-review tracking issue must be Issue #93.'
+$decisionOwner = [string]$decision.decisionOwner
+if ([string]::IsNullOrWhiteSpace($decisionOwner)) {
+    throw 'The .NET redistribution maintainer decision requires a decision owner.'
 }
-$publicRecord = [string]$professional.publicRecord
-if ($status -ne 'not-obtained') {
-    if ([string]::IsNullOrWhiteSpace($publicRecord)) {
-        throw "Professional-review status '$status' requires a public decision record."
-    }
-    $publicRecordPath = Join-Path $root $publicRecord
-    if (-not [System.IO.File]::Exists($publicRecordPath)) {
-        throw "Professional-review public record does not exist: $publicRecord"
-    }
+$decisionIssue = [int]$decision.decisionIssue
+if ($decisionIssue -le 0) {
+    throw 'The .NET redistribution maintainer decision requires a positive issue number.'
 }
-elseif (-not [string]::IsNullOrWhiteSpace($publicRecord)) {
-    throw 'Professional-review status not-obtained must not identify an approval record.'
+if ($decisionStatus -eq 'blocked') {
+    throw 'The .NET redistribution maintainer decision blocks packaging.'
 }
-$publicRecordDisplay = if ([string]::IsNullOrWhiteSpace($publicRecord)) {
-    'none'
-}
-else {
-    $publicRecord
+if ($decisionStatus -eq 'accepted-with-conditions' -and
+    @($decision.conditions).Count -eq 0) {
+    throw 'A conditional maintainer decision must list its conditions.'
 }
 
 $dotnetMetadataPath = Join-Path $publish 'DOTNET-NOTICE-METADATA.json'
@@ -148,9 +143,9 @@ $replacements = [ordered]@{
     '{{RUNTIME_IDENTIFIER}}' = $rid
     '{{PUBLISH_MODE}}' = $publishMode
     '{{REVIEW_DATE}}' = [string]$review.reviewedAt
-    '{{PROFESSIONAL_REVIEW_STATUS}}' = $status
-    '{{PROFESSIONAL_REVIEW_ISSUE}}' = [string]$trackingIssue
-    '{{PROFESSIONAL_REVIEW_RECORD}}' = $publicRecordDisplay
+    '{{MAINTAINER_DECISION}}' = $decisionStatus
+    '{{DECISION_OWNER}}' = $decisionOwner
+    '{{DECISION_ISSUE}}' = [string]$decisionIssue
 }
 foreach ($replacement in $replacements.GetEnumerator()) {
     $rendered = $rendered.Replace(
@@ -167,4 +162,4 @@ $outputPath = Join-Path $publish 'MICROSOFT-DOTNET-REDISTRIBUTION.txt'
     $rendered,
     [System.Text.UTF8Encoding]::new($false))
 
-Write-Host "Generated reviewed Microsoft .NET redistribution notice: $outputPath"
+Write-Host "Generated maintainer-reviewed Microsoft .NET redistribution notice: $outputPath"
