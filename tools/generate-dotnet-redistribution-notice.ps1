@@ -34,6 +34,20 @@ function Assert-Equal(
     }
 }
 
+function Get-NormalizedTextSha256([string]$Path) {
+    $text = Get-Content -LiteralPath $Path -Raw
+    $normalized = $text.Replace("`r`n", "`n").Replace("`r", "`n")
+    $bytes = [System.Text.UTF8Encoding]::new($false).GetBytes($normalized)
+    $sha256 = [System.Security.Cryptography.SHA256]::Create()
+    try {
+        return [System.BitConverter]::ToString(
+            $sha256.ComputeHash($bytes)).Replace('-', '').ToLowerInvariant()
+    }
+    finally {
+        $sha256.Dispose()
+    }
+}
+
 $publish = [System.IO.Path]::GetFullPath($PublishDirectory)
 [System.IO.Directory]::CreateDirectory($publish) | Out-Null
 $resolvedReview = (Resolve-Path -LiteralPath $ReviewPath).Path
@@ -74,7 +88,7 @@ Assert-Equal 'Redistribution notice template path' `
     $templateRelativePath `
     ([string]$review.noticeTemplate.path)
 
-$templateHash = (Get-FileHash -LiteralPath $resolvedTemplate -Algorithm SHA256).Hash.ToLowerInvariant()
+$templateHash = Get-NormalizedTextSha256 $resolvedTemplate
 Assert-Equal 'Redistribution notice template SHA-256' `
     $templateHash `
     ([string]$review.noticeTemplate.sha256).ToLowerInvariant()
