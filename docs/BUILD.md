@@ -6,29 +6,19 @@ These steps create a self-contained Windows x64 executable and verified ZIP.
 
 Use Windows 10/11 x64 and the exact SDK pinned in `global.json`.
 
-Current release inputs:
-
 ```text
 .NET SDK 8.0.423
 .NET Runtime 8.0.29
 Windows Desktop Runtime 8.0.29
 ```
 
-Verify:
-
-```powershell
-dotnet --version
-```
-
-SDK roll-forward is disabled.
-
-## 1. Verify release metadata and maintainer decision
+## 1. Verify metadata
 
 ```powershell
 .\tools\verify-release-metadata.ps1
 ```
 
-`Directory.Build.props` is the canonical source for product, SDK, runtime, RID, publish-mode and artifact metadata. The check compares it with the project, `global.json`, the reviewed redistribution-template SHA-256 and the maintainer decision in `release/dotnet-redistribution-review.json`. A mismatched configuration or `blocked` decision stops the build.
+`Directory.Build.props` is the canonical source for product, SDK, runtime, RID, publish mode and artifact metadata. A mismatched reviewed configuration or blocked maintainer decision stops the build.
 
 ## 2. Restore and test
 
@@ -41,9 +31,7 @@ dotnet test .\tests\SightAdapt.Tests\SightAdapt.Tests.csproj `
     --no-restore
 ```
 
-The application restore graph is the authority for exact runtime-pack identities.
-
-## 3. Publish
+## 3. Publish and capture bundle inputs
 
 ```powershell
 dotnet publish .\src\SightAdapt\SightAdapt.csproj `
@@ -52,50 +40,80 @@ dotnet publish .\src\SightAdapt\SightAdapt.csproj `
     --output .\artifacts\win-x64
 ```
 
-The static legal baseline is copied to the publish directory. During single-file publication, the project captures the SDK-provided `FilesToBundle` list into `artifacts\dotnet-files-to-bundle.tsv`. This temporary file identifies the exact inputs embedded in `SightAdapt.exe`; it is converted into sanitized component evidence and is not copied into the release ZIP.
+The project captures the SDK-provided `FilesToBundle` list in `artifacts\dotnet-files-to-bundle.tsv`. This temporary file identifies exact single-file inputs; absolute paths are not copied into the release ZIP.
 
-## 4. Generate exact-version Microsoft notices
+## 4. Import exact official .NET notices
 
 ```powershell
 .\tools\generate-dotnet-notices.ps1 `
     -PublishDirectory .\artifacts\win-x64
 ```
 
-This step:
+This verifies the runtime release train and official SDK ZIP SHA-512, then writes the exact Microsoft license, third-party notices and base metadata.
 
-- validates the exact restored runtime packs and their NuGet SHA-512 evidence;
-- maps every runtime-pack file embedded through `FilesToBundle`;
-- maps every loose runtime binary by filename and SHA-256 to an exact runtime-pack asset;
-- rejects any package-cache or loose binary component without a reviewed mapping;
-- downloads the matching official SDK ZIP and verifies SHA-512;
-- imports the exact Microsoft license and third-party notice material;
-- writes `THIRD-PARTY-NOTICES.txt`, `DOTNET-LICENSE-NOTICE.txt` and schema-2 `DOTNET-NOTICE-METADATA.json`.
+## 5. Generate component-level notice coverage
 
-The metadata contains one sanitized entry per runtime component, including embedded/loose disposition, package, package-relative asset path, kind and SHA-256.
+```powershell
+.\tools\generate-dotnet-component-coverage.ps1 `
+    -PublishDirectory .\artifacts\win-x64
+```
 
-## 5. Generate the maintainer-reviewed redistribution notice
+This maps every embedded package asset and every loose runtime binary to:
+
+- exact package and version;
+- package SHA-512;
+- package-relative asset path;
+- component SHA-256;
+- reviewed notice mapping.
+
+The step also adds exact package notice sections for components not covered by the official .NET release bundle. Unreviewed, non-shipped or unmapped package components fail the build.
+
+## 6. Generate redistribution summary
 
 ```powershell
 .\tools\generate-dotnet-redistribution-notice.ps1 `
     -PublishDirectory .\artifacts\win-x64
 ```
 
-This verifies the reviewed configuration, template checksum, maintainer decision and exact-version metadata, then writes `MICROSOFT-DOTNET-REDISTRIBUTION.txt`.
-
-No external legal audit is required by the project plan. The generated file remains an internal project notice, not legal advice or clearance.
-
-## 6. Generate SBOM and license report
+## 7. Generate SBOM and license report
 
 ```powershell
 .\tools\generate-sbom.ps1 `
     -PublishDirectory .\artifacts\win-x64
 ```
 
-This creates `DEPENDENCIES.md`, `SBOM.spdx.json` and `LICENSE-REPORT.json`.
+## 8. Run negative checks
 
-## 7. Inspect the staged directory
+```powershell
+.\tools\test-release-compliance-negative.ps1 `
+    -PublishDirectory .\artifacts\win-x64
+```
 
-At minimum:
+The validators must reject incomplete, stale and deliberately unmapped packages.
+
+## 9. Create and verify the final ZIP
+
+```powershell
+$archive = '.\artifacts\SightAdapt-0.5.0.50-alpha-win-x64.zip'
+$report = '.\artifacts\SightAdapt-0.5.0.50-alpha-win-x64-compliance.json'
+
+Compress-Archive `
+    -Path '.\artifacts\win-x64\*' `
+    -DestinationPath $archive `
+    -CompressionLevel Optimal
+
+.\tools\verify-release-compliance.ps1 `
+    -DirectoryPath .\artifacts\win-x64 `
+    -ArchivePath $archive `
+    -ReportPath $report
+
+.\tools\verify-dotnet-component-coverage.ps1 `
+    -ArchivePath $archive
+```
+
+Retain the verified archive and compliance report together.
+
+## Expected package root
 
 ```text
 SightAdapt.exe
@@ -111,49 +129,7 @@ LICENSE-REPORT.json
 PRIVACY.md
 ```
 
-Additional loose native runtime DLLs may be present. Every such binary must have a matching component entry in `DOTNET-NOTICE-METADATA.json`.
-
-## 8. Run negative package checks
-
-```powershell
-.\tools\test-release-compliance-negative.ps1 `
-    -PublishDirectory .\artifacts\win-x64
-```
-
-The validator must reject:
-
-- an incomplete package;
-- a package with stale redistribution metadata;
-- a package containing a runtime binary whose component mapping was removed.
-
-## 9. Create and verify the final archive
-
-```powershell
-$archive = '.\artifacts\SightAdapt-0.5.0.50-alpha-win-x64.zip'
-$report = '.\artifacts\SightAdapt-0.5.0.50-alpha-win-x64-compliance.json'
-
-Compress-Archive `
-    -Path '.\artifacts\win-x64\*' `
-    -DestinationPath $archive `
-    -CompressionLevel Optimal
-
-.\tools\verify-release-compliance.ps1 `
-    -DirectoryPath .\artifacts\win-x64 `
-    -ArchivePath $archive `
-    -ReportPath $report
-```
-
-Final validation opens the ZIP, verifies every loose binary hash against the component map, checks embedded-component inventory totals, validates exact notice sources and confirms all other package invariants. Retain the compliance report with the archive.
-
-## 10. Run and inspect the version
-
-```powershell
-.\artifacts\win-x64\SightAdapt.exe
-
-$process = Get-Process SightAdapt
-(Get-Item $process.Path).VersionInfo |
-    Format-List ProductVersion, FileVersion
-```
+Additional loose native runtime DLLs are allowed only when schema-2 metadata maps each file by exact output path and SHA-256.
 
 ## Clean rebuild
 
@@ -164,4 +140,4 @@ Remove-Item .\artifacts\SightAdapt-*-win-x64.zip -Force -ErrorAction SilentlyCon
 Remove-Item .\artifacts\SightAdapt-*-win-x64-compliance.json -Force -ErrorAction SilentlyContinue
 ```
 
-A release must not be published if metadata review, bundle capture, runtime-component mapping, notice generation, the maintainer decision, negative checks or final-package validation fail.
+Do not publish when metadata review, notice import, component coverage, SBOM/license review, negative checks or final-package validation fails.
