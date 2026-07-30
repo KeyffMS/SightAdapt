@@ -28,7 +28,7 @@ SDK roll-forward is disabled.
 .\tools\verify-release-metadata.ps1
 ```
 
-This checks product/SDK/runtime/TFM/RID/publish metadata, the reviewed redistribution-template SHA-256 and the maintainer decision in `release/dotnet-redistribution-review.json`. A mismatched configuration or `blocked` decision stops the build.
+`Directory.Build.props` is the canonical source for product, SDK, runtime, RID, publish-mode and artifact metadata. The check compares it with the project, `global.json`, the reviewed redistribution-template SHA-256 and the maintainer decision in `release/dotnet-redistribution-review.json`. A mismatched configuration or `blocked` decision stops the build.
 
 ## 2. Restore and test
 
