@@ -1,7 +1,15 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
+  "inventoryMode": "automatic-from-complete-restore-graphs-and-publish-evidence",
   "allowedLicenseExpressions": [
     "MIT",
+    "Apache-2.0",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "ISC",
+    "MS-PL",
+    "Zlib",
+    "Unicode-3.0",
     "LicenseRef-Microsoft-DotNet-Distribution",
     "LicenseRef-Microsoft-Windows-SDK-Reference-Terms"
   ],
@@ -13,6 +21,31 @@
     "NOASSERTION",
     "UNKNOWN"
   ],
+  "reviewLicenseExpressions": [
+    "LGPL-*",
+    "MPL-*",
+    "EPL-*",
+    "CDDL-*",
+    "LicenseRef-*"
+  ],
+  "licenseReferences": {
+    "LicenseRef-Microsoft-DotNet-Distribution": {
+      "name": "Microsoft .NET distribution terms and component notices",
+      "extractedText": "See DOTNET-LICENSE-NOTICE.txt, THIRD-PARTY-NOTICES.txt, MICROSOFT-DOTNET-REDISTRIBUTION.txt and DOTNET-NOTICE-METADATA.json in the same package.",
+      "seeAlsos": [
+        "https://dotnet.microsoft.com/en-us/dotnet_library_license.htm",
+        "https://github.com/dotnet/core/blob/main/license-information.md"
+      ]
+    },
+    "LicenseRef-Microsoft-Windows-SDK-Reference-Terms": {
+      "name": "Microsoft Windows SDK .NET package terms",
+      "extractedText": "The exact Microsoft.Windows.SDK.NET.Ref package contributes embedded assemblies to SightAdapt.exe. Its package SHA-512, nuspec SHA-256, license URL and component hashes are retained in DOTNET-NOTICE-METADATA.json and THIRD-PARTY-NOTICES.txt.",
+      "seeAlsos": [
+        "https://aka.ms/WinSDKLicenseURL",
+        "https://www.nuget.org/packages/Microsoft.Windows.SDK.NET.Ref"
+      ]
+    }
+  },
   "components": {
     "SightAdapt": {
       "expectedVersionSource": "product",
@@ -49,9 +82,19 @@
       "scope": "restore-only",
       "shipped": false,
       "supplier": "Organization: Microsoft Corporation",
-      "license": "LicenseRef-Microsoft-DotNet-Distribution",
+      "license": "MIT",
       "source": "https://github.com/dotnet/aspnetcore",
       "purpose": "LIBRARY",
+      "expectedVersion": ""
+    },
+    "Microsoft.NET.ILLink.Tasks": {
+      "expectedVersionSource": "runtime",
+      "scope": "application-build",
+      "shipped": false,
+      "supplier": "Organization: Microsoft Corporation",
+      "license": "MIT",
+      "source": "https://github.com/dotnet/runtime",
+      "purpose": "OTHER",
       "expectedVersion": ""
     },
     "Microsoft.NET.Test.Sdk": {
@@ -83,6 +126,16 @@
       "source": "https://github.com/microsoft/testfx",
       "purpose": "OTHER",
       "expectedVersionSource": ""
+    },
+    "System.Reflection.Metadata": {
+      "expectedVersion": "1.6.0",
+      "expectedVersionSource": "",
+      "scope": "test-transitive",
+      "shipped": false,
+      "supplier": "Organization: Microsoft Corporation",
+      "license": "MIT",
+      "source": "https://www.nuget.org/packages/System.Reflection.Metadata/1.6.0",
+      "purpose": "OTHER"
     },
     "actions/checkout": {
       "expectedVersion": "v4",
@@ -134,13 +187,5 @@
       "source": "https://www.nuget.org/packages/Microsoft.Windows.SDK.NET.Ref",
       "purpose": "LIBRARY"
     }
-  },
-  "reviewLicenseExpressions": [
-    "LGPL-2.1-only",
-    "LGPL-3.0-only",
-    "MPL-2.0",
-    "EPL-2.0",
-    "CDDL-1.0",
-    "LicenseRef-*"
-  ]
+  }
 }

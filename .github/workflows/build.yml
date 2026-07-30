@@ -72,6 +72,7 @@ jobs:
             test-output.txt
             TestResults/SightAdapt.trx
             src/SightAdapt/obj/project.assets.json
+            tests/SightAdapt.Tests/obj/project.assets.json
           if-no-files-found: warn
           retention-days: 7
 
@@ -104,6 +105,12 @@ jobs:
         shell: pwsh
         run: >-
           .\tools\generate-sbom.ps1
+          -PublishDirectory artifacts/win-x64
+
+      - name: Verify unknown transitive licenses are rejected
+        shell: pwsh
+        run: >-
+          .\tools\test-sbom-license-negative.ps1
           -PublishDirectory artifacts/win-x64
 
       - name: Verify incomplete, stale and unmapped packages are rejected

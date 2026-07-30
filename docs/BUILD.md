@@ -31,6 +31,8 @@ dotnet test .\tests\SightAdapt.Tests\SightAdapt.Tests.csproj `
     --no-restore
 ```
 
+Both `project.assets.json` files are required later. The SBOM generator reads all package entries and dependency edges from the application and test restore graphs, not only direct `PackageReference` elements.
+
 ## 3. Publish and capture bundle inputs
 
 ```powershell
@@ -82,14 +84,19 @@ The step also adds exact package notice sections for components not covered by t
     -PublishDirectory .\artifacts\win-x64
 ```
 
+The generator writes `DEPENDENCIES.md`, schema-2 `LICENSE-REPORT.json` and SPDX 2.3 `SBOM.spdx.json` from the same inventory. For every NuGet package it retains exact package SHA-512 and `.nuspec` SHA-256 plus declared license metadata. Direct and transitive application/test packages are discovered automatically; the dependency policy supplies decisions and custom overrides rather than the inventory itself.
+
 ## 8. Run negative checks
 
 ```powershell
+.\tools\test-sbom-license-negative.ps1 `
+    -PublishDirectory .\artifacts\win-x64
+
 .\tools\test-release-compliance-negative.ps1 `
     -PublishDirectory .\artifacts\win-x64
 ```
 
-The validators must reject incomplete, stale and deliberately unmapped packages.
+The validators must reject a transitive package with no resolved license, an incomplete package, stale redistribution metadata and a package with a deliberately removed component mapping.
 
 ## 9. Create and verify the final ZIP
 
@@ -111,7 +118,7 @@ Compress-Archive `
     -ArchivePath $archive
 ```
 
-Retain the verified archive and compliance report together.
+The compliance gate checks license evidence, package counts, graph edges and scope-aware SPDX relationships in addition to the existing package invariants. Retain the verified archive and compliance report together.
 
 ## Expected package root
 
@@ -140,4 +147,4 @@ Remove-Item .\artifacts\SightAdapt-*-win-x64.zip -Force -ErrorAction SilentlyCon
 Remove-Item .\artifacts\SightAdapt-*-win-x64-compliance.json -Force -ErrorAction SilentlyContinue
 ```
 
-Do not publish when metadata review, notice import, component coverage, SBOM/license review, negative checks or final-package validation fails.
+Do not publish when metadata review, notice import, component coverage, complete dependency/license review, negative checks or final-package validation fails.
