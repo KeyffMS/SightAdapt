@@ -86,8 +86,8 @@ if ($allowedStatuses -notcontains $status) {
     throw "Unsupported professional-review status '$status'."
 }
 $trackingIssue = [int]$professional.trackingIssue
-if ($trackingIssue -le 0) {
-    throw 'The professional-review tracking issue must be a positive number.'
+if ($trackingIssue -ne 93) {
+    throw 'The professional-review tracking issue must be Issue #93.'
 }
 $publicRecord = [string]$professional.publicRecord
 if ($status -ne 'not-obtained') {
@@ -101,6 +101,12 @@ if ($status -ne 'not-obtained') {
 }
 elseif (-not [string]::IsNullOrWhiteSpace($publicRecord)) {
     throw 'Professional-review status not-obtained must not identify an approval record.'
+}
+$publicRecordDisplay = if ([string]::IsNullOrWhiteSpace($publicRecord)) {
+    'none'
+}
+else {
+    $publicRecord
 }
 
 $dotnetMetadataPath = Join-Path $publish 'DOTNET-NOTICE-METADATA.json'
@@ -130,12 +136,7 @@ $replacements = [ordered]@{
     '{{REVIEW_DATE}}' = [string]$review.reviewedAt
     '{{PROFESSIONAL_REVIEW_STATUS}}' = $status
     '{{PROFESSIONAL_REVIEW_ISSUE}}' = [string]$trackingIssue
-    '{{PROFESSIONAL_REVIEW_RECORD}}' = if ([string]::IsNullOrWhiteSpace($publicRecord)) {
-        'none'
-    }
-    else {
-        $publicRecord
-    }
+    '{{PROFESSIONAL_REVIEW_RECORD}}' = $publicRecordDisplay
 }
 foreach ($replacement in $replacements.GetEnumerator()) {
     $rendered = $rendered.Replace(
