@@ -43,8 +43,7 @@ $artifactName = ([string]$group.SightAdaptArtifactName).Replace(
     $productVersion)
 
 [xml]$project = Get-Content -LiteralPath (Join-Path $root 'src\SightAdapt\SightAdapt.csproj')
-$projectGroup = @($project.Project.PropertyGroup) | Select-Object -First 1
-$targetFramework = [string]$projectGroup.TargetFramework
+$targetFramework = [string](@($project.Project.PropertyGroup) | Select-Object -First 1).TargetFramework
 
 $requiredFiles = @(
     Get-Content -LiteralPath $manifest |
@@ -72,13 +71,11 @@ foreach ($requiredFile in $requiredFiles) {
         $failures.Add("Publish directory is missing required file '$requiredFile'.")
         continue
     }
-
     $item = Get-Item -LiteralPath $path
     if ($item.Length -le 0) {
         $failures.Add("Required file '$requiredFile' is empty in the publish directory.")
         continue
     }
-
     if ($requiredFile -match '\.(txt|md|json)$') {
         try {
             $text = Get-Content -LiteralPath $path -Raw -Encoding utf8
@@ -97,8 +94,7 @@ foreach ($requiredFile in $requiredFiles) {
 
 $expectedArchiveName = "$artifactName.zip"
 if ([System.IO.Path]::GetFileName($archivePathResolved) -ne $expectedArchiveName) {
-    $failures.Add(
-        "Archive name '$([System.IO.Path]::GetFileName($archivePathResolved))' does not match '$expectedArchiveName'.")
+    $failures.Add("Archive name '$([System.IO.Path]::GetFileName($archivePathResolved))' does not match '$expectedArchiveName'.")
 }
 
 try {
@@ -114,12 +110,8 @@ $archive = [System.IO.Compression.ZipFile]::OpenRead($archivePathResolved)
 try {
     $archiveFiles = @(
         $archive.Entries |
-            Where-Object {
-                -not [string]::IsNullOrWhiteSpace($_.Name)
-            } |
-            ForEach-Object {
-                $_.FullName.Replace('\', '/').TrimStart('/')
-            } |
+            Where-Object { -not [string]::IsNullOrWhiteSpace($_.Name) } |
+            ForEach-Object { $_.FullName.Replace('\', '/').TrimStart('/') } |
             Sort-Object
     )
 }
@@ -127,12 +119,10 @@ finally {
     $archive.Dispose()
 }
 
-$missingFromArchive = @($directoryFiles | Where-Object { $archiveFiles -notcontains $_ })
-$unexpectedInArchive = @($archiveFiles | Where-Object { $directoryFiles -notcontains $_ })
-foreach ($path in $missingFromArchive) {
+foreach ($path in @($directoryFiles | Where-Object { $archiveFiles -notcontains $_ })) {
     $failures.Add("Published file '$path' is missing from the final archive.")
 }
-foreach ($path in $unexpectedInArchive) {
+foreach ($path in @($archiveFiles | Where-Object { $directoryFiles -notcontains $_ })) {
     $failures.Add("Final archive contains unexpected file '$path' not present in the staged directory.")
 }
 
@@ -157,13 +147,18 @@ catch {
 }
 
 $redistributionReviewDate = $null
-$redistributionProfessionalStatus = $null
-$redistributionProfessionalIssue = $null
+$redistributionDecision = $null
+$redistributionDecisionOwner = $null
+$redistributionDecisionIssue = $null
 try {
     $redistributionReview = Get-Content -LiteralPath $redistributionReviewPath -Raw | ConvertFrom-Json
     $redistributionReviewDate = [string]$redistributionReview.reviewedAt
-    $redistributionProfessionalStatus = [string]$redistributionReview.professionalReview.status
-    $redistributionProfessionalIssue = [int]$redistributionReview.professionalReview.trackingIssue
+    $redistributionDecision = [string]$redistributionReview.maintainerDecision.status
+    $redistributionDecisionOwner = [string]$redistributionReview.maintainerDecision.decisionOwner
+    $redistributionDecisionIssue = [int]$redistributionReview.maintainerDecision.decisionIssue
+    if ($redistributionDecision -eq 'blocked') {
+        $failures.Add('The .NET redistribution maintainer decision blocks release packaging.')
+    }
 }
 catch {
     $failures.Add("The .NET redistribution review record cannot be read: $($_.Exception.Message)")
@@ -199,19 +194,12 @@ try {
     if ([string]$sbom.name -ne "SightAdapt-$productVersion-$rid") {
         $failures.Add("SBOM name '$($sbom.name)' does not match the release.")
     }
-
-    $sbomFiles = @($sbom.files | ForEach-Object {
-        ([string]$_.fileName).TrimStart('.', '/')
-    })
+    $sbomFiles = @($sbom.files | ForEach-Object { ([string]$_.fileName).TrimStart('.', '/') })
     foreach ($path in $directoryFiles) {
-        if ($path -eq 'SBOM.spdx.json') {
-            continue
-        }
-        if ($sbomFiles -notcontains $path) {
+        if ($path -ne 'SBOM.spdx.json' -and $sbomFiles -notcontains $path) {
             $failures.Add("SBOM does not contain shipped file '$path'.")
         }
     }
-
     $sightAdaptPackage = @($sbom.packages | Where-Object {
         [string]$_.name -eq 'SightAdapt' -and
         [string]$_.versionInfo -eq $productVersion
@@ -225,7 +213,7 @@ catch {
 }
 
 $report = [ordered]@{
-    schemaVersion = 1
+    schemaVersion = 2
     generatedAtUtc = [DateTime]::UtcNow.ToString('yyyy-MM-ddTHH:mm:ssZ')
     result = if ($failures.Count -eq 0) { 'pass' } else { 'fail' }
     productVersion = $productVersion
@@ -235,8 +223,9 @@ $report = [ordered]@{
     runtimeIdentifier = $rid
     publishMode = $publishMode
     redistributionReviewDate = $redistributionReviewDate
-    redistributionProfessionalStatus = $redistributionProfessionalStatus
-    redistributionProfessionalIssue = $redistributionProfessionalIssue
+    redistributionMaintainerDecision = $redistributionDecision
+    redistributionDecisionOwner = $redistributionDecisionOwner
+    redistributionDecisionIssue = $redistributionDecisionIssue
     redistributionNoticeSha256 = $redistributionNoticeSha256
     artifactName = $artifactName
     archiveFile = [System.IO.Path]::GetFileName($archivePathResolved)
