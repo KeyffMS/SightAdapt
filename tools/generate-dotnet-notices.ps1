@@ -6,8 +6,6 @@ param(
 
     [string]$AssetsPath,
 
-    [string]$BundleManifestPath,
-
     [string]$PropsPath
 )
 
@@ -21,80 +19,9 @@ if ([string]::IsNullOrWhiteSpace($PropsPath)) {
 if ([string]::IsNullOrWhiteSpace($AssetsPath)) {
     $AssetsPath = Join-Path $root 'src\SightAdapt\obj\project.assets.json'
 }
-if ([string]::IsNullOrWhiteSpace($BundleManifestPath)) {
-    $BundleManifestPath = Join-Path $root 'artifacts\dotnet-files-to-bundle.tsv'
-}
-
-function Get-FileSha256([string]$Path) {
-    return (Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash.ToLowerInvariant()
-}
-
-function Get-FileSha512([string]$Path) {
-    return (Get-FileHash -LiteralPath $Path -Algorithm SHA512).Hash.ToLowerInvariant()
-}
-
-function Get-NormalizedRelativePath(
-    [string]$BasePath,
-    [string]$Path) {
-    return [System.IO.Path]::GetRelativePath(
-        [System.IO.Path]::GetFullPath($BasePath),
-        [System.IO.Path]::GetFullPath($Path)).Replace('\', '/')
-}
-
-function Test-PathUnderRoot(
-    [string]$Path,
-    [string]$CandidateRoot) {
-    $fullPath = [System.IO.Path]::GetFullPath($Path)
-    $fullRoot = [System.IO.Path]::GetFullPath($CandidateRoot).TrimEnd(
-        [System.IO.Path]::DirectorySeparatorChar,
-        [System.IO.Path]::AltDirectorySeparatorChar) +
-        [System.IO.Path]::DirectorySeparatorChar
-    return $fullPath.StartsWith(
-        $fullRoot,
-        [StringComparison]::OrdinalIgnoreCase)
-}
-
-function Convert-Base64Sha512ToHex([string]$Value) {
-    try {
-        $bytes = [Convert]::FromBase64String($Value.Trim())
-    }
-    catch {
-        throw "Invalid NuGet SHA-512 value: $($_.Exception.Message)"
-    }
-    if ($bytes.Length -ne 64) {
-        throw "NuGet SHA-512 value has $($bytes.Length) bytes instead of 64."
-    }
-    return [System.BitConverter]::ToString($bytes).Replace('-', '').ToLowerInvariant()
-}
-
-function Get-RuntimeAssetKind([string]$PackageAssetPath) {
-    $normalized = $PackageAssetPath.Replace('\', '/').ToLowerInvariant()
-    $extension = [System.IO.Path]::GetExtension($normalized)
-    if ($normalized -match '(^|/)native/' -or
-        $extension -in @('.exe', '.so', '.dylib')) {
-        return 'native'
-    }
-    if ($extension -eq '.dll' -and $normalized -match '(^|/)lib/') {
-        return 'managed'
-    }
-    return 'runtime-content'
-}
-
-function Get-BundleOutputPath(
-    [string]$SourcePath,
-    [string]$RelativePath,
-    [string]$BundleRelativePath) {
-    foreach ($candidate in @($RelativePath, $BundleRelativePath)) {
-        if (-not [string]::IsNullOrWhiteSpace($candidate)) {
-            return $candidate.Replace('\', '/').TrimStart('/')
-        }
-    }
-    return [System.IO.Path]::GetFileName($SourcePath)
-}
 
 $resolvedProps = (Resolve-Path -LiteralPath $PropsPath).Path
 $resolvedAssets = (Resolve-Path -LiteralPath $AssetsPath).Path
-$resolvedBundleManifest = (Resolve-Path -LiteralPath $BundleManifestPath).Path
 $resolvedPublish = [System.IO.Path]::GetFullPath($PublishDirectory)
 [System.IO.Directory]::CreateDirectory($resolvedPublish) | Out-Null
 
@@ -196,225 +123,6 @@ if ($wrongVersionPacks.Count -gt 0) {
     throw "Runtime packs do not match pinned runtime ${runtimeVersion}:`n$($wrongVersionPacks -join "`n")"
 }
 
-$packageFolders = @(
-    $assets.packageFolders.PSObject.Properties |
-        ForEach-Object { [string]$_.Name }
-)
-if ($packageFolders.Count -eq 0) {
-    throw 'The restored assets do not record NuGet package folders.'
-}
-
-$runtimePackRecords = @(
-    foreach ($runtimePackage in ($runtimePackages | Sort-Object)) {
-        $parts = $runtimePackage -split '/', 2
-        $packageId = $parts[0]
-        $packageVersion = $parts[1]
-        $packageRoot = $null
-        foreach ($packageFolder in $packageFolders) {
-            $candidate = Join-Path (
-                Join-Path $packageFolder $packageId.ToLowerInvariant()) $packageVersion
-            if ([System.IO.Directory]::Exists($candidate)) {
-                $packageRoot = (Resolve-Path -LiteralPath $candidate).Path
-                break
-            }
-        }
-        if ([string]::IsNullOrWhiteSpace($packageRoot)) {
-            throw "Runtime pack '$runtimePackage' is not available in the restored NuGet package folders."
-        }
-
-        $nupkg = Get-ChildItem -LiteralPath $packageRoot -File -Filter '*.nupkg' |
-            Select-Object -First 1
-        $shaFile = Get-ChildItem -LiteralPath $packageRoot -File -Filter '*.nupkg.sha512' |
-            Select-Object -First 1
-        if ($null -eq $nupkg -and $null -eq $shaFile) {
-            throw "Runtime pack '$runtimePackage' has no NuGet package or SHA-512 evidence."
-        }
-
-        $actualPackageSha512 = if ($null -ne $nupkg) {
-            Get-FileSha512 $nupkg.FullName
-        }
-        else {
-            $null
-        }
-        $declaredPackageSha512 = if ($null -ne $shaFile) {
-            Convert-Base64Sha512ToHex (
-                Get-Content -LiteralPath $shaFile.FullName -Raw)
-        }
-        else {
-            $actualPackageSha512
-        }
-        if ($null -ne $actualPackageSha512 -and
-            $actualPackageSha512 -ne $declaredPackageSha512) {
-            throw "Runtime pack '$runtimePackage' NuGet package SHA-512 does not match its restore-cache evidence."
-        }
-
-        $repositoryUrl = $null
-        $repositoryCommit = $null
-        $nuspec = Get-ChildItem -LiteralPath $packageRoot -File -Filter '*.nuspec' |
-            Select-Object -First 1
-        if ($null -ne $nuspec) {
-            [xml]$nuspecXml = Get-Content -LiteralPath $nuspec.FullName
-            $repositoryNode = $nuspecXml.SelectSingleNode(
-                "//*[local-name()='metadata']/*[local-name()='repository']")
-            if ($null -ne $repositoryNode) {
-                $repositoryUrl = [string]$repositoryNode.url
-                $repositoryCommit = [string]$repositoryNode.commit
-            }
-        }
-
-        [pscustomobject]@{
-            package = $runtimePackage
-            id = $packageId
-            version = $packageVersion
-            root = $packageRoot
-            packageSha512 = $declaredPackageSha512
-            packageUrl = "https://api.nuget.org/v3-flatcontainer/$($packageId.ToLowerInvariant())/$packageVersion/$($packageId.ToLowerInvariant()).$packageVersion.nupkg"
-            repositoryUrl = $repositoryUrl
-            repositoryCommit = $repositoryCommit
-        }
-    }
-)
-
-$bundleLines = @(
-    Get-Content -LiteralPath $resolvedBundleManifest |
-        Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
-)
-if ($bundleLines.Count -eq 0) {
-    throw 'The MSBuild FilesToBundle manifest is empty.'
-}
-$bundleManifestSha256 = Get-FileSha256 $resolvedBundleManifest
-$components = [System.Collections.Generic.List[object]]::new()
-$applicationBundleEntryCount = 0
-$unmappedExternalComponents = [System.Collections.Generic.List[string]]::new()
-
-foreach ($line in $bundleLines) {
-    $parts = $line -split '\|', 3
-    $sourcePath = $parts[0].Trim()
-    $relativePath = if ($parts.Count -gt 1) { $parts[1].Trim() } else { '' }
-    $bundleRelativePath = if ($parts.Count -gt 2) { $parts[2].Trim() } else { '' }
-    if ([string]::IsNullOrWhiteSpace($sourcePath) -or
-        -not [System.IO.File]::Exists($sourcePath)) {
-        throw "The FilesToBundle manifest references an unavailable source file: '$sourcePath'."
-    }
-
-    $matchedPacks = @(
-        $runtimePackRecords | Where-Object {
-            Test-PathUnderRoot $sourcePath $_.root
-        }
-    )
-    if ($matchedPacks.Count -gt 1) {
-        throw "Bundled file '$sourcePath' maps to more than one runtime pack."
-    }
-    if ($matchedPacks.Count -eq 1) {
-        $pack = $matchedPacks[0]
-        $assetPath = Get-NormalizedRelativePath $pack.root $sourcePath
-        $components.Add([ordered]@{
-            disposition = 'embedded'
-            outputPath = Get-BundleOutputPath `
-                $sourcePath $relativePath $bundleRelativePath
-            package = $pack.package
-            packageAssetPath = $assetPath
-            assetKind = Get-RuntimeAssetKind $assetPath
-            sha256 = Get-FileSha256 $sourcePath
-            noticeMapping = 'exact-release-dotnet-bundle'
-        })
-        continue
-    }
-
-    $fromPackageCache = $false
-    foreach ($packageFolder in $packageFolders) {
-        if (Test-PathUnderRoot $sourcePath $packageFolder) {
-            $fromPackageCache = $true
-            break
-        }
-    }
-    if ($fromPackageCache) {
-        $unmappedExternalComponents.Add(
-            "Bundled package-cache file is not mapped to a reviewed runtime pack: $sourcePath")
-    }
-    else {
-        $applicationBundleEntryCount++
-    }
-}
-
-$assetCandidatesByName = @{}
-foreach ($pack in $runtimePackRecords) {
-    $runtimeAssetsRoot = Join-Path $pack.root 'runtimes'
-    if (-not [System.IO.Directory]::Exists($runtimeAssetsRoot)) {
-        continue
-    }
-    foreach ($asset in Get-ChildItem -LiteralPath $runtimeAssetsRoot -File -Recurse) {
-        $key = $asset.Name.ToLowerInvariant()
-        if (-not $assetCandidatesByName.ContainsKey($key)) {
-            $assetCandidatesByName[$key] = [System.Collections.Generic.List[object]]::new()
-        }
-        $assetCandidatesByName[$key].Add([pscustomobject]@{
-            pack = $pack
-            file = $asset
-        })
-    }
-}
-
-$binaryExtensions = @('.dll', '.so', '.dylib', '.exe')
-$looseBinaryFiles = @(
-    Get-ChildItem -LiteralPath $resolvedPublish -File -Recurse |
-        Where-Object {
-            $binaryExtensions -contains $_.Extension.ToLowerInvariant() -and
-            $_.Name -ne 'SightAdapt.exe'
-        }
-)
-foreach ($looseFile in $looseBinaryFiles) {
-    $key = $looseFile.Name.ToLowerInvariant()
-    $looseSha256 = Get-FileSha256 $looseFile.FullName
-    $matches = @()
-    if ($assetCandidatesByName.ContainsKey($key)) {
-        $matches = @(
-            $assetCandidatesByName[$key] | Where-Object {
-                (Get-FileSha256 $_.file.FullName) -eq $looseSha256
-            }
-        )
-    }
-    if ($matches.Count -eq 0) {
-        $unmappedExternalComponents.Add(
-            "Loose binary '$($looseFile.Name)' does not match an asset in the reviewed runtime packs.")
-        continue
-    }
-    if ($matches.Count -gt 1) {
-        $identities = @($matches | ForEach-Object {
-            "$($_.pack.package):$(Get-NormalizedRelativePath $_.pack.root $_.file.FullName)"
-        })
-        throw "Loose binary '$($looseFile.Name)' has ambiguous runtime-pack matches:`n$($identities -join "`n")"
-    }
-
-    $match = $matches[0]
-    $assetPath = Get-NormalizedRelativePath $match.pack.root $match.file.FullName
-    $components.Add([ordered]@{
-        disposition = 'loose'
-        outputPath = Get-NormalizedRelativePath $resolvedPublish $looseFile.FullName
-        package = $match.pack.package
-        packageAssetPath = $assetPath
-        assetKind = Get-RuntimeAssetKind $assetPath
-        sha256 = $looseSha256
-        noticeMapping = 'exact-release-dotnet-bundle'
-    })
-}
-
-if ($unmappedExternalComponents.Count -gt 0) {
-    throw "Runtime component notice mapping failed:`n$($unmappedExternalComponents -join "`n")"
-}
-
-$componentArray = @($components | Sort-Object disposition, outputPath, package)
-if ($componentArray.Count -eq 0) {
-    throw 'No runtime components were mapped from FilesToBundle or the final publish directory.'
-}
-foreach ($requiredPack in $requiredRuntimePacks) {
-    if (-not @($componentArray | Where-Object {
-        [string]$_.package -eq $requiredPack
-    })) {
-        throw "Required runtime pack '$requiredPack' has no mapped published component."
-    }
-}
-
 $releaseMetadata = Invoke-RestMethod -Uri $metadataUrl -Method Get
 $release = @($releaseMetadata.releases | Where-Object {
     [string]$_.'release-version' -eq $runtimeVersion
@@ -503,30 +211,21 @@ try {
     $noticeSha256 = (Get-FileHash -LiteralPath $noticeSourcePath -Algorithm SHA256).Hash
 
     $generatedAt = [DateTime]::UtcNow.ToString('yyyy-MM-ddTHH:mm:ssZ')
-    $embeddedCount = @($componentArray | Where-Object {
-        [string]$_.disposition -eq 'embedded'
-    }).Count
-    $looseCount = @($componentArray | Where-Object {
-        [string]$_.disposition -eq 'loose'
-    }).Count
-
     $thirdPartyHeader = @"
 SIGHTADAPT EXACT-VERSION THIRD-PARTY NOTICES
 
-Generated from the official Microsoft .NET SDK distribution associated with the exact runtime packs and component inventory used by this build.
+Generated from the official Microsoft .NET SDK distribution associated with the exact runtime packs used by this build.
 
 SightAdapt product version: $productVersion
 .NET SDK: $sdkVersion
 .NET runtime and Windows Desktop Runtime: $runtimeVersion
 Runtime identifier: $rid
 Publish mode: $publishMode
-Mapped runtime components: $($componentArray.Count) ($embeddedCount embedded, $looseCount loose)
 Generated at (UTC): $generatedAt
 Release metadata: $metadataUrl
 Source package: $($legalSourcePackage.url)
 Source package SHA-512: $actualPackageHash
 Imported ThirdPartyNotices.txt SHA-256: $noticeSha256
-Component coverage evidence: DOTNET-NOTICE-METADATA.json
 
 The notice text below is imported without substantive modification from the exact official SDK archive.
 
@@ -543,13 +242,11 @@ SightAdapt product version: $productVersion
 .NET runtime and Windows Desktop Runtime: $runtimeVersion
 Runtime identifier: $rid
 Publish mode: $publishMode
-Mapped runtime components: $($componentArray.Count) ($embeddedCount embedded, $looseCount loose)
 Generated at (UTC): $generatedAt
 Release metadata: $metadataUrl
 Source package: $($legalSourcePackage.url)
 Source package SHA-512: $actualPackageHash
 Imported LICENSE.txt SHA-256: $licenseSha256
-Component coverage evidence: DOTNET-NOTICE-METADATA.json
 
 The license text below is imported without substantive modification from the exact official SDK archive.
 
@@ -566,24 +263,8 @@ The license text below is imported without substantive modification from the exa
         $licenseHeader + $licenseText,
         [System.Text.UTF8Encoding]::new($false))
 
-    $runtimePackEvidence = @(
-        foreach ($pack in $runtimePackRecords) {
-            $packComponents = @($componentArray | Where-Object {
-                [string]$_.package -eq [string]$pack.package
-            })
-            [ordered]@{
-                package = $pack.package
-                packageUrl = $pack.packageUrl
-                packageSha512 = $pack.packageSha512
-                repositoryUrl = $pack.repositoryUrl
-                repositoryCommit = $pack.repositoryCommit
-                publishedComponentCount = $packComponents.Count
-            }
-        }
-    )
-
     $metadata = [ordered]@{
-        schemaVersion = 2
+        schemaVersion = 1
         productVersion = $productVersion
         sdkVersion = $sdkVersion
         runtimeVersion = $runtimeVersion
@@ -602,27 +283,8 @@ The license text below is imported without substantive modification from the exa
             importedLicenseSha256 = $licenseSha256
             importedThirdPartyNoticesSha256 = $noticeSha256
         }
-        componentCoverage = [ordered]@{
-            method = 'MSBuild PrepareForBundle/FilesToBundle plus SHA-256 matching of loose runtime binaries to exact restored runtime packs'
-            bundleManifestSha256 = $bundleManifestSha256
-            bundleEntryCount = $bundleLines.Count
-            applicationBundleEntryCount = $applicationBundleEntryCount
-            runtimeComponentCount = $componentArray.Count
-            embeddedRuntimeComponentCount = $embeddedCount
-            looseRuntimeComponentCount = $looseCount
-            unmappedExternalComponentCount = 0
-            noticeMapping = [ordered]@{
-                id = 'exact-release-dotnet-bundle'
-                licenseFile = 'DOTNET-LICENSE-NOTICE.txt'
-                licenseSha256 = $licenseSha256
-                thirdPartyNoticesFile = 'THIRD-PARTY-NOTICES.txt'
-                thirdPartyNoticesSha256 = $noticeSha256
-            }
-            runtimePacks = $runtimePackEvidence
-            components = $componentArray
-        }
     }
-    $metadataJson = $metadata | ConvertTo-Json -Depth 12
+    $metadataJson = $metadata | ConvertTo-Json -Depth 8
     [System.IO.File]::WriteAllText(
         (Join-Path $resolvedPublish 'DOTNET-NOTICE-METADATA.json'),
         $metadataJson + [Environment]::NewLine,
@@ -632,9 +294,4 @@ finally {
     Remove-Item -LiteralPath $tempRoot -Recurse -Force -ErrorAction SilentlyContinue
 }
 
-Write-Host (
-    "Generated exact-version .NET notices for SDK {0} and runtime {1} ({2}); mapped {3} runtime components." -f
-    $sdkVersion,
-    $runtimeVersion,
-    $rid,
-    $componentArray.Count)
+Write-Host "Generated exact-version .NET notices for SDK $sdkVersion and runtime $runtimeVersion ($rid)."
