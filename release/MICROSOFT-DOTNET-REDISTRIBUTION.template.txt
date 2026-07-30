@@ -1,0 +1,105 @@
+SIGHTADAPT MICROSOFT .NET REDISTRIBUTION NOTICE
+
+Reviewed release configuration
+
+Product version: {{PRODUCT_VERSION}}
+SDK version: {{SDK_VERSION}}
+Runtime version: {{RUNTIME_VERSION}}
+Windows Desktop Runtime version: {{RUNTIME_VERSION}}
+Target framework: {{TARGET_FRAMEWORK}}
+Runtime identifier: {{RUNTIME_IDENTIFIER}}
+Publish mode: {{PUBLISH_MODE}}
+Maintainer review date: {{REVIEW_DATE}}
+Professional review status: {{PROFESSIONAL_REVIEW_STATUS}}
+Professional review tracking issue: #{{PROFESSIONAL_REVIEW_ISSUE}}
+Professional review public record: {{PROFESSIONAL_REVIEW_RECORD}}
+
+1. Separate licenses
+
+SightAdapt's own source code is licensed under the MIT License in LICENSE.txt.
+That license does not replace, expand or modify the separate terms governing
+Microsoft .NET components included in the binary distribution.
+
+The Microsoft license text and exact release evidence are provided in:
+
+- DOTNET-LICENSE-NOTICE.txt
+- THIRD-PARTY-NOTICES.txt
+- DOTNET-NOTICE-METADATA.json
+
+If this summary conflicts with those files or Microsoft's authoritative terms,
+the authoritative Microsoft terms control for Microsoft components.
+
+2. How Microsoft components are distributed
+
+Microsoft .NET components are included in object-code form only as part of the
+SightAdapt application. They are not offered, branded or distributed by the
+SightAdapt project as a standalone Microsoft .NET product.
+
+SightAdapt and its distributors must preserve this notice, the imported
+Microsoft license text and all applicable third-party notices in every copy of
+the application package.
+
+3. Recipient conditions for Microsoft components
+
+To the extent permitted by applicable law, recipients and downstream
+distributors must not:
+
+- remove, minimize, block or alter Microsoft or supplier notices;
+- work around technical limitations in Microsoft components;
+- reverse engineer, decompile or disassemble Microsoft components except where
+  applicable law or third-party licensing terms expressly permit it;
+- use Microsoft trademarks in a product name or imply that SightAdapt is made,
+  sponsored, certified or endorsed by Microsoft;
+- redistribute Microsoft components as a standalone offering;
+- use or distribute Microsoft components unlawfully or contrary to applicable
+  export-control restrictions;
+- impose source-disclosure or reciprocal-license conditions on Microsoft
+  distributable code where Microsoft's terms prohibit doing so.
+
+A downstream distributor may redistribute the included Microsoft components
+only as part of an intact SightAdapt application distribution, under terms that
+protect those components at least as much as Microsoft's applicable agreement.
+The downstream distributor is responsible for claims arising from its own
+packaging, representations, modifications or distribution, except to the extent
+a claim is based solely on unmodified Microsoft distributable code.
+
+4. No Microsoft endorsement or support
+
+Microsoft does not publish, sponsor, certify or endorse SightAdapt. Microsoft
+trademarks and product names identify compatibility or included components only.
+Support for SightAdapt is provided, if at all, by the SightAdapt project and not
+by Microsoft.
+
+5. Warranty and liability for Microsoft components
+
+Microsoft components are licensed on an "as-is" basis under Microsoft's terms.
+Microsoft provides no additional warranty, guarantee or support through
+SightAdapt. Microsoft's warranty exclusions and limitations of remedies apply
+subject to mandatory consumer and other rights that cannot lawfully be excluded
+in the recipient's jurisdiction.
+
+6. Authoritative sources
+
+Microsoft .NET product-distribution licensing model:
+https://github.com/dotnet/core/blob/main/license-information.md
+
+Microsoft .NET Library License Terms:
+https://dotnet.microsoft.com/en-us/dotnet_library_license.htm
+
+The exact source package, version mapping and checksums used by this build are
+recorded in DOTNET-NOTICE-METADATA.json.
+
+The reviewed technical configuration and template checksum are recorded in the
+repository file release/dotnet-redistribution-review.json.
+
+7. Review status and release gate
+
+This notice was rendered from the reviewed template and the canonical release
+metadata for this package. It records the project's technical compliance
+implementation and maintainer review. It is not a legal opinion and does not
+claim review by qualified legal counsel.
+
+The professional-review status and public-record path are stated above.
+A status of "not-obtained" means that official production and paid distribution
+remain blocked under the tracking issue until a qualified review is completed
+and a non-confidential public decision record is linked.
