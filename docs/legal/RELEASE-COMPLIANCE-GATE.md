@@ -1,67 +1,91 @@
-# Release compliance gate
+# Final package compliance gate
 
-## Purpose
+## Maintained distribution scope
 
-The release compliance gate treats the license, privacy, dependency, notice and SBOM bundle as a release invariant. It runs after publication and before artifact upload. It does not change application behavior.
+SightAdapt currently maintains one binary format: a self-contained Windows x64 portable ZIP.
+
+The format has two maintained producer contexts recorded in `release/distribution-channels.json`:
+
+- `github-actions-artifact` — the ZIP uploaded by `.github/workflows/build.yml`;
+- `local-portable-zip` — a maintainer-created ZIP produced through the same entry point.
+
+GitHub Releases, installers, store packages and official mirrors are planned or inactive channels. They are not treated as maintained distributions until their implementation changes the registry and invokes the same reusable gate. GitHub Release publication remains tracked by #98.
+
+## Reusable entry point
+
+All maintained packages are created with:
+
+```powershell
+.\tools\new-verified-release-package.ps1 `
+    -DirectoryPath <staged-directory> `
+    -ArchivePath <archive-path> `
+    -ReportPath <compliance-report-path> `
+    -DistributionChannel <registered-channel>
+```
+
+The entry point creates the ZIP and invokes `tools/verify-final-package.ps1`. Packaging code must not replace this sequence with an unverified `Compress-Archive` call.
 
 ## Authoritative inputs
 
-- `release/required-files.txt` — package manifest;
-- `Directory.Build.props` — product, artifact, SDK, runtime and RID metadata;
-- `SightAdapt.csproj` — target framework and publish settings;
-- `release/dotnet-redistribution-review.json` — reviewed configuration, template checksum and maintainer decision;
-- `DOTNET-NOTICE-METADATA.json` — exact Microsoft source/checksum/runtime evidence;
-- `MICROSOFT-DOTNET-REDISTRIBUTION.txt` — generated maintainer-reviewed package notice;
-- `LICENSE-REPORT.json` — dependency-license policy result;
-- `SBOM.spdx.json` — component and shipped-file inventory;
-- final staged directory and ZIP.
+- `release/distribution-channels.json` — maintained and planned channels;
+- `release/required-files.txt` — canonical package manifest;
+- `Directory.Build.props` and `SightAdapt.csproj` — product and publish identity;
+- `release/dotnet-redistribution-review.json` — maintainer redistribution decision;
+- `DOTNET-NOTICE-METADATA.json` — exact component and notice evidence;
+- `LICENSE-REPORT.json` and `SBOM.spdx.json` — complete dependency and file inventory;
+- the final staged directory and ZIP;
+- Git commit/ref, optional release tag and workflow/run identity.
 
-## Checks
+## Validation layers
 
-`verify-release-compliance.ps1` verifies:
+The final gate consumes the existing focused validators rather than duplicating their domain logic:
 
-- all manifest files exist, are non-empty and readable;
-- required text has no unresolved placeholders;
-- archive naming and build metadata are consistent;
-- every staged file is in the ZIP and no unexpected file was added;
-- exact-version .NET metadata matches product/SDK/runtime/RID/publish inputs;
-- redistribution configuration and template SHA-256 remain reviewed;
-- the generated redistribution notice identifies the exact artifact and maintainer decision;
-- a `blocked` maintainer decision stops packaging;
-- the license report is `pass` and matches the build;
-- the SPDX SBOM describes the release and every shipped file;
-- SightAdapt is identified as the single-file container for embedded runtime components.
+1. `verify-release-compliance.ps1` validates the legal bundle, exact metadata, SBOM, licenses and staged/archive path sets;
+2. `verify-dotnet-component-coverage.ps1` validates every embedded and loose package component;
+3. `verify-final-package.ps1` validates distribution-channel state, provenance and SHA-256 equality for every staged/archive file.
 
-The report contains the build identity, archive SHA-256, redistribution review date, maintainer decision/owner/issue, notice SHA-256, manifest, file lists and failures.
+The final report uses schema 3 and records:
 
-No field represents an external audit or legal clearance.
+- distribution channel and format;
+- source commit SHA and repository HEAD SHA;
+- source ref and release tag, when applicable;
+- workflow name, run ID and run attempt;
+- archive name, size and SHA-256;
+- one staged/archive SHA-256 comparison record per file;
+- base compliance, component coverage and hash-comparison results;
+- package/SBOM counts and failures.
 
-## Negative package tests
+A report is publishable only when `result` is `pass`.
 
-`test-release-compliance-negative.ps1` proves that:
+## Provenance rules
 
-1. an incomplete package is rejected;
-2. a complete package with a deliberately changed redistribution runtime header is rejected as stale.
+- The source commit must be a full 40-character Git SHA and match the checked-out repository HEAD.
+- A tag value is valid only with the matching `refs/tags/<tag>` source ref.
+- Channels marked `requiresTag` cannot publish an untagged package.
+- Channels marked `requiresWorkflowRun` require GitHub workflow/run provenance.
+- A channel listed only under `plannedChannels` is rejected by the gate.
 
-## Workflow order
+## Negative validation
 
-1. verify canonical metadata and maintainer review record;
-2. restore, build and test;
-3. publish the self-contained directory;
-4. generate exact-version .NET notices;
-5. generate the maintainer-reviewed redistribution notice;
-6. generate SBOM, dependency summary and license report;
-7. reject incomplete/stale packages;
-8. create the final ZIP;
-9. run the compliance gate;
-10. upload the verified ZIP and report together.
+CI proves rejection of:
 
-No upload runs after a failed gate.
+- an incomplete package;
+- stale redistribution metadata;
+- an unmapped runtime binary;
+- an unknown-license transitive dependency;
+- a ZIP whose file bytes differ from the staged directory;
+- a source commit that does not match repository HEAD;
+- inconsistent tag/ref provenance;
+- the planned but inactive `github-release` channel.
 
-## Other distribution workflows
+## Future channels
 
-GitHub Releases, installers, store packages, portable packages and mirrors must use the same staged directory and manifest, validate final contents, retain a checksum/report and stop before publication on failure.
+A new installer, store package, GitHub Release or mirror implementation must, in the same pull request:
 
-## Maintenance
+1. define the final installed or unpacked staging tree;
+2. activate its channel in `release/distribution-channels.json`;
+3. invoke `new-verified-release-package.ps1` or an equivalent adapter that ends in `verify-final-package.ps1`;
+4. retain the verified package and matching schema-3 report;
+5. add channel-specific negative tests where the container differs from portable ZIP.
 
-Update the canonical manifest first when package requirements change. A change to the reviewed .NET configuration, maintainer decision or notice wording must update `release/dotnet-redistribution-review.json`. Update generators, documentation and packaging workflows in the same pull request.
+Official mirrors must publish byte-identical verified artifacts and the matching report.
