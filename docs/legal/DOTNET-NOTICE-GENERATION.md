@@ -1,6 +1,6 @@
 # Exact-version .NET notice generation
 
-This document defines the Microsoft .NET license and third-party notice evidence included in a self-contained SightAdapt Windows package.
+This document defines the Microsoft .NET and package notice evidence included in a self-contained SightAdapt Windows package.
 
 ## Authoritative inputs
 
@@ -8,82 +8,89 @@ This document defines the Microsoft .NET license and third-party notice evidence
 - `Directory.Build.props` records SDK, runtime, RID, publish mode and release-metadata URL;
 - `project.assets.json` records exact runtime packs selected by restore;
 - MSBuild `PrepareForBundle` and `FilesToBundle` provide the exact inputs embedded in the single-file executable;
-- `release/dotnet-redistribution-review.json` records the maintainer-reviewed configuration and redistribution wording.
+- `release/dependency-policy.json` records reviewed package versions, shipped status and license treatment;
+- `release/dotnet-redistribution-review.json` records the maintainer-reviewed release configuration and wording.
 
-Current reviewed inputs:
+## Stage 1: exact official .NET notice import
 
-| Input | Value |
-|---|---|
-| .NET SDK | `8.0.423` |
-| .NET runtime | `8.0.29` |
-| Windows Desktop Runtime | `8.0.29` |
-| RID | `win-x64` |
-| Publish mode | self-contained single-file |
+After restore and publish, run:
 
-## Publish-time component inventory
+```powershell
+.\tools\generate-dotnet-notices.ps1 `
+    -PublishDirectory .\artifacts\win-x64
+```
 
-`SightAdapt.csproj` runs `CaptureSightAdaptFilesToBundle` between `PrepareForBundle` and `GenerateSingleFileBundle`. It writes `artifacts/dotnet-files-to-bundle.tsv` from the SDK-provided `FilesToBundle` item list.
+This stage:
 
-The temporary manifest is build evidence only. Absolute build-machine paths are not copied into the release archive.
+- requires the exact pinned SDK;
+- validates exact runtime-pack versions from the restore graph;
+- confirms the SDK/runtime release mapping through official Microsoft metadata;
+- downloads the matching official SDK ZIP;
+- verifies its published SHA-512;
+- imports `LICENSE.txt` and `ThirdPartyNotices.txt` without substantive modification;
+- writes base `DOTNET-NOTICE-METADATA.json` schema 1.
 
-After publish, `tools/generate-dotnet-notices.ps1`:
+## Stage 2: exact published-component coverage
 
-1. resolves each exact runtime pack in the restored NuGet cache;
-2. verifies its NuGet SHA-512 evidence and records repository metadata when present;
-3. maps every `FilesToBundle` entry originating from a runtime pack;
-4. records the bundle-relative output path, package asset path, component kind and SHA-256;
-5. scans loose binary files in the final publish directory;
-6. matches each loose runtime binary by filename and SHA-256 to an exact runtime-pack asset;
-7. fails when a bundled package-cache file or loose binary cannot be mapped to a reviewed runtime pack.
+`SightAdapt.csproj` captures the SDK-generated `FilesToBundle` list during single-file publication. Then run:
 
-This covers both components embedded in `SightAdapt.exe` and separately shipped native libraries.
+```powershell
+.\tools\generate-dotnet-component-coverage.ps1 `
+    -PublishDirectory .\artifacts\win-x64
+```
 
-## Official notice material
+This stage:
 
-The generator confirms the SDK/runtime release mapping through Microsoft's release metadata, downloads the matching official SDK ZIP, verifies its published SHA-512 and imports:
+1. identifies every NuGet package contributing an embedded component;
+2. requires a reviewed dependency-policy entry and correct shipped classification;
+3. records exact NuGet package SHA-512 and repository metadata;
+4. reads exact `.nuspec` license metadata;
+5. maps every embedded package asset with package-relative path and SHA-256;
+6. maps every loose binary by filename and SHA-256 to an exact restored package asset;
+7. adds package-specific sections to `THIRD-PARTY-NOTICES.txt` when components are not covered by the official .NET release bundle;
+8. upgrades `DOTNET-NOTICE-METADATA.json` to schema 2 with package, notice-mapping and component inventories;
+9. fails when a package is unreviewed, marked non-shipped or cannot be mapped.
 
-- `LICENSE.txt` into `DOTNET-LICENSE-NOTICE.txt`;
-- `ThirdPartyNotices.txt` into `THIRD-PARTY-NOTICES.txt`.
+The temporary `FilesToBundle` manifest may contain absolute build paths. Only its SHA-256 and sanitized component records are retained in the release metadata.
 
-The imported texts are not substantively modified. SightAdapt adds an exact-build header and points recipients to `DOTNET-NOTICE-METADATA.json` for component-level coverage evidence.
+## Current component evidence
 
-## Metadata schema
+The reviewed alpha build maps 452 package components across three exact packages:
 
-`DOTNET-NOTICE-METADATA.json` schema 2 records:
+| Package | Components | Notice mapping |
+|---|---:|---|
+| `Microsoft.NETCore.App.Runtime.win-x64/8.0.29` | 165 | Official exact-release .NET license and notices |
+| `Microsoft.WindowsDesktop.App.Runtime.win-x64/8.0.29` | 285 | Official exact-release .NET license and notices |
+| `Microsoft.Windows.SDK.NET.Ref/10.0.19041.56` | 2 | Exact package SHA-512, policy license and `.nuspec` license URL |
 
-- product, SDK, runtime, RID and publish mode;
-- exact runtime-pack identities and NuGet SHA-512 values;
-- official release/package URLs and imported notice hashes;
-- SHA-256 of the `FilesToBundle` manifest;
-- embedded and loose runtime-component counts;
-- one entry per mapped runtime component containing disposition, output path, runtime pack, package asset path, kind and SHA-256;
-- `unmappedExternalComponentCount`, which must be zero.
+The inventory contains 447 embedded components and 5 loose native DLLs. `unmappedExternalComponentCount` must remain zero.
 
-All runtime components use the mapping identifier `exact-release-dotnet-bundle`, tied to the imported exact-release license and third-party notice files.
+## Stage 3: maintainer redistribution summary
+
+Run:
+
+```powershell
+.\tools\generate-dotnet-redistribution-notice.ps1 `
+    -PublishDirectory .\artifacts\win-x64
+```
+
+This renders `MICROSOFT-DOTNET-REDISTRIBUTION.txt` after validating the reviewed SDK/runtime/TFM/RID/publish configuration, template SHA-256, maintainer decision and exact-version metadata.
 
 ## Final-package validation
 
-`tools/test-release-package.ps1` independently verifies that:
+Two independent validators run on the final ZIP:
 
-- metadata uses schema 2 and matches canonical release values;
-- both required runtime packs have published components and NuGet SHA-512 evidence;
-- component totals match the detailed inventory;
-- every loose binary in the ZIP has a component mapping and matching SHA-256;
-- embedded runtime components are represented by the captured `FilesToBundle` evidence;
-- no external component is reported as unmapped;
-- notice-mapping hashes equal the imported official-text hashes.
+- `test-release-package.ps1` checks package completeness, official notice identity and redistribution headers;
+- `verify-dotnet-component-coverage.ps1` checks schema-2 component evidence, package hashes, notice mappings, all loose binary SHA-256 values and absence of unmapped binaries.
 
-The negative test removes one real loose runtime mapping while leaving the binary in the package. CI must reject that archive, in addition to rejecting incomplete and stale-notice packages.
+The negative package test proves rejection of:
+
+- an incomplete package;
+- stale redistribution wording;
+- a package where one real loose binary remains but its component mapping is removed.
 
 ## Maintenance
 
-A .NET or publish change must update the pinned inputs and maintainer review, then regenerate all evidence. Repeat the review when any of these change:
+Repeat generation and review when SDK/runtime, TFM, RID, publish settings, restored packages, `FilesToBundle`, loose binaries, package license metadata or Microsoft legal sources change.
 
-- SDK or runtime version;
-- target framework, RID or architecture;
-- self-contained, single-file, trimming, ReadyToRun, Native AOT or extraction settings;
-- restored runtime packs;
-- bundled or loose runtime-component inventory;
-- Microsoft release metadata, license or notice source.
-
-Do not publish when package hashes, runtime-pack mapping, `FilesToBundle` capture, loose-binary matching, official notice import or final ZIP validation fails.
+Do not publish when official-text import, package policy, package hashes, component mapping, notice mapping or final ZIP validation fails.
