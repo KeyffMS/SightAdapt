@@ -51,6 +51,20 @@ $failures = [System.Collections.Generic.List[string]]::new()
 $entries = @{}
 $textEntries = @{}
 
+function Get-NormalizedTextSha256([string]$Path) {
+    $text = Get-Content -LiteralPath $Path -Raw
+    $normalized = $text.Replace("`r`n", "`n").Replace("`r", "`n")
+    $bytes = [System.Text.UTF8Encoding]::new($false).GetBytes($normalized)
+    $sha256 = [System.Security.Cryptography.SHA256]::Create()
+    try {
+        return [System.BitConverter]::ToString(
+            $sha256.ComputeHash($bytes)).Replace('-', '').ToLowerInvariant()
+    }
+    finally {
+        $sha256.Dispose()
+    }
+}
+
 $reviewPath = Join-Path $root 'release\dotnet-redistribution-review.json'
 try {
     $review = Get-Content -LiteralPath $reviewPath -Raw | ConvertFrom-Json
@@ -76,15 +90,12 @@ try {
         }
     }
 
-    $templateRelativePath = ([string]$review.noticeTemplate.path).Replace(
-        '/',
-        [System.IO.Path]::DirectorySeparatorChar)
-    $templatePath = Join-Path $root $templateRelativePath
+    $templatePath = Join-Path $root ([string]$review.noticeTemplate.path)
     if (-not [System.IO.File]::Exists($templatePath)) {
         $failures.Add("Reviewed redistribution template is missing: $($review.noticeTemplate.path)")
     }
     else {
-        $templateHash = (Get-FileHash -LiteralPath $templatePath -Algorithm SHA256).Hash.ToLowerInvariant()
+        $templateHash = Get-NormalizedTextSha256 $templatePath
         if ($templateHash -ne ([string]$review.noticeTemplate.sha256).ToLowerInvariant()) {
             $failures.Add('The redistribution notice template differs from the reviewed SHA-256.')
         }
@@ -263,6 +274,12 @@ try {
         }
 
         $professionalRecord = [string]$review.professionalReview.publicRecord
+        $professionalRecordDisplay = if ([string]::IsNullOrWhiteSpace($professionalRecord)) {
+            'none'
+        }
+        else {
+            $professionalRecord
+        }
         $expectedHeaders = [ordered]@{
             'Product version' = $expectedMetadata.productVersion
             'SDK version' = $expectedMetadata.sdkVersion
@@ -274,12 +291,7 @@ try {
             'Maintainer review date' = [string]$review.reviewedAt
             'Professional review status' = [string]$review.professionalReview.status
             'Professional review tracking issue' = "#$([int]$review.professionalReview.trackingIssue)"
-            'Professional review public record' = if ([string]::IsNullOrWhiteSpace($professionalRecord)) {
-                'none'
-            }
-            else {
-                $professionalRecord
-            }
+            'Professional review public record' = $professionalRecordDisplay
         }
         foreach ($expectedHeader in $expectedHeaders.GetEnumerator()) {
             $actual = Get-HeaderValue $redistributionText ([string]$expectedHeader.Key)
