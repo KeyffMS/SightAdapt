@@ -42,7 +42,8 @@ $expectedMetadata = @{
     publishMode = [string]$group.SightAdaptPublishMode
 }
 [xml]$project = Get-Content -LiteralPath (Join-Path $root 'src\SightAdapt\SightAdapt.csproj')
-$targetFramework = [string](@($project.Project.PropertyGroup) | Select-Object -First 1).TargetFramework
+$projectGroup = @($project.Project.PropertyGroup) | Select-Object -First 1
+$targetFramework = [string]$projectGroup.TargetFramework
 
 $failures = [System.Collections.Generic.List[string]]::new()
 $entries = @{}
