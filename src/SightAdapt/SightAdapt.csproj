@@ -47,10 +47,6 @@
           Link="DOTNET-LICENSE-NOTICE.txt"
           CopyToOutputDirectory="PreserveNewest"
           CopyToPublishDirectory="PreserveNewest" />
-    <None Include="..\..\MICROSOFT-DOTNET-REDISTRIBUTION.txt"
-          Link="MICROSOFT-DOTNET-REDISTRIBUTION.txt"
-          CopyToOutputDirectory="PreserveNewest"
-          CopyToPublishDirectory="PreserveNewest" />
     <None Include="..\..\THIRD-PARTY-NAMES-AND-DRM-NOTICE.txt"
           Link="THIRD-PARTY-NAMES-AND-DRM-NOTICE.txt"
           CopyToOutputDirectory="PreserveNewest"
