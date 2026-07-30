@@ -114,7 +114,7 @@ function Split-PackageIdentity([string]$Identity) {
 function Get-PolicyEntry([string]$Name) {
     $property = @(
         $policy.components.PSObject.Properties |
-            Where-Object { ([string]$_.Name) -ieq $Name }
+            Where-Object { [string]$_.Name -ieq $Name }
     ) | Select-Object -First 1
     if ($null -eq $property) {
         return $null
@@ -228,13 +228,15 @@ function Read-RestoreGraph([string]$Path, [string]$GraphName) {
         return
     }
     $directNames = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
-    if ($null -ne $framework.Value.dependencies) {
-        foreach ($dependency in @($framework.Value.dependencies.PSObject.Properties)) {
+    $frameworkDependencies = $framework.Value.PSObject.Properties['dependencies']
+    if ($null -ne $frameworkDependencies) {
+        foreach ($dependency in @($frameworkDependencies.Value.PSObject.Properties)) {
             $directNames.Add([string]$dependency.Name) | Out-Null
         }
     }
 
-    foreach ($download in @($framework.Value.downloadDependencies)) {
+    $downloadDependencies = $framework.Value.PSObject.Properties['downloadDependencies']
+    foreach ($download in @($(if ($null -ne $downloadDependencies) { $downloadDependencies.Value } else { @() }))) {
         $name = [string]$download.name
         $version = Resolve-ExactDownloadVersion ([string]$download.version)
         if ([string]::IsNullOrWhiteSpace($version)) {
@@ -286,10 +288,11 @@ function Read-RestoreGraph([string]$Path, [string]$GraphName) {
             }
             $parentParts = Split-PackageIdentity ([string]$entry.Name)
             $parentIdentity = Get-NormalizedIdentity $parentParts.Name $parentParts.Version
-            if ($null -eq $entryValue.dependencies) {
+            $dependenciesProperty = $entryValue.PSObject.Properties['dependencies']
+            if ($null -eq $dependenciesProperty) {
                 continue
             }
-            foreach ($dependency in @($entryValue.dependencies.PSObject.Properties)) {
+            foreach ($dependency in @($dependenciesProperty.Value.PSObject.Properties)) {
                 $dependencyName = [string]$dependency.Name
                 $lookup = $dependencyName.ToLowerInvariant()
                 if ($targetIdentityByName.ContainsKey($lookup)) {
@@ -663,10 +666,18 @@ $summaryLines.Add('|---|---|---|---:|---:|---|---|---|')
 foreach ($component in @($components | Sort-Object scope, name, version)) {
     $evidenceLabel = [string]$component.evidence.evidenceType
     if ([string]$component.evidence.nuspecSha256 -match '^[0-9A-Fa-f]{64}$') {
-        $evidenceLabel += "; nuspec SHA-256 `$([string]$component.evidence.nuspecSha256)`"
+        $evidenceLabel += ('; nuspec SHA-256 `{0}`' -f [string]$component.evidence.nuspecSha256)
     }
-    $summaryLines.Add(
-        "| $($component.name) | `$($component.version)` | $($component.scope) | $($component.direct) | $($component.shipped) | `$($component.licenseConcluded)` | $evidenceLabel | $($component.source) |")
+    $summaryLines.Add((
+        '| {0} | `{1}` | {2} | {3} | {4} | `{5}` | {6} | {7} |' -f
+        $component.name,
+        $component.version,
+        $component.scope,
+        $component.direct,
+        $component.shipped,
+        $component.licenseConcluded,
+        $evidenceLabel,
+        $component.source))
 }
 $summaryLines.Add('')
 $summaryLines.Add('`SBOM.spdx.json` contains the same package inventory, dependency graph and packaged-file hashes. `LICENSE-REPORT.json` contains the complete evidence and policy result. Build and test components are not represented as runtime dependencies of SightAdapt.')
