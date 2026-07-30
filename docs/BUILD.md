@@ -41,7 +41,7 @@ dotnet test .\tests\SightAdapt.Tests\SightAdapt.Tests.csproj `
     --no-restore
 ```
 
-The application restore graph is the authority for runtime-pack inventory.
+The application restore graph is the authority for exact runtime-pack identities.
 
 ## 3. Publish
 
@@ -52,7 +52,7 @@ dotnet publish .\src\SightAdapt\SightAdapt.csproj `
     --output .\artifacts\win-x64
 ```
 
-The static legal baseline is copied to the publish directory. The Microsoft redistribution notice is generated later from reviewed metadata.
+The static legal baseline is copied to the publish directory. During single-file publication, the project captures the SDK-provided `FilesToBundle` list into `artifacts\dotnet-files-to-bundle.tsv`. This temporary file identifies the exact inputs embedded in `SightAdapt.exe`; it is converted into sanitized component evidence and is not copied into the release ZIP.
 
 ## 4. Generate exact-version Microsoft notices
 
@@ -61,11 +61,17 @@ The static legal baseline is copied to the publish directory. The Microsoft redi
     -PublishDirectory .\artifacts\win-x64
 ```
 
-This verifies the restored runtime packs, downloads the matching official SDK ZIP, verifies SHA-512 and writes:
+This step:
 
-- `THIRD-PARTY-NOTICES.txt`;
-- `DOTNET-LICENSE-NOTICE.txt`;
-- `DOTNET-NOTICE-METADATA.json`.
+- validates the exact restored runtime packs and their NuGet SHA-512 evidence;
+- maps every runtime-pack file embedded through `FilesToBundle`;
+- maps every loose runtime binary by filename and SHA-256 to an exact runtime-pack asset;
+- rejects any package-cache or loose binary component without a reviewed mapping;
+- downloads the matching official SDK ZIP and verifies SHA-512;
+- imports the exact Microsoft license and third-party notice material;
+- writes `THIRD-PARTY-NOTICES.txt`, `DOTNET-LICENSE-NOTICE.txt` and schema-2 `DOTNET-NOTICE-METADATA.json`.
+
+The metadata contains one sanitized entry per runtime component, including embedded/loose disposition, package, package-relative asset path, kind and SHA-256.
 
 ## 5. Generate the maintainer-reviewed redistribution notice
 
@@ -105,6 +111,8 @@ LICENSE-REPORT.json
 PRIVACY.md
 ```
 
+Additional loose native runtime DLLs may be present. Every such binary must have a matching component entry in `DOTNET-NOTICE-METADATA.json`.
+
 ## 8. Run negative package checks
 
 ```powershell
@@ -112,7 +120,11 @@ PRIVACY.md
     -PublishDirectory .\artifacts\win-x64
 ```
 
-The validator must reject an incomplete package and a package with stale redistribution metadata.
+The validator must reject:
+
+- an incomplete package;
+- a package with stale redistribution metadata;
+- a package containing a runtime binary whose component mapping was removed.
 
 ## 9. Create and verify the final archive
 
@@ -131,7 +143,7 @@ Compress-Archive `
     -ReportPath $report
 ```
 
-Retain the compliance report with the archive.
+Final validation opens the ZIP, verifies every loose binary hash against the component map, checks embedded-component inventory totals, validates exact notice sources and confirms all other package invariants. Retain the compliance report with the archive.
 
 ## 10. Run and inspect the version
 
@@ -147,8 +159,9 @@ $process = Get-Process SightAdapt
 
 ```powershell
 Remove-Item .\artifacts\win-x64 -Recurse -Force -ErrorAction SilentlyContinue
+Remove-Item .\artifacts\dotnet-files-to-bundle.tsv -Force -ErrorAction SilentlyContinue
 Remove-Item .\artifacts\SightAdapt-*-win-x64.zip -Force -ErrorAction SilentlyContinue
 Remove-Item .\artifacts\SightAdapt-*-win-x64-compliance.json -Force -ErrorAction SilentlyContinue
 ```
 
-A release must not be published if metadata review, notice generation, the maintainer decision, negative checks or final-package validation fail.
+A release must not be published if metadata review, bundle capture, runtime-component mapping, notice generation, the maintainer decision, negative checks or final-package validation fail.
