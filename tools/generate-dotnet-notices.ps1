@@ -174,7 +174,10 @@ try {
         function Read-ZipText([System.IO.Compression.ZipArchiveEntry]$Entry) {
             $stream = $Entry.Open()
             try {
-                $reader = [System.IO.StreamReader]::new($stream, [System.Text.Encoding]::UTF8, $true)
+                $reader = [System.IO.StreamReader]::new(
+                    $stream,
+                    [System.Text.Encoding]::UTF8,
+                    $true)
                 try {
                     return $reader.ReadToEnd()
                 }
@@ -196,8 +199,14 @@ try {
 
     $licenseSourcePath = Join-Path $tempRoot 'LICENSE.txt'
     $noticeSourcePath = Join-Path $tempRoot 'ThirdPartyNotices.txt'
-    [System.IO.File]::WriteAllText($licenseSourcePath, $licenseText, [System.Text.UTF8Encoding]::new($false))
-    [System.IO.File]::WriteAllText($noticeSourcePath, $noticeText, [System.Text.UTF8Encoding]::new($false))
+    [System.IO.File]::WriteAllText(
+        $licenseSourcePath,
+        $licenseText,
+        [System.Text.UTF8Encoding]::new($false))
+    [System.IO.File]::WriteAllText(
+        $noticeSourcePath,
+        $noticeText,
+        [System.Text.UTF8Encoding]::new($false))
     $licenseSha256 = (Get-FileHash -LiteralPath $licenseSourcePath -Algorithm SHA256).Hash
     $noticeSha256 = (Get-FileHash -LiteralPath $noticeSourcePath -Algorithm SHA256).Hash
 

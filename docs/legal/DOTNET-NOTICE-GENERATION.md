@@ -1,95 +1,96 @@
 # Exact-version .NET notice generation
 
-This document defines the release process for Microsoft .NET license and third-party notice material included in a self-contained SightAdapt Windows package.
+This document defines the Microsoft .NET and package notice evidence included in a self-contained SightAdapt Windows package.
 
-## Authoritative release inputs
+## Authoritative inputs
 
 - `global.json` pins the .NET SDK and disables roll-forward;
-- `Directory.Build.props` records expected SDK/runtime/RID/publish metadata and the official release-metadata URL;
-- `release/dotnet-redistribution-review.json` records the reviewed SDK/runtime/TFM/RID/publish configuration, notice-template SHA-256 and maintainer decision.
+- `Directory.Build.props` records SDK, runtime, RID, publish mode and release-metadata URL;
+- `project.assets.json` records exact runtime packs selected by restore;
+- MSBuild `PrepareForBundle` and `FilesToBundle` provide the exact inputs embedded in the single-file executable;
+- `release/dependency-policy.json` records reviewed package versions, shipped status and license treatment;
+- `release/dotnet-redistribution-review.json` records the maintainer-reviewed release configuration and wording.
 
-Current inputs:
+## Stage 1: exact official .NET notice import
 
-| Input | Value |
-|---|---|
-| .NET SDK | `8.0.423` |
-| .NET runtime | `8.0.29` |
-| Windows Desktop Runtime | `8.0.29` |
-| RID | `win-x64` |
-| Publish mode | self-contained single-file |
-
-## Evidence sources
-
-1. `project.assets.json` identifies exact runtime packs selected by restore.
-2. The official, hash-verified matching SDK ZIP supplies Microsoft's `LICENSE.txt` and `ThirdPartyNotices.txt`.
-
-The restore graph identifies selected packs; the SDK archive supplies the authoritative legal text for the same release train.
-
-## Exact-version generator
-
-Run after restore and publish:
+After restore and publish, run:
 
 ```powershell
 .\tools\generate-dotnet-notices.ps1 `
     -PublishDirectory .\artifacts\win-x64
 ```
 
-The generator:
+This stage:
 
 - requires the exact pinned SDK;
-- reads exact runtime-pack versions from the restore graph;
-- rejects unreviewed or mismatched packs;
-- confirms the SDK/runtime release mapping;
-- downloads the official SDK ZIP and verifies SHA-512;
-- imports `LICENSE.txt` and `ThirdPartyNotices.txt`;
-- records URLs, versions, packs and checksums;
-- writes `THIRD-PARTY-NOTICES.txt`, `DOTNET-LICENSE-NOTICE.txt` and `DOTNET-NOTICE-METADATA.json`.
+- validates exact runtime-pack versions from the restore graph;
+- confirms the SDK/runtime release mapping through official Microsoft metadata;
+- downloads the matching official SDK ZIP;
+- verifies its published SHA-512;
+- imports `LICENSE.txt` and `ThirdPartyNotices.txt` without substantive modification;
+- writes base `DOTNET-NOTICE-METADATA.json` schema 1.
 
-## Maintainer-reviewed redistribution notice
+## Stage 2: exact published-component coverage
 
-Then run:
+`SightAdapt.csproj` captures the SDK-generated `FilesToBundle` list during single-file publication. Then run:
+
+```powershell
+.\tools\generate-dotnet-component-coverage.ps1 `
+    -PublishDirectory .\artifacts\win-x64
+```
+
+This stage:
+
+1. identifies every NuGet package contributing an embedded component;
+2. requires a reviewed dependency-policy entry and correct shipped classification;
+3. records exact NuGet package SHA-512 and repository metadata;
+4. reads exact `.nuspec` license metadata;
+5. maps every embedded package asset with package-relative path and SHA-256;
+6. maps every loose binary by filename and SHA-256 to an exact restored package asset;
+7. adds package-specific sections to `THIRD-PARTY-NOTICES.txt` when components are not covered by the official .NET release bundle;
+8. upgrades `DOTNET-NOTICE-METADATA.json` to schema 2 with package, notice-mapping and component inventories;
+9. fails when a package is unreviewed, marked non-shipped or cannot be mapped.
+
+The temporary `FilesToBundle` manifest may contain absolute build paths. Only its SHA-256 and sanitized component records are retained in the release metadata.
+
+## Current component evidence
+
+The reviewed alpha build maps 452 package components across three exact packages:
+
+| Package | Components | Notice mapping |
+|---|---:|---|
+| `Microsoft.NETCore.App.Runtime.win-x64/8.0.29` | 165 | Official exact-release .NET license and notices |
+| `Microsoft.WindowsDesktop.App.Runtime.win-x64/8.0.29` | 285 | Official exact-release .NET license and notices |
+| `Microsoft.Windows.SDK.NET.Ref/10.0.19041.56` | 2 | Exact package SHA-512, policy license and `.nuspec` license URL |
+
+The inventory contains 447 embedded components and 5 loose native DLLs. `unmappedExternalComponentCount` must remain zero.
+
+## Stage 3: maintainer redistribution summary
+
+Run:
 
 ```powershell
 .\tools\generate-dotnet-redistribution-notice.ps1 `
     -PublishDirectory .\artifacts\win-x64
 ```
 
-It renders `release/MICROSOFT-DOTNET-REDISTRIBUTION.template.txt` using canonical release metadata. Before writing the package notice, it verifies:
+This renders `MICROSOFT-DOTNET-REDISTRIBUTION.txt` after validating the reviewed SDK/runtime/TFM/RID/publish configuration, template SHA-256, maintainer decision and exact-version metadata.
 
-- reviewed SDK/runtime/TFM/RID/publish values;
-- reviewed template SHA-256;
-- maintainer decision status, owner and issue record;
-- exact-version metadata for the same artifact.
+## Final-package validation
 
-A `blocked` maintainer decision fails packaging. No external legal audit is required or planned.
+Two independent validators run on the final ZIP:
 
-## Archive validation
+- `test-release-package.ps1` checks package completeness, official notice identity and redistribution headers;
+- `verify-dotnet-component-coverage.ps1` checks schema-2 component evidence, package hashes, notice mappings, all loose binary SHA-256 values and absence of unmapped binaries.
 
-`tools/test-release-package.ps1` verifies:
+The negative package test proves rejection of:
 
-- required files and UTF-8 readability;
-- exact notice metadata and checksums;
-- required runtime-pack mapping;
-- generated third-party notice identity;
-- redistribution notice headers for product, SDK, runtime, TFM, RID, publish mode, review date and maintainer decision.
+- an incomplete package;
+- stale redistribution wording;
+- a package where one real loose binary remains but its component mapping is removed.
 
-CI runs the validator before artifact upload and retains `project.assets.json` in diagnostics.
+## Maintenance
 
-## Updating .NET
+Repeat generation and review when SDK/runtime, TFM, RID, publish settings, restored packages, `FilesToBundle`, loose binaries, package license metadata or Microsoft legal sources change.
 
-A .NET update must:
-
-1. update `global.json` and `Directory.Build.props`;
-2. confirm the official SDK/runtime mapping;
-3. update `release/dotnet-redistribution-review.json` after maintainer review;
-4. regenerate exact-version and redistribution notices;
-5. inspect restore dependencies, metadata and generated text;
-6. review new runtime packs;
-7. run stale-notice negative validation and final-package validation;
-8. update reviewed-version documentation.
-
-## Review triggers
-
-Repeat the maintainer review when SDK/runtime, TFM, RID, publish settings, runtime packs, Microsoft licensing sources or redistribution wording change.
-
-Do not publish when the authoritative package cannot be verified, notice files are absent, the review record is stale, the maintainer decision is blocked or a runtime component is not mapped to reviewed notice material.
+Do not publish when official-text import, package policy, package hashes, component mapping, notice mapping or final ZIP validation fails.

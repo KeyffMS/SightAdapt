@@ -2,60 +2,55 @@
 
 This document defines the minimum contents and verification rules for every binary distribution of SightAdapt.
 
-## Canonical required-file manifest
+## Canonical required files
 
 The machine-readable source of truth is `release/required-files.txt`.
 
-Every package must place these files at the package root:
-
 | File | Purpose |
 |---|---|
-| `SightAdapt.exe` | Application executable |
+| `SightAdapt.exe` | Application executable and single-file container |
 | `LICENSE.txt` | MIT License for SightAdapt project code |
-| `THIRD-PARTY-NOTICES.txt` | Exact-version Microsoft/.NET third-party notices |
-| `DOTNET-LICENSE-NOTICE.txt` | Exact-version Microsoft .NET license text and source metadata |
-| `DOTNET-NOTICE-METADATA.json` | SDK, runtime, RID, runtime-pack, source and checksum evidence |
-| `MICROSOFT-DOTNET-REDISTRIBUTION.txt` | Generated maintainer-reviewed Microsoft redistribution notice |
+| `THIRD-PARTY-NOTICES.txt` | Exact .NET notices and package-specific notice sections |
+| `DOTNET-LICENSE-NOTICE.txt` | Exact Microsoft .NET license text and source metadata |
+| `DOTNET-NOTICE-METADATA.json` | Exact package, component, notice and checksum evidence |
+| `MICROSOFT-DOTNET-REDISTRIBUTION.txt` | Generated maintainer-reviewed redistribution notice |
 | `THIRD-PARTY-NAMES-AND-DRM-NOTICE.txt` | Mark ownership, no-endorsement and DRM/access-control boundaries |
 | `DEPENDENCIES.md` | Human-readable dependency inventory |
 | `SBOM.spdx.json` | SPDX 2.3 component and shipped-file inventory |
 | `LICENSE-REPORT.json` | Dependency-license policy result |
 | `PRIVACY.md` | Application privacy and local-data notice |
 
-A package is incomplete if a required file is missing, empty, unreadable, stale or inconsistent with the pinned build inputs.
+A package is incomplete if a required file is missing, unreadable, stale, inconsistent with pinned inputs or contains a binary without exact component notice evidence.
 
-## Distribution formats
+## Publish sequence
 
-The same bundle is required for Actions artifacts, manual ZIPs, installers, store packages, portable builds and mirrors. Platform metadata does not replace readable files in the installed or unpacked application directory.
+1. `SightAdapt.csproj` copies the static legal baseline and captures SDK `FilesToBundle` inputs.
+2. `generate-dotnet-notices.ps1` imports exact official .NET legal text.
+3. `generate-dotnet-component-coverage.ps1` maps all embedded and loose package components and adds package-specific notices.
+4. `generate-dotnet-redistribution-notice.ps1` renders the reviewed redistribution summary.
+5. `generate-sbom.ps1` generates the dependency inventory, SPDX SBOM and license report.
 
-Mirrors must publish the same verified bytes and compliance report without stripping or replacing notices.
+## Exact component coverage
 
-## Publish behavior
+Schema-2 `DOTNET-NOTICE-METADATA.json` records:
 
-1. `SightAdapt.csproj` copies the repository legal baseline.
-2. `generate-dotnet-notices.ps1` imports exact-version Microsoft license/notice material.
-3. `generate-dotnet-redistribution-notice.ps1` validates the reviewed configuration, template checksum and maintainer decision, then generates the package notice.
-4. `generate-sbom.ps1` creates `DEPENDENCIES.md`, `SBOM.spdx.json` and `LICENSE-REPORT.json`.
+- SHA-256 of the temporary `FilesToBundle` manifest;
+- exact package identities and NuGet SHA-512 values;
+- repository and license metadata;
+- notice mappings for exact .NET release text and package-specific terms;
+- one sanitized record per embedded or loose component;
+- package-relative asset path and component SHA-256;
+- zero unmapped external components.
 
-Expected package root:
+The reviewed alpha contains 452 mapped package components across:
 
-```text
-SightAdapt.exe
-LICENSE.txt
-THIRD-PARTY-NOTICES.txt
-DOTNET-LICENSE-NOTICE.txt
-DOTNET-NOTICE-METADATA.json
-MICROSOFT-DOTNET-REDISTRIBUTION.txt
-THIRD-PARTY-NAMES-AND-DRM-NOTICE.txt
-DEPENDENCIES.md
-SBOM.spdx.json
-LICENSE-REPORT.json
-PRIVACY.md
-```
+- `Microsoft.NETCore.App.Runtime.win-x64/8.0.29`;
+- `Microsoft.WindowsDesktop.App.Runtime.win-x64/8.0.29`;
+- `Microsoft.Windows.SDK.NET.Ref/10.0.19041.56`.
 
-## Final package compliance gate
+`Microsoft.Windows.SDK.NET.Ref` is classified as `shipped-embedded`, because `Microsoft.Windows.SDK.NET.dll` and `WinRT.Runtime.dll` are present in `FilesToBundle`.
 
-Create the archive from the publish directory and validate both representations:
+## Final package validation
 
 ```powershell
 $archive = '.\artifacts\SightAdapt-0.5.0.50-alpha-win-x64.zip'
@@ -70,54 +65,43 @@ Compress-Archive `
     -DirectoryPath '.\artifacts\win-x64' `
     -ArchivePath $archive `
     -ReportPath $report
+
+.\tools\verify-dotnet-component-coverage.ps1 `
+    -ArchivePath $archive
 ```
 
-The gate validates the manifest, staged files, final ZIP, release identity, exact .NET metadata, maintainer redistribution decision, license-policy result and SBOM coverage. It writes the final archive SHA-256 and decision evidence to the compliance report.
+The general compliance gate validates package, metadata, license-report and SBOM invariants. The focused component validator independently verifies package evidence, notice mappings, exact loose-binary hashes and absence of unmapped binaries.
 
-The negative check must also pass:
+## Negative checks
 
 ```powershell
 .\tools\test-release-compliance-negative.ps1 `
     -PublishDirectory '.\artifacts\win-x64'
 ```
 
-It proves that incomplete packages and stale redistribution notices are rejected.
+The workflow proves rejection of:
 
-## Microsoft .NET evidence
+- an incomplete package;
+- stale redistribution metadata;
+- a package containing a real runtime DLL after its component mapping is deliberately removed.
 
-`global.json` pins the SDK, `Directory.Build.props` records the expected runtime/RID/publish inputs and `project.assets.json` identifies actual runtime packs.
+## Distribution formats
 
-The exact-version notice generator downloads the matching official SDK ZIP, verifies its SHA-512 and imports its license and third-party notice text. The restore graph remains the authority for selected runtime packs.
-
-`release/dotnet-redistribution-review.json` records the exact reviewed configuration, notice-template SHA-256 and maintainer decision. No external legal audit is planned. A mismatch or `blocked` decision fails before packaging.
-
-See [Microsoft .NET redistribution analysis](legal/DOTNET-REDISTRIBUTION.md) and [Exact-version notice generation](legal/DOTNET-NOTICE-GENERATION.md).
-
-## Other notices and SBOM
-
-The third-party names/DRM notice governs mark ownership, compatibility wording and protected-content limitations.
-
-The dependency policy, restore graph, workflows, .NET metadata and final publish files feed the SPDX SBOM and license report. `SightAdapt.exe` is the documented single-file container for embedded runtime components.
-
-## Installers, stores and mirrors
-
-Every maintained packaging workflow must validate its final installed/unpacked file set against `release/required-files.txt` and retain the outer container checksum. Portable packages use the ZIP gate directly. Mirrors publish the same verified bytes.
+The same legal/compliance bundle is required for Actions artifacts, manual ZIPs, installers, store packages, portable builds and mirrors. Each maintained format must validate its final installed or unpacked file set. Mirrors publish the same verified bytes and report.
 
 ## Release checklist
 
-1. verify release metadata and the maintainer redistribution record;
-2. verify the .NET analysis and reviewed notice template;
-3. review compatibility/DRM wording;
-4. restore, build and test;
-5. publish into a clean staging directory;
-6. generate exact-version .NET notices;
-7. generate the maintainer-reviewed redistribution notice;
-8. generate SBOM, license report and dependency inventory;
-9. resolve license-policy failures;
-10. confirm incomplete and stale packages are rejected;
-11. create and verify the final package;
-12. retain/publish the compliance report;
-13. inspect legal documents for readability;
-14. publish the same verified bytes to mirrors.
+1. verify canonical release metadata and maintainer decision;
+2. restore, build and test;
+3. publish and capture `FilesToBundle`;
+4. import exact official .NET notices;
+5. generate exact package/component coverage;
+6. generate the redistribution summary;
+7. generate SBOM, license report and dependency inventory;
+8. resolve every policy or component-mapping failure;
+9. prove incomplete, stale and unmapped packages are rejected;
+10. create and run both validators against the final package;
+11. retain the package and compliance report;
+12. publish identical verified bytes to official mirrors.
 
-Do not publish when any package, notice, SBOM, license, metadata or maintainer-decision check fails. The project does not require an external audit; release risk is accepted, conditioned or blocked by the maintainer under the documented governance policy.
+Do not publish when any notice, package hash, component mapping, SBOM, license, metadata or maintainer-decision check fails.

@@ -24,6 +24,8 @@
     <PublishSingleFile>true</PublishSingleFile>
     <SupportedOSPlatformVersion>10.0.19041.0</SupportedOSPlatformVersion>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <SightAdaptBundleManifestDirectory>$(MSBuildProjectDirectory)\..\..\artifacts</SightAdaptBundleManifestDirectory>
+    <SightAdaptBundleManifestPath>$(SightAdaptBundleManifestDirectory)\dotnet-files-to-bundle.tsv</SightAdaptBundleManifestPath>
   </PropertyGroup>
 
   <ItemGroup>
@@ -60,4 +62,16 @@
           CopyToOutputDirectory="PreserveNewest"
           CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
+
+  <Target Name="CaptureSightAdaptFilesToBundle"
+          BeforeTargets="GenerateSingleFileBundle"
+          DependsOnTargets="PrepareForBundle"
+          Condition="'$(PublishSingleFile)' == 'true' and '$(SelfContained)' == 'true'">
+    <MakeDir Directories="$(SightAdaptBundleManifestDirectory)" />
+    <WriteLinesToFile File="$(SightAdaptBundleManifestPath)"
+                      Lines="@(FilesToBundle->'%(FullPath)|%(RelativePath)|%(BundleRelativePath)')"
+                      Overwrite="true"
+                      WriteOnlyWhenDifferent="true"
+                      Encoding="UTF-8" />
+  </Target>
 </Project>

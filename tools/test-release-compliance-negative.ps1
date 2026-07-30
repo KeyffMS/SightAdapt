@@ -17,17 +17,19 @@ $tempRoot = Join-Path ([System.IO.Path]::GetTempPath()) (
 function Assert-PackageRejected(
     [string]$ArchivePath,
     [string]$Scenario) {
-    $failedAsExpected = $false
+    $rejected = $false
     try {
         & (Join-Path $PSScriptRoot 'test-release-package.ps1') `
             -ArchivePath $ArchivePath
+        & (Join-Path $PSScriptRoot 'verify-dotnet-component-coverage.ps1') `
+            -ArchivePath $ArchivePath
     }
     catch {
-        $failedAsExpected = $true
+        $rejected = $true
         Write-Host "$Scenario was rejected as expected: $($_.Exception.Message)"
     }
 
-    if (-not $failedAsExpected) {
+    if (-not $rejected) {
         throw "$Scenario unexpectedly passed validation."
     }
 }
@@ -47,6 +49,7 @@ try {
 
     if (-not [string]::IsNullOrWhiteSpace($PublishDirectory)) {
         $resolvedPublish = (Resolve-Path -LiteralPath $PublishDirectory).Path
+
         $staleDirectory = Join-Path $tempRoot 'stale-redistribution-notice'
         $staleArchive = Join-Path $tempRoot 'stale-redistribution-notice.zip'
         [System.IO.Directory]::CreateDirectory($staleDirectory) | Out-Null
@@ -56,10 +59,6 @@ try {
             -Force
 
         $noticePath = Join-Path $staleDirectory 'MICROSOFT-DOTNET-REDISTRIBUTION.txt'
-        if (-not [System.IO.File]::Exists($noticePath)) {
-            throw 'The published redistribution notice is unavailable for the stale-notice test.'
-        }
-
         [xml]$props = Get-Content -LiteralPath (Join-Path $root 'Directory.Build.props')
         $runtimeVersion = [string]$props.Project.PropertyGroup.SightAdaptDotNetRuntimeVersion
         $currentHeader = "Runtime version: $runtimeVersion"
@@ -67,18 +66,51 @@ try {
         if (-not $notice.Contains($currentHeader, [StringComparison]::Ordinal)) {
             throw "The stale-notice test could not locate '$currentHeader'."
         }
-        $mutated = $notice.Replace(
-            $currentHeader,
-            'Runtime version: 0.0.0-stale')
         [System.IO.File]::WriteAllText(
             $noticePath,
-            $mutated,
+            $notice.Replace($currentHeader, 'Runtime version: 0.0.0-stale'),
             [System.Text.UTF8Encoding]::new($false))
-
         [System.IO.Compression.ZipFile]::CreateFromDirectory(
             $staleDirectory,
             $staleArchive)
         Assert-PackageRejected $staleArchive 'The package with stale redistribution metadata'
+
+        $unmappedDirectory = Join-Path $tempRoot 'unmapped-runtime-component'
+        $unmappedArchive = Join-Path $tempRoot 'unmapped-runtime-component.zip'
+        [System.IO.Directory]::CreateDirectory($unmappedDirectory) | Out-Null
+        Copy-Item -Path (Join-Path $resolvedPublish '*') `
+            -Destination $unmappedDirectory `
+            -Recurse `
+            -Force
+
+        $metadataPath = Join-Path $unmappedDirectory 'DOTNET-NOTICE-METADATA.json'
+        $metadata = Get-Content -LiteralPath $metadataPath -Raw | ConvertFrom-Json
+        $components = @($metadata.componentCoverage.components)
+        $looseComponents = @($components | Where-Object {
+            [string]$_.disposition -eq 'loose'
+        })
+        if ($looseComponents.Count -eq 0) {
+            throw 'The unmapped-component test requires at least one loose runtime binary.'
+        }
+        $removed = $looseComponents[0]
+        $remaining = @($components | Where-Object {
+            -not (
+                [string]$_.disposition -eq [string]$removed.disposition -and
+                [string]$_.outputPath -eq [string]$removed.outputPath -and
+                [string]$_.packageAssetPath -eq [string]$removed.packageAssetPath)
+        })
+        $metadata.componentCoverage.components = $remaining
+        $metadata.componentCoverage.runtimeComponentCount = $remaining.Count
+        $metadata.componentCoverage.looseRuntimeComponentCount = $looseComponents.Count - 1
+        [System.IO.File]::WriteAllText(
+            $metadataPath,
+            ($metadata | ConvertTo-Json -Depth 14) + [Environment]::NewLine,
+            [System.Text.UTF8Encoding]::new($false))
+        [System.IO.Compression.ZipFile]::CreateFromDirectory(
+            $unmappedDirectory,
+            $unmappedArchive)
+        Assert-PackageRejected $unmappedArchive (
+            "The package with unmapped runtime binary '$($removed.outputPath)'")
     }
 }
 finally {

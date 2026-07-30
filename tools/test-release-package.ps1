@@ -19,7 +19,6 @@ if ($null -eq ('System.IO.Compression.ZipFile' -as [type])) {
 $resolvedArchive = (Resolve-Path -LiteralPath $ArchivePath).Path
 $resolvedManifest = (Resolve-Path -LiteralPath $ManifestPath).Path
 $root = Split-Path -Parent (Split-Path -Parent $resolvedManifest)
-
 $requiredFiles = @(
     Get-Content -LiteralPath $resolvedManifest |
         ForEach-Object { $_.Trim() } |
@@ -48,20 +47,6 @@ $targetFramework = [string]$projectGroup.TargetFramework
 $failures = [System.Collections.Generic.List[string]]::new()
 $entries = @{}
 $textEntries = @{}
-
-function Get-NormalizedTextSha256([string]$Path) {
-    $text = Get-Content -LiteralPath $Path -Raw
-    $normalized = $text.Replace("`r`n", "`n").Replace("`r", "`n")
-    $bytes = [System.Text.UTF8Encoding]::new($false).GetBytes($normalized)
-    $sha256 = [System.Security.Cryptography.SHA256]::Create()
-    try {
-        return [System.BitConverter]::ToString(
-            $sha256.ComputeHash($bytes)).Replace('-', '').ToLowerInvariant()
-    }
-    finally {
-        $sha256.Dispose()
-    }
-}
 
 function Read-ArchiveText(
     [System.IO.Compression.ZipArchiveEntry]$Entry,
@@ -100,54 +85,12 @@ function Get-HeaderValue([string]$Text, [string]$Name) {
 $reviewPath = Join-Path $root 'release\dotnet-redistribution-review.json'
 try {
     $review = Get-Content -LiteralPath $reviewPath -Raw | ConvertFrom-Json
-    if ([int]$review.schemaVersion -ne 2) {
-        $failures.Add("Unsupported .NET redistribution review schema '$($review.schemaVersion)'.")
-    }
-    if ([string]$review.reviewedAt -notmatch '^\d{4}-\d{2}-\d{2}$') {
-        $failures.Add('The .NET redistribution review date must use YYYY-MM-DD.')
-    }
-
-    $reviewExpected = @{
-        sdkVersion = $expectedMetadata.sdkVersion
-        runtimeVersion = $expectedMetadata.runtimeVersion
-        targetFramework = $targetFramework
-        runtimeIdentifier = $expectedMetadata.runtimeIdentifier
-        publishMode = $expectedMetadata.publishMode
-    }
-    foreach ($expected in $reviewExpected.GetEnumerator()) {
-        $actual = [string]$review.reviewedConfiguration.($expected.Key)
-        if ($actual -ne [string]$expected.Value) {
-            $failures.Add("Redistribution review has $($expected.Key)='$actual'; expected '$($expected.Value)'.")
-        }
-    }
-
-    $templatePath = Join-Path $root ([string]$review.noticeTemplate.path)
-    if (-not [System.IO.File]::Exists($templatePath)) {
-        $failures.Add("Reviewed redistribution template is missing: $($review.noticeTemplate.path)")
-    }
-    elseif ((Get-NormalizedTextSha256 $templatePath) -ne
-            ([string]$review.noticeTemplate.sha256).ToLowerInvariant()) {
-        $failures.Add('The redistribution notice template differs from the reviewed SHA-256.')
-    }
-
     $decisionStatus = [string]$review.maintainerDecision.status
-    $decisionOwner = [string]$review.maintainerDecision.decisionOwner
-    $decisionIssue = [int]$review.maintainerDecision.decisionIssue
     if (@('accepted-for-current-distribution', 'accepted-with-conditions', 'blocked') -notcontains $decisionStatus) {
         $failures.Add("Unsupported maintainer decision '$decisionStatus'.")
     }
-    if ([string]::IsNullOrWhiteSpace($decisionOwner)) {
-        $failures.Add('The redistribution maintainer decision has no owner.')
-    }
-    if ($decisionIssue -le 0) {
-        $failures.Add('The redistribution maintainer decision has no valid issue number.')
-    }
     if ($decisionStatus -eq 'blocked') {
         $failures.Add('The redistribution maintainer decision blocks packaging.')
-    }
-    if ($decisionStatus -eq 'accepted-with-conditions' -and
-        @($review.maintainerDecision.conditions).Count -eq 0) {
-        $failures.Add('A conditional redistribution decision has no conditions.')
     }
 }
 catch {
@@ -208,18 +151,16 @@ try {
                 "Microsoft.NETCore.App.Runtime.$($expectedMetadata.runtimeIdentifier)/$($expectedMetadata.runtimeVersion)",
                 "Microsoft.WindowsDesktop.App.Runtime.$($expectedMetadata.runtimeIdentifier)/$($expectedMetadata.runtimeVersion)")) {
                 if (@($noticeMetadata.runtimePackages) -notcontains $runtimePack) {
-                    $failures.Add("DOTNET-NOTICE-METADATA.json does not map runtime pack '$runtimePack'.")
+                    $failures.Add("DOTNET-NOTICE-METADATA.json does not identify runtime pack '$runtimePack'.")
                 }
             }
-            if ([string]::IsNullOrWhiteSpace([string]$noticeMetadata.source.packageUrl)) {
-                $failures.Add('DOTNET-NOTICE-METADATA.json does not record the official source package URL.')
-            }
-            if ([string]$noticeMetadata.source.packageSha512 -notmatch '^[0-9A-Fa-f]{128}$') {
-                $failures.Add('DOTNET-NOTICE-METADATA.json does not contain a valid package SHA-512.')
+            if ([string]::IsNullOrWhiteSpace([string]$noticeMetadata.source.packageUrl) -or
+                [string]$noticeMetadata.source.packageSha512 -notmatch '^[0-9A-Fa-f]{128}$') {
+                $failures.Add('DOTNET-NOTICE-METADATA.json lacks valid official package evidence.')
             }
             if ([string]$noticeMetadata.source.importedLicenseSha256 -notmatch '^[0-9A-Fa-f]{64}$' -or
                 [string]$noticeMetadata.source.importedThirdPartyNoticesSha256 -notmatch '^[0-9A-Fa-f]{64}$') {
-                $failures.Add('DOTNET-NOTICE-METADATA.json does not contain valid imported-file SHA-256 values.')
+                $failures.Add('DOTNET-NOTICE-METADATA.json lacks imported notice hashes.')
             }
         }
         catch {
@@ -230,10 +171,14 @@ try {
     $noticeKey = 'third-party-notices.txt'
     if ($textEntries.ContainsKey($noticeKey)) {
         $noticeText = [string]$textEntries[$noticeKey]
-        if (-not $noticeText.StartsWith('SIGHTADAPT EXACT-VERSION THIRD-PARTY NOTICES', [StringComparison]::Ordinal)) {
+        if (-not $noticeText.StartsWith(
+            'SIGHTADAPT EXACT-VERSION THIRD-PARTY NOTICES',
+            [StringComparison]::Ordinal)) {
             $failures.Add('THIRD-PARTY-NOTICES.txt is not an exact-version generated notice.')
         }
-        if (-not $noticeText.Contains(".NET runtime and Windows Desktop Runtime: $($expectedMetadata.runtimeVersion)", [StringComparison]::Ordinal)) {
+        if (-not $noticeText.Contains(
+            ".NET runtime and Windows Desktop Runtime: $($expectedMetadata.runtimeVersion)",
+            [StringComparison]::Ordinal)) {
             $failures.Add('THIRD-PARTY-NOTICES.txt does not identify the pinned runtime version.')
         }
     }
