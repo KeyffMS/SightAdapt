@@ -10,6 +10,7 @@ if ($null -eq ('System.IO.Compression.ZipFile' -as [type])) {
     Add-Type -AssemblyName System.IO.Compression.FileSystem
 }
 
+$root = Split-Path -Parent $PSScriptRoot
 $tempRoot = Join-Path ([System.IO.Path]::GetTempPath()) (
     'sightadapt-negative-package-' + [Guid]::NewGuid().ToString('N'))
 
@@ -58,14 +59,17 @@ try {
         if (-not [System.IO.File]::Exists($noticePath)) {
             throw 'The published redistribution notice is unavailable for the stale-notice test.'
         }
+
+        [xml]$props = Get-Content -LiteralPath (Join-Path $root 'Directory.Build.props')
+        $runtimeVersion = [string]$props.Project.PropertyGroup.SightAdaptDotNetRuntimeVersion
+        $currentHeader = "Runtime version: $runtimeVersion"
         $notice = Get-Content -LiteralPath $noticePath -Raw
-        $mutated = [regex]::Replace(
-            $notice,
-            '(?m)^Runtime version:\s*[^\r\n]+$',
-            'Runtime version: 0.0.0-stale')
-        if ($mutated -eq $notice) {
-            throw 'The stale-notice test could not locate the Runtime version header.'
+        if (-not $notice.Contains($currentHeader, [StringComparison]::Ordinal)) {
+            throw "The stale-notice test could not locate '$currentHeader'."
         }
+        $mutated = $notice.Replace(
+            $currentHeader,
+            'Runtime version: 0.0.0-stale')
         [System.IO.File]::WriteAllText(
             $noticePath,
             $mutated,
