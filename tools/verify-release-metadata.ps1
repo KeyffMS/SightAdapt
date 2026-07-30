@@ -31,6 +31,20 @@ function Assert-Equal(
     }
 }
 
+function Get-NormalizedTextSha256([string]$Path) {
+    $text = Get-Content -LiteralPath $Path -Raw
+    $normalized = $text.Replace("`r`n", "`n").Replace("`r", "`n")
+    $bytes = [System.Text.UTF8Encoding]::new($false).GetBytes($normalized)
+    $sha256 = [System.Security.Cryptography.SHA256]::Create()
+    try {
+        return [System.BitConverter]::ToString(
+            $sha256.ComputeHash($bytes)).Replace('-', '').ToLowerInvariant()
+    }
+    finally {
+        $sha256.Dispose()
+    }
+}
+
 if ([string]::IsNullOrWhiteSpace($version) -or
     [string]::IsNullOrWhiteSpace($fileVersion) -or
     [string]::IsNullOrWhiteSpace($milestone) -or
@@ -102,12 +116,11 @@ Assert-Equal 'Reviewed target framework' $targetFramework ([string]$config.targe
 Assert-Equal 'Reviewed runtime identifier' $rid ([string]$config.runtimeIdentifier)
 Assert-Equal 'Reviewed publish mode' $publishMode ([string]$config.publishMode)
 
-$templateRelativePath = ([string]$review.noticeTemplate.path).Replace('/', [System.IO.Path]::DirectorySeparatorChar)
-$templatePath = Join-Path $root $templateRelativePath
+$templatePath = Join-Path $root ([string]$review.noticeTemplate.path)
 if (-not [System.IO.File]::Exists($templatePath)) {
     throw "The reviewed redistribution notice template does not exist: $($review.noticeTemplate.path)"
 }
-$templateHash = (Get-FileHash -LiteralPath $templatePath -Algorithm SHA256).Hash.ToLowerInvariant()
+$templateHash = Get-NormalizedTextSha256 $templatePath
 Assert-Equal 'Reviewed redistribution notice template SHA-256' `
     $templateHash `
     ([string]$review.noticeTemplate.sha256).ToLowerInvariant()
