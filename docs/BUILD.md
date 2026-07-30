@@ -1,6 +1,6 @@
-# Build and package SightAdapt as a standalone EXE
+# Build and package SightAdapt
 
-These steps create a self-contained Windows x64 executable and verified ZIP.
+These steps create the maintained self-contained Windows x64 portable ZIP and its schema-3 compliance report.
 
 ## Prerequisites
 
@@ -18,22 +18,26 @@ Windows Desktop Runtime 8.0.29
 .\tools\verify-release-metadata.ps1
 ```
 
-`Directory.Build.props` is the canonical source for product, SDK, runtime, RID, publish mode and artifact metadata. A mismatched reviewed configuration or blocked maintainer decision stops the build.
+`Directory.Build.props` is the canonical source for product, SDK, runtime, RID, publish mode and artifact metadata.
 
-## 2. Restore and test
+## 2. Restore, build and test
 
 ```powershell
 dotnet restore .\src\SightAdapt\SightAdapt.csproj
 dotnet restore .\tests\SightAdapt.Tests\SightAdapt.Tests.csproj
+
+dotnet build .\src\SightAdapt\SightAdapt.csproj `
+    --configuration Release `
+    --no-restore
 
 dotnet test .\tests\SightAdapt.Tests\SightAdapt.Tests.csproj `
     --configuration Release `
     --no-restore
 ```
 
-Both `project.assets.json` files are required later. The SBOM generator reads all package entries and dependency edges from the application and test restore graphs, not only direct `PackageReference` elements.
+Both `project.assets.json` files are consumed by the complete SBOM/license inventory.
 
-## 3. Publish and capture bundle inputs
+## 3. Publish
 
 ```powershell
 dotnet publish .\src\SightAdapt\SightAdapt.csproj `
@@ -42,51 +46,27 @@ dotnet publish .\src\SightAdapt\SightAdapt.csproj `
     --output .\artifacts\win-x64
 ```
 
-The project captures the SDK-provided `FilesToBundle` list in `artifacts\dotnet-files-to-bundle.tsv`. This temporary file identifies exact single-file inputs; absolute paths are not copied into the release ZIP.
+The publish target captures SDK `FilesToBundle` inputs in `artifacts\dotnet-files-to-bundle.tsv`. The temporary file is not included in the ZIP.
 
-## 4. Import exact official .NET notices
+## 4. Generate legal and supply-chain evidence
 
 ```powershell
 .\tools\generate-dotnet-notices.ps1 `
     -PublishDirectory .\artifacts\win-x64
-```
 
-This verifies the runtime release train and official SDK ZIP SHA-512, then writes the exact Microsoft license, third-party notices and base metadata.
-
-## 5. Generate component-level notice coverage
-
-```powershell
 .\tools\generate-dotnet-component-coverage.ps1 `
     -PublishDirectory .\artifacts\win-x64
-```
 
-This maps every embedded package asset and every loose runtime binary to:
-
-- exact package and version;
-- package SHA-512;
-- package-relative asset path;
-- component SHA-256;
-- reviewed notice mapping.
-
-The step also adds exact package notice sections for components not covered by the official .NET release bundle. Unreviewed, non-shipped or unmapped package components fail the build.
-
-## 6. Generate redistribution summary
-
-```powershell
 .\tools\generate-dotnet-redistribution-notice.ps1 `
     -PublishDirectory .\artifacts\win-x64
-```
 
-## 7. Generate SBOM and license report
-
-```powershell
 .\tools\generate-sbom.ps1 `
     -PublishDirectory .\artifacts\win-x64
 ```
 
-The generator writes `DEPENDENCIES.md`, schema-2 `LICENSE-REPORT.json` and SPDX 2.3 `SBOM.spdx.json` from the same inventory. For every NuGet package it retains exact package SHA-512 and `.nuspec` SHA-256 plus declared license metadata. Direct and transitive application/test packages are discovered automatically; the dependency policy supplies decisions and custom overrides rather than the inventory itself.
+These steps generate exact Microsoft notices, component mappings, `DEPENDENCIES.md`, schema-2 `LICENSE-REPORT.json` and SPDX 2.3 `SBOM.spdx.json`.
 
-## 8. Run negative checks
+## 5. Run negative checks
 
 ```powershell
 .\tools\test-sbom-license-negative.ps1 `
@@ -94,31 +74,29 @@ The generator writes `DEPENDENCIES.md`, schema-2 `LICENSE-REPORT.json` and SPDX 
 
 .\tools\test-release-compliance-negative.ps1 `
     -PublishDirectory .\artifacts\win-x64
+
+.\tools\test-final-package-gate-negative.ps1 `
+    -PublishDirectory .\artifacts\win-x64
 ```
 
-The validators must reject a transitive package with no resolved license, an incomplete package, stale redistribution metadata and a package with a deliberately removed component mapping.
+The tests reject unknown licenses, incomplete/stale/unmapped packages, changed archive bytes, incorrect commit provenance, inconsistent tags and inactive channels.
 
-## 9. Create and verify the final ZIP
+## 6. Create the maintained portable ZIP
 
 ```powershell
 $archive = '.\artifacts\SightAdapt-0.5.0.50-alpha-win-x64.zip'
 $report = '.\artifacts\SightAdapt-0.5.0.50-alpha-win-x64-compliance.json'
 
-Compress-Archive `
-    -Path '.\artifacts\win-x64\*' `
-    -DestinationPath $archive `
-    -CompressionLevel Optimal
-
-.\tools\verify-release-compliance.ps1 `
-    -DirectoryPath .\artifacts\win-x64 `
+.\tools\new-verified-release-package.ps1 `
+    -DirectoryPath '.\artifacts\win-x64' `
     -ArchivePath $archive `
-    -ReportPath $report
-
-.\tools\verify-dotnet-component-coverage.ps1 `
-    -ArchivePath $archive
+    -ReportPath $report `
+    -DistributionChannel 'local-portable-zip'
 ```
 
-The compliance gate checks license evidence, package counts, graph edges and scope-aware SPDX relationships in addition to the existing package invariants. Retain the verified archive and compliance report together.
+Do not create an official package with a separate `Compress-Archive` command. The reusable entry point creates the archive, runs all final validators and records per-file SHA-256 equality and Git provenance.
+
+GitHub Actions uses the same command with channel `github-actions-artifact`; commit/ref and workflow/run values are read from the GitHub environment.
 
 ## Expected package root
 
@@ -136,7 +114,11 @@ LICENSE-REPORT.json
 PRIVACY.md
 ```
 
-Additional loose native runtime DLLs are allowed only when schema-2 metadata maps each file by exact output path and SHA-256.
+The compliance report is kept next to the ZIP because it contains the final archive SHA-256.
+
+## Maintained scope
+
+`release/distribution-channels.json` currently allows only the GitHub Actions portable ZIP and the local maintainer portable ZIP. GitHub Releases, installers, store packages and mirrors remain inactive until separately implemented with the same final gate.
 
 ## Clean rebuild
 
@@ -147,4 +129,4 @@ Remove-Item .\artifacts\SightAdapt-*-win-x64.zip -Force -ErrorAction SilentlyCon
 Remove-Item .\artifacts\SightAdapt-*-win-x64-compliance.json -Force -ErrorAction SilentlyContinue
 ```
 
-Do not publish when metadata review, notice import, component coverage, complete dependency/license review, negative checks or final-package validation fails.
+Do not publish when any generator, negative test or final-package validation fails.

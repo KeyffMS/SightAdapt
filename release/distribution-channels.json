@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "maintainedChannels": [
+    {
+      "id": "github-actions-artifact",
+      "format": "portable-zip",
+      "producer": ".github/workflows/build.yml",
+      "entrypoint": "tools/new-verified-release-package.ps1",
+      "manifest": "release/required-files.txt",
+      "requiresWorkflowRun": true,
+      "requiresTag": false
+    },
+    {
+      "id": "local-portable-zip",
+      "format": "portable-zip",
+      "producer": "maintainer-local-build",
+      "entrypoint": "tools/new-verified-release-package.ps1",
+      "manifest": "release/required-files.txt",
+      "requiresWorkflowRun": false,
+      "requiresTag": false
+    }
+  ],
+  "plannedChannels": [
+    {
+      "id": "github-release",
+      "format": "portable-zip",
+      "trackingIssue": 98,
+      "requiresTag": true
+    },
+    {
+      "id": "installer",
+      "format": "installer",
+      "requiresTag": true
+    },
+    {
+      "id": "store-package",
+      "format": "store-package",
+      "trackingIssue": 107,
+      "requiresTag": true
+    },
+    {
+      "id": "official-mirror",
+      "format": "mirror",
+      "trackingIssue": 109,
+      "requiresTag": true
+    }
+  ]
+}
