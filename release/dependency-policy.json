@@ -127,8 +127,8 @@
     "Microsoft.Windows.SDK.NET.Ref": {
       "expectedVersion": "10.0.19041.56",
       "expectedVersionSource": "",
-      "scope": "build-reference",
-      "shipped": false,
+      "scope": "shipped-embedded",
+      "shipped": true,
       "supplier": "Organization: Microsoft Corporation",
       "license": "LicenseRef-Microsoft-Windows-SDK-Reference-Terms",
       "source": "https://www.nuget.org/packages/Microsoft.Windows.SDK.NET.Ref",
