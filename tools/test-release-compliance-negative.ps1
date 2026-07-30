@@ -47,6 +47,7 @@ try {
 
     if (-not [string]::IsNullOrWhiteSpace($PublishDirectory)) {
         $resolvedPublish = (Resolve-Path -LiteralPath $PublishDirectory).Path
+
         $staleDirectory = Join-Path $tempRoot 'stale-redistribution-notice'
         $staleArchive = Join-Path $tempRoot 'stale-redistribution-notice.zip'
         [System.IO.Directory]::CreateDirectory($staleDirectory) | Out-Null
@@ -79,6 +80,47 @@ try {
             $staleDirectory,
             $staleArchive)
         Assert-PackageRejected $staleArchive 'The package with stale redistribution metadata'
+
+        $unmappedDirectory = Join-Path $tempRoot 'unmapped-runtime-component'
+        $unmappedArchive = Join-Path $tempRoot 'unmapped-runtime-component.zip'
+        [System.IO.Directory]::CreateDirectory($unmappedDirectory) | Out-Null
+        Copy-Item -Path (Join-Path $resolvedPublish '*') `
+            -Destination $unmappedDirectory `
+            -Recurse `
+            -Force
+
+        $metadataPath = Join-Path $unmappedDirectory 'DOTNET-NOTICE-METADATA.json'
+        if (-not [System.IO.File]::Exists($metadataPath)) {
+            throw 'The .NET notice metadata is unavailable for the unmapped-component test.'
+        }
+        $metadata = Get-Content -LiteralPath $metadataPath -Raw | ConvertFrom-Json
+        $components = @($metadata.componentCoverage.components)
+        $looseComponents = @($components | Where-Object {
+            [string]$_.disposition -eq 'loose'
+        })
+        if ($looseComponents.Count -eq 0) {
+            throw 'The unmapped-component test requires at least one loose runtime binary.'
+        }
+        $removed = $looseComponents[0]
+        $remaining = @($components | Where-Object {
+            -not (
+                [string]$_.disposition -eq [string]$removed.disposition -and
+                [string]$_.outputPath -eq [string]$removed.outputPath -and
+                [string]$_.packageAssetPath -eq [string]$removed.packageAssetPath)
+        })
+        $metadata.componentCoverage.components = $remaining
+        $metadata.componentCoverage.runtimeComponentCount = $remaining.Count
+        $metadata.componentCoverage.looseRuntimeComponentCount = $looseComponents.Count - 1
+        [System.IO.File]::WriteAllText(
+            $metadataPath,
+            ($metadata | ConvertTo-Json -Depth 12) + [Environment]::NewLine,
+            [System.Text.UTF8Encoding]::new($false))
+
+        [System.IO.Compression.ZipFile]::CreateFromDirectory(
+            $unmappedDirectory,
+            $unmappedArchive)
+        Assert-PackageRejected $unmappedArchive (
+            "The package with unmapped runtime binary '$($removed.outputPath)'")
     }
 }
 finally {
