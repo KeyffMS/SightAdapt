@@ -9,9 +9,11 @@ The documentation describes the current SightAdapt implementation and the canoni
 - [Legal sign-off template](legal/LEGAL-SIGNOFF-TEMPLATE.md) — non-confidential record for a real professional review decision.
 - [Patent FTO commercialization gate](legal/PATENT-FTO-GATE.md) — technical feature map, current non-commercial decision, professional-review requirements and re-opening triggers.
 - [Release naming and attribution](RELEASING.md) — public release-title, tag, artifact, website, publisher, store-claim, compatibility and mark conventions.
-- [Binary packaging standard](PACKAGING.md) — required legal files, redistribution/affiliation notices, SBOM, exact-version notices, final compliance gate and distribution-format rules.
-- [Release compliance gate](legal/RELEASE-COMPLIANCE-GATE.md) — staged-directory/final-package verification, negative test and retained compliance report.
-- [Microsoft .NET redistribution analysis](legal/DOTNET-REDISTRIBUTION.md) — Microsoft-origin component inventory, applicable terms, package implementation, review triggers and professional-review gate.
+- [Binary packaging standard](PACKAGING.md) — required legal files, generated redistribution/affiliation notices, SBOM, exact-version notices, final compliance gate and distribution-format rules.
+- [Release compliance gate](legal/RELEASE-COMPLIANCE-GATE.md) — staged-directory/final-package verification, negative tests and retained compliance report.
+- [Microsoft .NET redistribution analysis](legal/DOTNET-REDISTRIBUTION.md) — Microsoft-origin component inventory, applicable terms, reviewed configuration, generated package notice and professional-review gate.
+- [Reviewed .NET redistribution configuration](../release/dotnet-redistribution-review.json) — exact SDK/runtime/TFM/RID/publish-mode scope, reviewed template checksum and professional-review status.
+- [Reviewed .NET redistribution notice template](../release/MICROSOFT-DOTNET-REDISTRIBUTION.template.txt) — package wording rendered with canonical release metadata.
 - [Exact-version .NET notice generation](legal/DOTNET-NOTICE-GENERATION.md) — pinned SDK/runtime inputs, official package verification, notice import, checksums and update triggers.
 - [SBOM and dependency-license review](legal/SBOM-AND-LICENSE-REVIEW.md) — SPDX inventory, license policy, generated reports and release failure rules.
 - [Contribution provenance and historical review](legal/CONTRIBUTION-PROVENANCE.md) — DCO adoption, employer/AI/third-party rules, history review and maintainer process.
@@ -22,7 +24,6 @@ The documentation describes the current SightAdapt implementation and the canoni
 - [Privacy notice](../PRIVACY.md)
 - [Developer Certificate of Origin policy](../DCO.md)
 - [Dependency inventory](../DEPENDENCIES.md)
-- [Microsoft .NET redistribution notice](../MICROSOFT-DOTNET-REDISTRIBUTION.txt)
 - [Third-party software notices](../THIRD-PARTY-NOTICES.txt)
 - [Third-party names and DRM notice](../THIRD-PARTY-NAMES-AND-DRM-NOTICE.txt)
 - [Security policy](../SECURITY.md)
