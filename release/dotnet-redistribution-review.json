@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "reviewedAt": "2026-07-30",
   "reviewedConfiguration": {
     "sdkVersion": "8.0.423",
@@ -10,11 +10,17 @@
   },
   "noticeTemplate": {
     "path": "release/MICROSOFT-DOTNET-REDISTRIBUTION.template.txt",
-    "sha256": "eb01dc1357f0b933cd047ad9b2cf9ce93a265bbfd79ae9a8bd5c07c4d0fe8134"
+    "sha256": "e0f14bb5202d65d11e501b29b922c48f0ea93ab646db05c9089873ed07aaeb98"
   },
-  "professionalReview": {
-    "status": "not-obtained",
-    "trackingIssue": 93,
-    "publicRecord": null
+  "maintainerDecision": {
+    "status": "accepted-for-current-distribution",
+    "decisionOwner": "KeyffMS / aiteracja.pl",
+    "decisionIssue": 84,
+    "scope": "Current reviewed self-contained SightAdapt distribution",
+    "limitations": [
+      "Internal maintainer risk decision only",
+      "No claim of legal clearance or outside-counsel review",
+      "Re-review required when the recorded configuration or notice template changes"
+    ]
   }
 }
