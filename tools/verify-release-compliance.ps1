@@ -37,9 +37,14 @@ $productVersion = [string]$group.SightAdaptProductVersion
 $sdkVersion = [string]$group.SightAdaptDotNetSdkVersion
 $runtimeVersion = [string]$group.SightAdaptDotNetRuntimeVersion
 $rid = [string]$group.SightAdaptRuntimeIdentifier
+$publishMode = [string]$group.SightAdaptPublishMode
 $artifactName = ([string]$group.SightAdaptArtifactName).Replace(
     '$(SightAdaptProductVersion)',
     $productVersion)
+
+[xml]$project = Get-Content -LiteralPath (Join-Path $root 'src\SightAdapt\SightAdapt.csproj')
+$projectGroup = @($project.Project.PropertyGroup) | Select-Object -First 1
+$targetFramework = [string]$projectGroup.TargetFramework
 
 $requiredFiles = @(
     Get-Content -LiteralPath $manifest |
@@ -132,6 +137,8 @@ foreach ($path in $unexpectedInArchive) {
 }
 
 $noticeMetadataPath = Join-Path $directory 'DOTNET-NOTICE-METADATA.json'
+$redistributionNoticePath = Join-Path $directory 'MICROSOFT-DOTNET-REDISTRIBUTION.txt'
+$redistributionReviewPath = Join-Path $root 'release\dotnet-redistribution-review.json'
 $licenseReportPath = Join-Path $directory 'LICENSE-REPORT.json'
 $sbomPath = Join-Path $directory 'SBOM.spdx.json'
 
@@ -140,12 +147,32 @@ try {
     if ([string]$noticeMetadata.productVersion -ne $productVersion -or
         [string]$noticeMetadata.sdkVersion -ne $sdkVersion -or
         [string]$noticeMetadata.runtimeVersion -ne $runtimeVersion -or
-        [string]$noticeMetadata.runtimeIdentifier -ne $rid) {
+        [string]$noticeMetadata.runtimeIdentifier -ne $rid -or
+        [string]$noticeMetadata.publishMode -ne $publishMode) {
         $failures.Add('Exact-version notice metadata does not match release metadata.')
     }
 }
 catch {
     $failures.Add("DOTNET-NOTICE-METADATA.json cannot be validated: $($_.Exception.Message)")
+}
+
+$redistributionReviewDate = $null
+$redistributionProfessionalStatus = $null
+$redistributionProfessionalIssue = $null
+try {
+    $redistributionReview = Get-Content -LiteralPath $redistributionReviewPath -Raw | ConvertFrom-Json
+    $redistributionReviewDate = [string]$redistributionReview.reviewedAt
+    $redistributionProfessionalStatus = [string]$redistributionReview.professionalReview.status
+    $redistributionProfessionalIssue = [int]$redistributionReview.professionalReview.trackingIssue
+}
+catch {
+    $failures.Add("The .NET redistribution review record cannot be read: $($_.Exception.Message)")
+}
+
+$redistributionNoticeSha256 = $null
+if ([System.IO.File]::Exists($redistributionNoticePath)) {
+    $redistributionNoticeSha256 =
+        (Get-FileHash -LiteralPath $redistributionNoticePath -Algorithm SHA256).Hash
 }
 
 try {
@@ -204,7 +231,13 @@ $report = [ordered]@{
     productVersion = $productVersion
     sdkVersion = $sdkVersion
     runtimeVersion = $runtimeVersion
+    targetFramework = $targetFramework
     runtimeIdentifier = $rid
+    publishMode = $publishMode
+    redistributionReviewDate = $redistributionReviewDate
+    redistributionProfessionalStatus = $redistributionProfessionalStatus
+    redistributionProfessionalIssue = $redistributionProfessionalIssue
+    redistributionNoticeSha256 = $redistributionNoticeSha256
     artifactName = $artifactName
     archiveFile = [System.IO.Path]::GetFileName($archivePathResolved)
     archiveSha256 = (Get-FileHash -LiteralPath $archivePathResolved -Algorithm SHA256).Hash
