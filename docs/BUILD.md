@@ -1,12 +1,12 @@
 # Build and package SightAdapt as a standalone EXE
 
-These steps create a self-contained Windows x64 executable and a verified ZIP archive. The published application is started directly as `SightAdapt.exe`; `dotnet run` is not required.
+These steps create a self-contained Windows x64 executable and verified ZIP.
 
-## 1. Install prerequisites
+## Prerequisites
 
-Use a 64-bit Windows 10 or Windows 11 computer and install the exact SDK selected in `global.json`.
+Use Windows 10/11 x64 and the exact SDK pinned in `global.json`.
 
-For the current release candidate:
+Current release inputs:
 
 ```text
 .NET SDK 8.0.423
@@ -14,51 +14,36 @@ For the current release candidate:
 Windows Desktop Runtime 8.0.29
 ```
 
-Verify the SDK:
+Verify:
 
 ```powershell
 dotnet --version
 ```
 
-The command must print `8.0.423`. SDK roll-forward is disabled so an unreviewed SDK cannot silently change the release composition.
+SDK roll-forward is disabled.
 
-## 2. Clone the repository
-
-```powershell
-git clone https://github.com/KeyffMS/SightAdapt.git
-cd SightAdapt
-```
-
-## 3. Verify release metadata and redistribution review
+## 1. Verify release metadata and maintainer decision
 
 ```powershell
 .\tools\verify-release-metadata.ps1
 ```
 
-This check verifies the synchronized product, expected SDK/runtime, target framework, RID and publish-mode inputs. It also compares them with `release/dotnet-redistribution-review.json` and verifies the SHA-256 of the reviewed redistribution-notice template. A changed reviewed input cannot proceed until the review record is deliberately updated.
+`Directory.Build.props` is the canonical source for product, SDK, runtime, RID, publish-mode and artifact metadata. The check compares it with the project, `global.json`, the reviewed redistribution-template SHA-256 and the maintainer decision in `release/dotnet-redistribution-review.json`. A mismatched configuration or `blocked` decision stops the build.
 
-## 4. Restore dependencies
+## 2. Restore and test
 
 ```powershell
 dotnet restore .\src\SightAdapt\SightAdapt.csproj
 dotnet restore .\tests\SightAdapt.Tests\SightAdapt.Tests.csproj
-```
 
-The application restore creates the authoritative runtime-pack inventory used by notice generation. The exact-version generator rejects runtime-pack versions that differ from `Directory.Build.props`.
-
-## 5. Run the tests
-
-```powershell
 dotnet test .\tests\SightAdapt.Tests\SightAdapt.Tests.csproj `
     --configuration Release `
     --no-restore
 ```
 
-All maintained checks must pass before publication.
+The application restore graph is the authority for runtime-pack inventory.
 
-## 6. Publish a self-contained single-file executable
-
-The runtime identifier, self-contained mode and single-file setting are defined by `Directory.Build.props` and `SightAdapt.csproj`. The exact runtime patch is selected by the pinned SDK and verified against the restored `project.assets.json` before packaging.
+## 3. Publish
 
 ```powershell
 dotnet publish .\src\SightAdapt\SightAdapt.csproj `
@@ -67,89 +52,74 @@ dotnet publish .\src\SightAdapt\SightAdapt.csproj `
     --output .\artifacts\win-x64
 ```
 
-The project copies the static repository legal-document baseline into the publish directory. The Microsoft .NET redistribution notice is intentionally not copied as a static file; it is generated after exact-version .NET metadata exists.
+The static legal baseline is copied to the publish directory. The Microsoft redistribution notice is generated later from reviewed metadata.
 
-## 7. Generate exact-version .NET notices
+## 4. Generate exact-version Microsoft notices
 
 ```powershell
 .\tools\generate-dotnet-notices.ps1 `
     -PublishDirectory .\artifacts\win-x64
 ```
 
-The generator verifies the runtime packs selected by restore, downloads the matching official Microsoft .NET SDK ZIP, verifies its published SHA-512 hash and replaces the baseline .NET files with exact-version legal material. It writes:
+This verifies the restored runtime packs, downloads the matching official SDK ZIP, verifies SHA-512 and writes:
 
 - `THIRD-PARTY-NOTICES.txt`;
 - `DOTNET-LICENSE-NOTICE.txt`;
 - `DOTNET-NOTICE-METADATA.json`.
 
-The process and update rules are documented in [Exact-version .NET notice generation](legal/DOTNET-NOTICE-GENERATION.md).
-
-## 8. Generate the reviewed Microsoft redistribution notice
+## 5. Generate the maintainer-reviewed redistribution notice
 
 ```powershell
 .\tools\generate-dotnet-redistribution-notice.ps1 `
     -PublishDirectory .\artifacts\win-x64
 ```
 
-This step:
+This verifies the reviewed configuration, template checksum, maintainer decision and exact-version metadata, then writes `MICROSOFT-DOTNET-REDISTRIBUTION.txt`.
 
-- verifies that the SDK, runtime, target framework, RID and publish mode still match the reviewed configuration;
-- verifies the reviewed template SHA-256;
-- confirms that exact-version .NET notice metadata was generated first;
-- inserts the current product and technical metadata into the reviewed template;
-- writes `MICROSOFT-DOTNET-REDISTRIBUTION.txt` without unresolved placeholders.
+No external legal audit is required by the project plan. The generated file remains an internal project notice, not legal advice or clearance.
 
-A technical configuration or template change fails until `release/dotnet-redistribution-review.json` is updated as a deliberate review action.
-
-## 9. Generate the SBOM and license report
+## 6. Generate SBOM and license report
 
 ```powershell
 .\tools\generate-sbom.ps1 `
     -PublishDirectory .\artifacts\win-x64
 ```
 
-This creates `DEPENDENCIES.md`, `SBOM.spdx.json` and `LICENSE-REPORT.json` from the evaluated release inputs and final staged files.
+This creates `DEPENDENCIES.md`, `SBOM.spdx.json` and `LICENSE-REPORT.json`.
 
-## 10. Inspect the publish directory
+## 7. Inspect the staged directory
 
-At minimum, the directory must contain:
+At minimum:
 
 ```text
-artifacts\win-x64\
-├── SightAdapt.exe
-├── LICENSE.txt
-├── THIRD-PARTY-NOTICES.txt
-├── DOTNET-LICENSE-NOTICE.txt
-├── DOTNET-NOTICE-METADATA.json
-├── MICROSOFT-DOTNET-REDISTRIBUTION.txt
-├── THIRD-PARTY-NAMES-AND-DRM-NOTICE.txt
-├── DEPENDENCIES.md
-├── SBOM.spdx.json
-├── LICENSE-REPORT.json
-└── PRIVACY.md
+SightAdapt.exe
+LICENSE.txt
+THIRD-PARTY-NOTICES.txt
+DOTNET-LICENSE-NOTICE.txt
+DOTNET-NOTICE-METADATA.json
+MICROSOFT-DOTNET-REDISTRIBUTION.txt
+THIRD-PARTY-NAMES-AND-DRM-NOTICE.txt
+DEPENDENCIES.md
+SBOM.spdx.json
+LICENSE-REPORT.json
+PRIVACY.md
 ```
 
-Additional runtime files may be present depending on reviewed publish settings. See [the binary packaging standard](PACKAGING.md).
-
-## 11. Run negative package checks
+## 8. Run negative package checks
 
 ```powershell
 .\tools\test-release-compliance-negative.ps1 `
     -PublishDirectory .\artifacts\win-x64
 ```
 
-The check proves that the validator rejects both a missing legal bundle and a generated redistribution notice with a deliberately stale runtime version.
+The validator must reject an incomplete package and a package with stale redistribution metadata.
 
-## 12. Create and verify the final archive
-
-Create the ZIP from the contents of the publish directory so the required files remain at the archive root:
+## 9. Create and verify the final archive
 
 ```powershell
 $archive = '.\artifacts\SightAdapt-0.5.0.50-alpha-win-x64.zip'
 $report = '.\artifacts\SightAdapt-0.5.0.50-alpha-win-x64-compliance.json'
 
-Remove-Item $archive -Force -ErrorAction SilentlyContinue
-Remove-Item $report -Force -ErrorAction SilentlyContinue
 Compress-Archive `
     -Path '.\artifacts\win-x64\*' `
     -DestinationPath $archive `
@@ -161,28 +131,17 @@ Compress-Archive `
     -ReportPath $report
 ```
 
-The validation opens the final ZIP, checks the canonical manifest, compares the generated redistribution headers with canonical and reviewed metadata, verifies exact .NET notice metadata, and confirms SBOM/file coverage. Retain the compliance report with the archive.
+Retain the compliance report with the archive.
 
-## 13. Start the executable
+## 10. Run and inspect the version
 
 ```powershell
 .\artifacts\win-x64\SightAdapt.exe
-```
 
-The application appears in the Windows notification area.
-
-## 14. Verify the built version
-
-While SightAdapt is running:
-
-```powershell
 $process = Get-Process SightAdapt
-
 (Get-Item $process.Path).VersionInfo |
     Format-List ProductVersion, FileVersion
 ```
-
-The expected product values and exact .NET release inputs are generated from the sources of truth in `Directory.Build.props`, `global.json`, the redistribution review record and the restore graph.
 
 ## Clean rebuild
 
@@ -190,22 +149,6 @@ The expected product values and exact .NET release inputs are generated from the
 Remove-Item .\artifacts\win-x64 -Recurse -Force -ErrorAction SilentlyContinue
 Remove-Item .\artifacts\SightAdapt-*-win-x64.zip -Force -ErrorAction SilentlyContinue
 Remove-Item .\artifacts\SightAdapt-*-win-x64-compliance.json -Force -ErrorAction SilentlyContinue
-
-dotnet restore .\src\SightAdapt\SightAdapt.csproj
-
-dotnet publish .\src\SightAdapt\SightAdapt.csproj `
-    --configuration Release `
-    --no-restore `
-    --output .\artifacts\win-x64
-
-.\tools\generate-dotnet-notices.ps1 `
-    -PublishDirectory .\artifacts\win-x64
-
-.\tools\generate-dotnet-redistribution-notice.ps1 `
-    -PublishDirectory .\artifacts\win-x64
-
-.\tools\generate-sbom.ps1 `
-    -PublishDirectory .\artifacts\win-x64
 ```
 
-An official release must not be published if the reviewed redistribution configuration, exact-version notice generation, stale-notice negative test or final-package validation fails. Production and paid distribution remain blocked while the professional-review status is `not-obtained`.
+A release must not be published if metadata review, notice generation, the maintainer decision, negative checks or final-package validation fail.

@@ -42,7 +42,7 @@ SightAdapt currently provides:
 - a notification-area menu and configuration panel;
 - immediate explicit and emergency overlay shutdown;
 - schema-versioned JSON settings with migration and atomic persistence;
-- automated build, test, architecture, migration, Windows publish and final-archive legal-bundle validation.
+- automated build, test, Windows publish and final-archive compliance validation.
 
 New application assignments use Soft Invert, inherit that profile for native popup menus, and use client-area scope by default. Selecting `None` for the application and an explicit menu profile leaves the application unchanged while correcting only its native popup menus.
 
@@ -65,7 +65,7 @@ Executable paths, settings, logs and screenshots can contain personal or confide
 
 SightAdapt is general-purpose accessibility and display-personalization software. It is not intended to diagnose, treat, prevent, monitor or clinically alleviate any disease, injury or disability, and it is not a substitute for professional medical or eye-care advice.
 
-`Color correction` and `visual correction` refer to display presentation, not clinical vision correction. The project does not claim clinical effectiveness or target a named medical condition. See the controlled [intended-purpose and medical-device claims policy](docs/legal/INTENDED-PURPOSE-AND-MDR.md).
+`Color correction` and `visual correction` refer to display presentation, not clinical vision correction. The project does not claim clinical effectiveness or target a named medical condition. See the controlled [intended-purpose policy](docs/legal/INTENDED-PURPOSE-AND-MDR.md).
 
 ## Third-party names and protected content
 
@@ -73,11 +73,11 @@ Third-party product names and trademarks belong to their respective owners and a
 
 SightAdapt does not circumvent DRM or other access controls. Protected content may remain unavailable, blank or unfilterable. Compatibility statements describe observed technical behavior and do not imply partnership, certification or support from a third party. See [the complete third-party names, affiliation and protected-content policy](docs/legal/THIRD-PARTY-NAMES-AFFILIATION-AND-DRM.md).
 
-## Legal release status
+## Release-risk governance
 
-Repository notices, policies, SBOM and package checks are preparation and technical compliance controls; they are not a privileged legal opinion or complete legal clearance.
+Repository notices, policies, SBOM and package checks are internal project controls. SightAdapt does not plan external legal, trademark, patent, privacy/DPO or medical-device audits.
 
-The current approved stage is free/open-source alpha development and GitHub distribution. SightAdapt is not approved for production-ready claims, paid licensing, major-store production distribution, enterprise legal warranties/indemnities or complete patent/regulatory-compliance claims until qualified counsel signs off on the exact launch scope and artifact. See [the formal legal review and release gate](docs/legal/LEGAL-RELEASE-GATE.md).
+Release and business-risk decisions are made by `KeyffMS / aiteracja.pl` using documented evidence and accepted-risk records. Internal review is not legal advice and the project does not claim legal clearance, patent freedom to operate, trademark availability, non-infringement, MDR approval or professional audit. See [the maintainer release-risk review](docs/legal/LEGAL-RELEASE-GATE.md).
 
 ## Build a standalone EXE
 
@@ -121,8 +121,10 @@ Create and validate the final archive according to [the binary packaging standar
 - [Product identity and brand usage](docs/BRAND.md)
 - [Intended purpose and medical-device claims policy](docs/legal/INTENDED-PURPOSE-AND-MDR.md)
 - [Third-party names, affiliation and protected-content policy](docs/legal/THIRD-PARTY-NAMES-AFFILIATION-AND-DRM.md)
-- [Formal legal review and release gate](docs/legal/LEGAL-RELEASE-GATE.md)
-- [Legal sign-off template](docs/legal/LEGAL-SIGNOFF-TEMPLATE.md)
+- [Maintainer release-risk review](docs/legal/LEGAL-RELEASE-GATE.md)
+- [Maintainer release-review template](docs/legal/MAINTAINER-RELEASE-REVIEW-TEMPLATE.md)
+- [Patent-risk review](docs/legal/PATENT-FTO-GATE.md)
+- [Internal trademark-risk decision](docs/legal/TRADEMARK-CLEARANCE-2026-07-27.md)
 - [Release naming and attribution](docs/RELEASING.md)
 - [Binary packaging standard](docs/PACKAGING.md)
 - [Complete functionality](docs/FEATURES.md)
