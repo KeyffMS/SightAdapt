@@ -171,8 +171,12 @@ if ([System.IO.File]::Exists($redistributionNoticePath)) {
         (Get-FileHash -LiteralPath $redistributionNoticePath -Algorithm SHA256).Hash
 }
 
+$licenseReport = $null
 try {
     $licenseReport = Get-Content -LiteralPath $licenseReportPath -Raw | ConvertFrom-Json
+    if ([int]$licenseReport.schemaVersion -ne 2) {
+        $failures.Add("LICENSE-REPORT.json uses schema '$($licenseReport.schemaVersion)' instead of schema 2.")
+    }
     if ([string]$licenseReport.result -ne 'pass') {
         $failures.Add("LICENSE-REPORT.json result is '$($licenseReport.result)', not 'pass'.")
     }
@@ -182,11 +186,52 @@ try {
         [string]$licenseReport.runtimeIdentifier -ne $rid) {
         $failures.Add('License report metadata does not match release metadata.')
     }
+
+    $reportComponents = @($licenseReport.components)
+    if ($reportComponents.Count -ne [int]$licenseReport.inventory.packageCount) {
+        $failures.Add('License report component count does not match its inventory summary.')
+    }
+    $calculatedTransitive = @($reportComponents | Where-Object {
+        [bool]$_.transitive -and [string]$_.name -ne 'SightAdapt'
+    }).Count
+    if ($calculatedTransitive -ne [int]$licenseReport.inventory.transitivePackageCount) {
+        $failures.Add('License report transitive-package count does not match its component inventory.')
+    }
+    if (@($licenseReport.dependencyEdges).Count -ne [int]$licenseReport.inventory.graphEdgeCount) {
+        $failures.Add('License report dependency-edge count does not match its inventory summary.')
+    }
+
+    foreach ($component in $reportComponents) {
+        $identity = "$($component.name)/$($component.version)"
+        if ([string]$component.status -ne 'approved') {
+            $failures.Add("License report component '$identity' is not approved.")
+        }
+        if ([string]$component.licenseConcluded -in @('', 'UNKNOWN', 'NOASSERTION')) {
+            $failures.Add("License report component '$identity' has no resolved concluded license.")
+        }
+        $evidenceType = [string]$component.evidence.evidenceType
+        if ([string]::IsNullOrWhiteSpace($evidenceType)) {
+            $failures.Add("License report component '$identity' has no evidence type.")
+        }
+        if ($evidenceType -eq 'nuget-package') {
+            if ([string]$component.evidence.packageSha512 -notmatch '^[0-9A-Fa-f]{128}$') {
+                $failures.Add("NuGet component '$identity' lacks package SHA-512 evidence.")
+            }
+            if ([string]$component.evidence.nuspecSha256 -notmatch '^[0-9A-Fa-f]{64}$') {
+                $failures.Add("NuGet component '$identity' lacks nuspec SHA-256 evidence.")
+            }
+        }
+        elseif ([string]$component.evidence.licenseEvidenceSha256 -notmatch '^[0-9A-Fa-f]{64}$' -and
+                [string]$component.name -ne 'Microsoft .NET SDK') {
+            $failures.Add("Component '$identity' lacks a policy or repository license-evidence hash.")
+        }
+    }
 }
 catch {
     $failures.Add("LICENSE-REPORT.json cannot be validated: $($_.Exception.Message)")
 }
 
+$sbom = $null
 try {
     $sbom = Get-Content -LiteralPath $sbomPath -Raw | ConvertFrom-Json
     if ([string]$sbom.spdxVersion -ne 'SPDX-2.3') {
@@ -208,6 +253,59 @@ try {
     if ($null -eq $sightAdaptPackage) {
         $failures.Add('SBOM does not identify the SightAdapt single-file packaging container.')
     }
+    elseif ($null -ne $licenseReport) {
+        $reportComponents = @($licenseReport.components)
+        if (@($sbom.packages).Count -ne $reportComponents.Count) {
+            $failures.Add('SBOM package count does not match LICENSE-REPORT.json.')
+        }
+        foreach ($component in $reportComponents) {
+            $package = @($sbom.packages | Where-Object {
+                [string]$_.name -eq [string]$component.name -and
+                [string]$_.versionInfo -eq [string]$component.version
+            }) | Select-Object -First 1
+            if ($null -eq $package) {
+                $failures.Add("SBOM does not contain component '$($component.name)/$($component.version)'.")
+                continue
+            }
+            if ([string]$package.licenseConcluded -ne [string]$component.licenseConcluded -or
+                [string]$package.licenseDeclared -ne [string]$component.licenseDeclared) {
+                $failures.Add("SBOM licenses for '$($component.name)/$($component.version)' do not match the license report.")
+            }
+            if ([string]$component.name -eq 'SightAdapt') {
+                continue
+            }
+
+            $runtimeRelationship = @($sbom.relationships | Where-Object {
+                [string]$_.spdxElementId -eq [string]$sightAdaptPackage.SPDXID -and
+                [string]$_.relationshipType -eq 'DEPENDS_ON' -and
+                [string]$_.relatedSpdxElement -eq [string]$package.SPDXID
+            }).Count -gt 0
+            $testRelationship = @($sbom.relationships | Where-Object {
+                [string]$_.spdxElementId -eq [string]$package.SPDXID -and
+                [string]$_.relationshipType -eq 'TEST_DEPENDENCY_OF' -and
+                [string]$_.relatedSpdxElement -eq [string]$sightAdaptPackage.SPDXID
+            }).Count -gt 0
+            $buildRelationship = @($sbom.relationships | Where-Object {
+                [string]$_.spdxElementId -eq [string]$package.SPDXID -and
+                [string]$_.relationshipType -eq 'BUILD_DEPENDENCY_OF' -and
+                [string]$_.relatedSpdxElement -eq [string]$sightAdaptPackage.SPDXID
+            }).Count -gt 0
+
+            if ([bool]$component.shipped) {
+                if (-not $runtimeRelationship) {
+                    $failures.Add("Shipped component '$($component.identity)' lacks SightAdapt DEPENDS_ON relationship.")
+                }
+            }
+            elseif ([string]$component.scope -eq 'test') {
+                if (-not $testRelationship -or $runtimeRelationship) {
+                    $failures.Add("Test component '$($component.identity)' is not represented exclusively as TEST_DEPENDENCY_OF SightAdapt.")
+                }
+            }
+            elseif (-not $buildRelationship -or $runtimeRelationship) {
+                $failures.Add("Build component '$($component.identity)' is not represented exclusively as BUILD_DEPENDENCY_OF SightAdapt.")
+            }
+        }
+    }
 }
 catch {
     $failures.Add("SBOM.spdx.json cannot be validated: $($_.Exception.Message)")
@@ -228,6 +326,10 @@ $report = [ordered]@{
     redistributionDecisionOwner = $redistributionDecisionOwner
     redistributionDecisionIssue = $redistributionDecisionIssue
     redistributionNoticeSha256 = $redistributionNoticeSha256
+    licenseReportSchemaVersion = if ($null -ne $licenseReport) { [int]$licenseReport.schemaVersion } else { $null }
+    licenseReportPackageCount = if ($null -ne $licenseReport) { @($licenseReport.components).Count } else { $null }
+    sbomPackageCount = if ($null -ne $sbom) { @($sbom.packages).Count } else { $null }
+    sbomRelationshipCount = if ($null -ne $sbom) { @($sbom.relationships).Count } else { $null }
     artifactName = $artifactName
     archiveFile = [System.IO.Path]::GetFileName($archivePathResolved)
     archiveSha256 = (Get-FileHash -LiteralPath $archivePathResolved -Algorithm SHA256).Hash
