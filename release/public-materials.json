@@ -1,0 +1,299 @@
+{
+  "schemaVersion": 1,
+  "reviewedAt": "2026-07-31",
+  "decisionOwner": "KeyffMS / aiteracja.pl",
+  "decisionIssue": 92,
+  "reviewType": "internal-maintainer-risk-control",
+  "limitations": [
+    "This record is not legal advice, trademark clearance or third-party permission.",
+    "Only exact maintained surfaces listed below are approved by this record.",
+    "Planned or externally managed surfaces require their own final-text and asset review before activation."
+  ],
+  "authoritativeNotice": {
+    "path": "THIRD-PARTY-NAMES-AND-DRM-NOTICE.txt",
+    "gitBlobSha": "d71f384508d2e2abdf3b78f85516f01d9b0cf799",
+    "approvedSummary": "Third-party product names and trademarks are the property of their respective owners and are used only to identify applications selected or configured by the user. SightAdapt is not affiliated with, sponsored by or endorsed by Microsoft or those owners unless an explicit written relationship is identified. SightAdapt does not circumvent DRM or other access controls, and protected content may remain unavailable or unfilterable."
+  },
+  "reviewAuthorities": [
+    {
+      "path": "docs/legal/THIRD-PARTY-NAMES-AFFILIATION-AND-DRM.md",
+      "gitBlobSha": "97565d113169afbb2a363e37fc8371927f3b7eaa"
+    },
+    {
+      "path": "docs/legal/TRADEMARK-CLEARANCE-2026-07-27.md",
+      "gitBlobSha": "cee7ebf580597c7273e40b6807418bb3953e6ce4"
+    },
+    {
+      "path": "docs/legal/PUBLIC-MATERIALS-REVIEW.md",
+      "gitBlobSha": "2f28394af42df60e7c0149b77fd8a76037feb2e0"
+    }
+  ],
+  "maintainedSurfaces": [
+    {
+      "id": "repository-readme",
+      "kind": "repository-document",
+      "status": "approved",
+      "reviewedAt": "2026-07-31",
+      "reviewer": "KeyffMS / aiteracja.pl",
+      "sourceEvidence": [
+        {
+          "path": "README.md",
+          "gitBlobSha": "7176f70d577039464dad56fc93866f1d13d17431"
+        }
+      ],
+      "namedThirdParties": [
+        {
+          "name": "Microsoft",
+          "purpose": "platform and no-endorsement identification"
+        },
+        {
+          "name": "Windows",
+          "purpose": "supported operating-system identification"
+        },
+        {
+          "name": ".NET",
+          "purpose": "runtime identification"
+        }
+      ],
+      "compatibilityClaims": [
+        {
+          "wording": "works with user-selected Windows applications",
+          "limitations": "Compatibility depends on application framework, privilege level, protected content, remote sessions and graphics behavior."
+        }
+      ],
+      "thirdPartyAssets": []
+    },
+    {
+      "id": "binary-third-party-names-notice",
+      "kind": "binary-legal-document",
+      "status": "approved",
+      "reviewedAt": "2026-07-31",
+      "reviewer": "KeyffMS / aiteracja.pl",
+      "sourceEvidence": [
+        {
+          "path": "THIRD-PARTY-NAMES-AND-DRM-NOTICE.txt",
+          "gitBlobSha": "d71f384508d2e2abdf3b78f85516f01d9b0cf799"
+        }
+      ],
+      "namedThirdParties": [
+        {
+          "name": "Microsoft",
+          "purpose": "platform, runtime and no-endorsement identification"
+        },
+        {
+          "name": "Windows",
+          "purpose": "operating-system platform identification"
+        },
+        {
+          "name": ".NET",
+          "purpose": "runtime component identification"
+        }
+      ],
+      "compatibilityClaims": [
+        {
+          "wording": "uses Windows Magnification API",
+          "limitations": "Protected surfaces and application-specific graphics behavior may remain unavailable or unfilterable."
+        }
+      ],
+      "thirdPartyAssets": []
+    },
+    {
+      "id": "repository-third-party-policy",
+      "kind": "repository-policy",
+      "status": "approved",
+      "reviewedAt": "2026-07-31",
+      "reviewer": "KeyffMS / aiteracja.pl",
+      "sourceEvidence": [
+        {
+          "path": "docs/legal/THIRD-PARTY-NAMES-AFFILIATION-AND-DRM.md",
+          "gitBlobSha": "97565d113169afbb2a363e37fc8371927f3b7eaa"
+        },
+        {
+          "path": "docs/legal/TRADEMARK-CLEARANCE-2026-07-27.md",
+          "gitBlobSha": "cee7ebf580597c7273e40b6807418bb3953e6ce4"
+        },
+        {
+          "path": "docs/legal/PUBLIC-MATERIALS-REVIEW.md",
+          "gitBlobSha": "2f28394af42df60e7c0149b77fd8a76037feb2e0"
+        }
+      ],
+      "namedThirdParties": [
+        {
+          "name": "Microsoft",
+          "purpose": "no-affiliation and platform identification"
+        }
+      ],
+      "compatibilityClaims": [],
+      "thirdPartyAssets": []
+    },
+    {
+      "id": "release-description-template",
+      "kind": "release-template",
+      "status": "approved",
+      "reviewedAt": "2026-07-31",
+      "reviewer": "KeyffMS / aiteracja.pl",
+      "sourceEvidence": [
+        {
+          "path": "docs/RELEASING.md",
+          "gitBlobSha": "04483e8ea7765a15ec5b1afef474624d54cc237e"
+        }
+      ],
+      "namedThirdParties": [
+        {
+          "name": "Microsoft",
+          "purpose": "required no-endorsement wording when compatibility is discussed"
+        }
+      ],
+      "compatibilityClaims": [
+        {
+          "wording": "tested with <product/version>",
+          "limitations": "The final release text must replace the placeholder with a real tested product and version and record limitations."
+        }
+      ],
+      "thirdPartyAssets": []
+    },
+    {
+      "id": "application-about-window",
+      "kind": "application-ui",
+      "status": "approved",
+      "reviewedAt": "2026-07-31",
+      "reviewer": "KeyffMS / aiteracja.pl",
+      "sourceEvidence": [
+        {
+          "path": "docs/legal/THIRD-PARTY-NAMES-AFFILIATION-AND-DRM.md",
+          "gitBlobSha": "97565d113169afbb2a363e37fc8371927f3b7eaa",
+          "evidence": "About-window and current materials review"
+        }
+      ],
+      "namedThirdParties": [],
+      "compatibilityClaims": [],
+      "thirdPartyAssets": []
+    },
+    {
+      "id": "repository-brand-assets",
+      "kind": "project-owned-assets",
+      "status": "approved",
+      "reviewedAt": "2026-07-31",
+      "reviewer": "KeyffMS / aiteracja.pl",
+      "sourceEvidence": [
+        {
+          "path": "assets/brand/sightadapt-mark.svg",
+          "gitBlobSha": "55269ec937abcf5515d807972d2cd2e75a4d01a7"
+        },
+        {
+          "path": "assets/brand/sightadapt-lockup-dark.svg",
+          "gitBlobSha": "2b21023079ec57f1a6e993239616e72c3cb1a980"
+        },
+        {
+          "path": "assets/brand/sightadapt-lockup-light.svg",
+          "gitBlobSha": "23156a2bac047acfafca3b71e0b3d754b8e8a600"
+        }
+      ],
+      "namedThirdParties": [],
+      "compatibilityClaims": [],
+      "thirdPartyAssets": [],
+      "projectOwnedAssets": [
+        "assets/brand/sightadapt-mark.svg",
+        "assets/brand/sightadapt-lockup-dark.svg",
+        "assets/brand/sightadapt-lockup-light.svg"
+      ]
+    }
+  ],
+  "plannedSurfaces": [
+    {
+      "id": "aiteracja-product-site",
+      "kind": "website",
+      "status": "planned",
+      "trackingIssues": [100, 103, 124],
+      "activationRequirements": [
+        "Archive or version the final public text and assets.",
+        "Record the public URL, publication date and exact evidence.",
+        "Add the approved notice or a stable direct link.",
+        "Pass the public-materials verifier before publication."
+      ]
+    },
+    {
+      "id": "github-release",
+      "kind": "release-listing",
+      "status": "planned",
+      "trackingIssues": [98],
+      "activationRequirements": [
+        "Register final release text, screenshots and assets.",
+        "Use the approved no-affiliation and DRM wording when compatibility is discussed."
+      ]
+    },
+    {
+      "id": "github-pages-site",
+      "kind": "website-origin",
+      "status": "planned",
+      "trackingIssues": [99, 103],
+      "activationRequirements": [
+        "Register final built pages and public assets.",
+        "Keep legal and compatibility text synchronized with repository authorities."
+      ]
+    },
+    {
+      "id": "winget-listing",
+      "kind": "store-package-listing",
+      "status": "planned",
+      "trackingIssues": [107],
+      "activationRequirements": [
+        "Register the final manifest text and public URLs.",
+        "Do not imply Microsoft endorsement or certification."
+      ]
+    },
+    {
+      "id": "open-hub-listing",
+      "kind": "directory-listing",
+      "status": "planned",
+      "trackingIssues": [108],
+      "activationRequirements": [
+        "Register final description, icon and links."
+      ]
+    },
+    {
+      "id": "sourceforge-listing-or-mirror",
+      "kind": "directory-or-mirror",
+      "status": "planned",
+      "trackingIssues": [109],
+      "activationRequirements": [
+        "Register final description and assets.",
+        "Preserve the approved notice with mirrored packages."
+      ]
+    },
+    {
+      "id": "public-social-profiles",
+      "kind": "social-profile",
+      "status": "planned",
+      "trackingIssues": [110],
+      "activationRequirements": [
+        "Register each maintained profile URL, biography and assets."
+      ]
+    },
+    {
+      "id": "product-hunt-listing",
+      "kind": "launch-listing",
+      "status": "planned",
+      "trackingIssues": [111],
+      "activationRequirements": [
+        "Register final listing copy and screenshots.",
+        "Review every named compatibility claim and visible third-party asset."
+      ]
+    },
+    {
+      "id": "community-announcements",
+      "kind": "announcement-set",
+      "status": "planned",
+      "trackingIssues": [112],
+      "activationRequirements": [
+        "Register the canonical announcement package and final publication URLs.",
+        "Record corrections when claims or downloads change."
+      ]
+    }
+  ],
+  "objectionProcedure": {
+    "path": "docs/legal/PUBLIC-MATERIALS-REVIEW.md",
+    "gitBlobSha": "2f28394af42df60e7c0149b77fd8a76037feb2e0",
+    "section": "Objection or correction procedure"
+  }
+}
