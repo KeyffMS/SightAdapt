@@ -181,8 +181,11 @@ foreach ($surface in @($registry.maintainedSurfaces)) {
             -not (Test-Date ([string]$asset.reviewedAt))) {
             Add-Failure "Surface '$id' contains a third-party asset without complete ownership, use-basis, purpose and review evidence."
         }
-        if ($null -ne $asset.sourceEvidence) {
-            Test-GitBlobEvidence $asset.sourceEvidence "Third-party asset on '$id'"
+
+        $sourceEvidenceProperty = $asset.PSObject.Properties['sourceEvidence']
+        if ($null -ne $sourceEvidenceProperty -and
+            $null -ne $sourceEvidenceProperty.Value) {
+            Test-GitBlobEvidence $sourceEvidenceProperty.Value "Third-party asset on '$id'"
         }
         else {
             Add-Failure "Surface '$id' contains a third-party asset without immutable source evidence."
