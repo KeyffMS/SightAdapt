@@ -37,6 +37,14 @@ jobs:
         shell: pwsh
         run: .\tools\verify-release-metadata.ps1 -WriteGitHubOutput
 
+      - name: Verify public materials, trademarks and DRM boundaries
+        shell: pwsh
+        run: .\tools\verify-public-materials.ps1
+
+      - name: Verify unsafe public-material changes are rejected
+        shell: pwsh
+        run: .\tools\test-public-materials-negative.ps1
+
       - name: Restore application
         run: dotnet restore src/SightAdapt/SightAdapt.csproj
 
