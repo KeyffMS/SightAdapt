@@ -28,6 +28,17 @@ State `None`, or identify the tool/use and describe the human review and provena
 
 State `None`, or link the decision record in `docs/legal/CONTRIBUTION-EXCEPTIONS.md`. Do not publish confidential permission documents.
 
+## Public materials and compatibility claims
+
+- [ ] This change does not create or modify public text, screenshots, videos, listings, announcements or compatibility claims; or I updated `release/public-materials.json` with exact evidence and review data.
+- [ ] Any third-party name is used only for factual identification or a reviewed compatibility statement.
+- [ ] Any third-party logo, icon, screenshot, badge or trade dress has a documented source, use basis and immutable evidence.
+- [ ] The change does not imply partnership, certification, endorsement or DRM/access-control circumvention.
+
+### Public surfaces affected
+
+State `None`, or identify every repository, application, website, release, store, directory, mirror, social or announcement surface and its registry entry.
+
 ## Validation
 
 List the checks or document review performed. For documentation/governance-only changes, state that no application behavior changed.
