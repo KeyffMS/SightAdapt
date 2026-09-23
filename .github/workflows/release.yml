@@ -101,7 +101,8 @@ jobs:
 
           "requested_version=$([string]$request.productVersion)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
           "tag=$([string]$request.tag)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
-          "prerelease=$([bool]$request.prerelease.ToString().ToLowerInvariant())" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          $prerelease = ([bool]$request.prerelease).ToString().ToLowerInvariant()
+          "prerelease=$prerelease" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
           "notes_file=$([string]$request.notesFile)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
 
       - name: Verify canonical release metadata
