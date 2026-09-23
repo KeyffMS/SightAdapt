@@ -18,15 +18,18 @@
       "manifest": "release/required-files.txt",
       "requiresWorkflowRun": false,
       "requiresTag": false
-    }
-  ],
-  "plannedChannels": [
+    },
     {
       "id": "github-release",
       "format": "portable-zip",
-      "trackingIssue": 98,
+      "producer": ".github/workflows/release.yml",
+      "entrypoint": "tools/new-verified-release-package.ps1",
+      "manifest": "release/required-files.txt",
+      "requiresWorkflowRun": true,
       "requiresTag": true
-    },
+    }
+  ],
+  "plannedChannels": [
     {
       "id": "installer",
       "format": "installer",
