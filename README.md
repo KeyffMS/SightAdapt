@@ -1,4 +1,4 @@
-# SightAdapt™ 0.5.0.50 Alpha
+# SightAdapt™
 
 SightAdapt is a free, open-source Windows application for per-application visual accessibility and color correction.
 
@@ -6,6 +6,7 @@ SightAdapt applies configurable color correction to selected application windows
 
 - Product website: <https://aiteracja.pl/sightadapt/>
 - Source repository: <https://github.com/KeyffMS/SightAdapt>
+- Releases: <https://github.com/KeyffMS/SightAdapt/releases>
 - Publisher: `KeyffMS / aiteracja.pl`
 - License: `MIT License`
 
