@@ -4,12 +4,13 @@
 
 SightAdapt currently maintains one binary format: a self-contained Windows x64 portable ZIP.
 
-The format has two maintained producer contexts recorded in `release/distribution-channels.json`:
+The format has three maintained producer contexts recorded in `release/distribution-channels.json`:
 
 - `github-actions-artifact` — the ZIP uploaded by `.github/workflows/build.yml`;
-- `local-portable-zip` — a maintainer-created ZIP produced through the same entry point.
+- `local-portable-zip` — a maintainer-created ZIP produced through the same entry point;
+- `github-release` — the gated immutable GitHub Release package produced by `.github/workflows/release.yml` from the exact successful CI artifact.
 
-GitHub Releases, installers, store packages and official mirrors are planned or inactive channels. They are not treated as maintained distributions until their implementation changes the registry and invokes the same reusable gate. GitHub Release publication remains tracked by #98.
+Installers, store packages and official mirrors remain planned or inactive channels. They are not treated as maintained distributions until their implementation changes the registry and invokes the same reusable gate.
 
 ## Reusable entry point
 
@@ -76,11 +77,11 @@ CI proves rejection of:
 - a ZIP whose file bytes differ from the staged directory;
 - a source commit that does not match repository HEAD;
 - inconsistent tag/ref provenance;
-- the planned but inactive `github-release` channel.
+- a `github-release` package without the required matching release tag.
 
 ## Future channels
 
-A new installer, store package, GitHub Release or mirror implementation must, in the same pull request:
+A new installer, store package or mirror implementation must, in the same pull request:
 
 1. define the final installed or unpacked staging tree;
 2. activate its channel in `release/distribution-channels.json`;
