@@ -158,18 +158,18 @@ try {
         }
 
     Assert-FinalGateRejected `
-        -Scenario 'The unimplemented GitHub Release channel' `
-        -ExpectedMessage 'planned but not maintained' `
+        -Scenario 'The GitHub Release package without a release tag' `
+        -ExpectedMessage 'requires a release tag' `
         -Action {
             & (Join-Path $PSScriptRoot 'verify-final-package.ps1') `
                 -DirectoryPath $publish `
                 -ArchivePath $baselineArchive `
-                -ReportPath (Join-Path $baselineDirectory 'planned-channel-report.json') `
+                -ReportPath (Join-Path $baselineDirectory 'missing-release-tag-report.json') `
                 -DistributionChannel 'github-release' `
                 -SourceCommitSha $sourceCommit `
                 -SourceRef 'refs/heads/final-gate-negative' `
                 -WorkflowName 'negative-test' `
-                -WorkflowRunId 'local' `
+                -WorkflowRunId '12345' `
                 -WorkflowRunAttempt '1'
         }
 }

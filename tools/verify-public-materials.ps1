@@ -105,7 +105,8 @@ $knownMaintained = @(
     'repository-third-party-policy',
     'release-description-template',
     'application-about-window',
-    'repository-brand-assets'
+    'repository-brand-assets',
+    'github-release'
 )
 $seenIds = @{}
 $allowedClaimPrefixes = @(

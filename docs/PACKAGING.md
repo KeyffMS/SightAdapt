@@ -6,7 +6,7 @@ SightAdapt currently maintains one binary distribution format: a self-contained 
 
 The allowed producer contexts are registered in `release/distribution-channels.json`. Both the GitHub Actions artifact and a maintainer-created local ZIP must use `tools/new-verified-release-package.ps1`.
 
-Installers, store packages, GitHub Releases and mirrors are not maintained channels yet. Their future implementation must activate a registry entry and use the reusable final-package gate.
+GitHub Actions artifacts, maintainer-created portable ZIPs and the gated GitHub Release producer are maintained portable-ZIP channels. GitHub Releases must use `.github/workflows/release.yml`, an immutable version tag and the same reusable final-package gate. Installers, store packages and mirrors remain inactive until their own tracked implementations activate a registry entry and use the reusable final-package gate.
 
 ## Canonical required files
 
@@ -55,7 +55,7 @@ $report = '.\artifacts\SightAdapt-0.5.0.50-alpha-win-x64-compliance.json'
     -DistributionChannel 'local-portable-zip'
 ```
 
-In GitHub Actions the channel is `github-actions-artifact`; GitHub environment variables supply commit/ref and workflow/run provenance.
+In normal CI the channel is `github-actions-artifact`. The GitHub Release workflow reconstructs the exact verified CI staging bytes and runs the same entry point with channel `github-release`, an explicit immutable tag ref, source commit and workflow provenance.
 
 ## Final-package invariants
 

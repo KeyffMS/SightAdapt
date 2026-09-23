@@ -72,12 +72,12 @@ try {
         )
     }
 
-    Assert-Rejected 'An unreviewed activation of the GitHub Release surface' {
+    Assert-Rejected 'A GitHub Release surface without immutable source evidence' {
         param($registry)
-        $surface = $registry.plannedSurfaces | Where-Object {
+        $surface = $registry.maintainedSurfaces | Where-Object {
             [string]$_.id -eq 'github-release'
         } | Select-Object -First 1
-        $surface.status = 'approved'
+        $surface.sourceEvidence = @()
     }
 }
 finally {

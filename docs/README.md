@@ -10,6 +10,8 @@ The documentation describes the current SightAdapt implementation, public produc
 - [Patent-risk review](legal/PATENT-FTO-GATE.md) — technical feature map, public-source review, scope controls and risk-acceptance triggers.
 - [Internal trademark-risk decision](legal/TRADEMARK-CLEARANCE-2026-07-27.md) — public-source findings, medium-high risk acceptance, monitoring and rename triggers.
 - [Release naming and attribution](RELEASING.md) — release title, tag, artifact, website, publisher, claims, compatibility and mark conventions.
+- [Release history](RELEASE-HISTORY.md) — retained public versions, immutable tags, authoritative release links and withdrawal state.
+- [GitHub Release checklist](../release/RELEASE-CHECKLIST.md) — CI, manual smoke, immutability, hashes and publication gates.
 - [Binary packaging standard](PACKAGING.md) — required legal files, generated notices, SBOM, final compliance gate and distribution-format rules.
 - [Release compliance gate](legal/RELEASE-COMPLIANCE-GATE.md) — staged-directory/final-package verification, negative tests and retained compliance report.
 - [Microsoft .NET redistribution analysis](legal/DOTNET-REDISTRIBUTION.md) — Microsoft-origin inventory, applicable sources, maintainer decision, generated package notice and review triggers.

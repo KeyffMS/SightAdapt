@@ -19,7 +19,7 @@ Technical identifiers remain plain:
 
 The only maintained binary format is the Windows x64 portable ZIP. Its maintained producer contexts are listed in `release/distribution-channels.json`.
 
-GitHub Releases are not yet an active publication channel; implementation is tracked in #98. Installers, store packages and official mirrors are also inactive until separately implemented with the reusable final-package gate.
+GitHub Releases use the gated producer in `.github/workflows/release.yml` and the reusable final-package gate. Publication remains blocked unless `release/release-request.json` explicitly confirms the required manual Windows smoke test and repository release-immutability setting. Installers, store packages and official mirrors remain inactive until separately implemented with the reusable final-package gate.
 
 ## Release-note opening
 
@@ -85,7 +85,7 @@ The command creates the ZIP, runs the base compliance and component validators, 
 
 Publish the ZIP and matching schema-3 report together. Do not publish when the report result is not `pass`.
 
-A future GitHub Release workflow must activate `github-release` in `release/distribution-channels.json`, require an immutable tag and publish the exact verified ZIP and report. Until then the final gate rejects that channel.
+`github-release` is registered as a maintained portable-ZIP producer. The release workflow consumes the exact successful CI artifact for the requested source commit, re-runs the final package gate under the `github-release` channel, creates the version tag only after verification, and publishes the verified ZIP, schema-3 report, checksums, SBOM and legal/privacy evidence. It refuses publication unless the maintainer has confirmed both manual Windows smoke testing and GitHub release immutability.
 
 ## Minimal release header
 
@@ -105,3 +105,33 @@ Third-party names identify user-selected applications only. SightAdapt is not af
 
 SightAdapt™ is an unregistered product mark used by KeyffMS / aiteracja.pl.
 ```
+
+
+## Prerelease and stable policy
+
+Versions whose canonical product version contains a prerelease suffix such as `-alpha`, `-beta` or `-rc` are published as GitHub prereleases. A stable release must use a product version without a prerelease suffix and requires a separate maintainer decision that the current testing, documentation and compatibility evidence support stable status.
+
+The release request is authoritative for the requested tag and prerelease flag, but it must match the canonical product version in `Directory.Build.props`. A release workflow must never reinterpret or silently rewrite the requested version.
+
+## Immutable release and tag policy
+
+Before the first published GitHub Release, the repository administrator must enable GitHub's **release immutability** setting. The release request must not claim that confirmation until it has been checked in repository settings.
+
+After publication:
+
+- never force-update, delete and recreate, or reuse a published version tag;
+- never replace release assets under an existing version;
+- treat the GitHub Release URL, tag and asset hashes as a permanent publication record;
+- publish corrections as a new version.
+
+The workflow verifies GitHub's reported `isImmutable` state after publication.
+
+## Emergency withdrawal
+
+If a release is unsafe or compromised, do not replace its bytes or move its tag. Stop promoting the affected download, record that the version is withdrawn in release history and public download surfaces, and publish a corrected version under a new immutable tag. Preserve enough dated evidence to explain which bytes were withdrawn and why.
+
+## Release request
+
+The canonical request is `release/release-request.json`. Changing `publish` to `true` is a publication action, not ordinary metadata maintenance. Follow [the GitHub Release checklist](../release/RELEASE-CHECKLIST.md) before doing so.
+
+Release history is retained in [RELEASE-HISTORY.md](RELEASE-HISTORY.md) and links to the authoritative GitHub Release/tag records.
