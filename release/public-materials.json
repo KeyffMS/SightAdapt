@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "reviewedAt": "2026-07-31",
+  "reviewedAt": "2026-09-23",
   "decisionOwner": "KeyffMS / aiteracja.pl",
   "decisionIssue": 92,
   "reviewType": "internal-maintainer-risk-control",
@@ -33,12 +33,12 @@
       "id": "repository-readme",
       "kind": "repository-document",
       "status": "approved",
-      "reviewedAt": "2026-07-31",
+      "reviewedAt": "2026-09-23",
       "reviewer": "KeyffMS / aiteracja.pl",
       "sourceEvidence": [
         {
           "path": "README.md",
-          "gitBlobSha": "7176f70d577039464dad56fc93866f1d13d17431"
+          "gitBlobSha": "f99d66d453de635bb4a5f64f944b2d3286e9cbd4"
         }
       ],
       "namedThirdParties": [
@@ -130,12 +130,12 @@
       "id": "release-description-template",
       "kind": "release-template",
       "status": "approved",
-      "reviewedAt": "2026-07-31",
+      "reviewedAt": "2026-09-23",
       "reviewer": "KeyffMS / aiteracja.pl",
       "sourceEvidence": [
         {
           "path": "docs/RELEASING.md",
-          "gitBlobSha": "04483e8ea7765a15ec5b1afef474624d54cc237e"
+          "gitBlobSha": "f562071c1597a152a0c7d3b7dd0fc9f76251fb81"
         }
       ],
       "namedThirdParties": [
@@ -197,6 +197,44 @@
         "assets/brand/sightadapt-lockup-dark.svg",
         "assets/brand/sightadapt-lockup-light.svg"
       ]
+    },
+    {
+      "id": "github-release",
+      "kind": "release-listing",
+      "status": "approved",
+      "reviewedAt": "2026-09-23",
+      "reviewer": "KeyffMS / aiteracja.pl",
+      "sourceEvidence": [
+        {
+          "path": "release/notes/v0.5.0.50-alpha.md",
+          "gitBlobSha": "5b2d05692e06330ba5658ac8e62d8f741a2d1ac4"
+        },
+        {
+          "path": "docs/RELEASING.md",
+          "gitBlobSha": "f562071c1597a152a0c7d3b7dd0fc9f76251fb81"
+        }
+      ],
+      "namedThirdParties": [
+        {
+          "name": "Microsoft",
+          "purpose": "platform and no-endorsement identification"
+        },
+        {
+          "name": "Windows",
+          "purpose": "supported operating-system identification"
+        },
+        {
+          "name": ".NET",
+          "purpose": "runtime and redistribution identification"
+        }
+      ],
+      "compatibilityClaims": [
+        {
+          "wording": "compatible with supported Windows application windows",
+          "limitations": "Compatibility depends on application framework, privilege level, protected content, remote sessions and graphics behavior."
+        }
+      ],
+      "thirdPartyAssets": []
     }
   ],
   "plannedSurfaces": [
@@ -204,7 +242,11 @@
       "id": "aiteracja-product-site",
       "kind": "website",
       "status": "planned",
-      "trackingIssues": [100, 103, 124],
+      "trackingIssues": [
+        100,
+        103,
+        124
+      ],
       "activationRequirements": [
         "Archive or version the final public text and assets.",
         "Record the public URL, publication date and exact evidence.",
@@ -213,20 +255,13 @@
       ]
     },
     {
-      "id": "github-release",
-      "kind": "release-listing",
-      "status": "planned",
-      "trackingIssues": [98],
-      "activationRequirements": [
-        "Register final release text, screenshots and assets.",
-        "Use the approved no-affiliation and DRM wording when compatibility is discussed."
-      ]
-    },
-    {
       "id": "github-pages-site",
       "kind": "website-origin",
       "status": "planned",
-      "trackingIssues": [99, 103],
+      "trackingIssues": [
+        99,
+        103
+      ],
       "activationRequirements": [
         "Register final built pages and public assets.",
         "Keep legal and compatibility text synchronized with repository authorities."
@@ -236,7 +271,9 @@
       "id": "winget-listing",
       "kind": "store-package-listing",
       "status": "planned",
-      "trackingIssues": [107],
+      "trackingIssues": [
+        107
+      ],
       "activationRequirements": [
         "Register the final manifest text and public URLs.",
         "Do not imply Microsoft endorsement or certification."
@@ -246,7 +283,9 @@
       "id": "open-hub-listing",
       "kind": "directory-listing",
       "status": "planned",
-      "trackingIssues": [108],
+      "trackingIssues": [
+        108
+      ],
       "activationRequirements": [
         "Register final description, icon and links."
       ]
@@ -255,7 +294,9 @@
       "id": "sourceforge-listing-or-mirror",
       "kind": "directory-or-mirror",
       "status": "planned",
-      "trackingIssues": [109],
+      "trackingIssues": [
+        109
+      ],
       "activationRequirements": [
         "Register final description and assets.",
         "Preserve the approved notice with mirrored packages."
@@ -265,7 +306,9 @@
       "id": "public-social-profiles",
       "kind": "social-profile",
       "status": "planned",
-      "trackingIssues": [110],
+      "trackingIssues": [
+        110
+      ],
       "activationRequirements": [
         "Register each maintained profile URL, biography and assets."
       ]
@@ -274,7 +317,9 @@
       "id": "product-hunt-listing",
       "kind": "launch-listing",
       "status": "planned",
-      "trackingIssues": [111],
+      "trackingIssues": [
+        111
+      ],
       "activationRequirements": [
         "Register final listing copy and screenshots.",
         "Review every named compatibility claim and visible third-party asset."
@@ -284,7 +329,9 @@
       "id": "community-announcements",
       "kind": "announcement-set",
       "status": "planned",
-      "trackingIssues": [112],
+      "trackingIssues": [
+        112
+      ],
       "activationRequirements": [
         "Register the canonical announcement package and final publication URLs.",
         "Record corrections when claims or downloads change."
