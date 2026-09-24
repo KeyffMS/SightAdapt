@@ -429,7 +429,8 @@ th { background: var(--surface); }
   .grid-2,
   .trust-grid,
   .definition-list { grid-template-columns: 1fr; }
-  .brand img { width: 10rem; }
+  .brand img { width: 11.5rem; }
+  .mobile-nav .button { justify-self: start; }
 }
 
 @media (prefers-reduced-motion: reduce) {
