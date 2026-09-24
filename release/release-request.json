@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "publish": true,
+  "publish": false,
   "productVersion": "0.5.0.50-alpha",
   "tag": "v0.5.0.50-alpha",
   "prerelease": true,
