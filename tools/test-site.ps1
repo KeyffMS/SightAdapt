@@ -145,25 +145,25 @@ foreach ($pageName in $requiredPages) {
     }
 }
 
-$home = Get-Content (Join-Path $SiteRoot 'index.html') -Raw
+$homeHtml = Get-Content (Join-Path $SiteRoot 'index.html') -Raw
 foreach ($claim in @(
     'No code injection',
     'No driver installation',
     'No screen-content telemetry',
     "Runs with the current user's privileges"
 )) {
-    if ($home -notmatch [regex]::Escape($claim)) {
+    if ($homeHtml -notmatch [regex]::Escape($claim)) {
         Add-Error "Home page is missing trust statement '$claim'."
     }
 }
 
-$download = Get-Content (Join-Path $SiteRoot 'download\index.html') -Raw
+$downloadHtml = Get-Content (Join-Path $SiteRoot 'download\index.html') -Raw
 foreach ($requiredReleaseValue in @(
     '0.5.0.50-alpha',
     'c6dc5ba5c0356c84b32a74d298015d63158c57886b835e411da0b60f306fd711',
     'SightAdapt-0.5.0.50-alpha-win-x64.zip'
 )) {
-    if ($download -notmatch [regex]::Escape($requiredReleaseValue)) {
+    if ($downloadHtml -notmatch [regex]::Escape($requiredReleaseValue)) {
         Add-Error "Download page is missing release authority value '$requiredReleaseValue'."
     }
 }
