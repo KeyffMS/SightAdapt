@@ -96,7 +96,11 @@ A failed mutation or failed write does not replace committed settings and does n
 | Target availability and frame positioning/source updates | availability strategies and `MagnifierFrameRenderer` |
 | Native window/control lifetime | `MagnifierOverlay` |
 | Notification-area presentation | `TrayPresenter` |
-| Application-table presentation and edit mechanics | `ApplicationAssignmentsGrid` |
+| Application-table selection, binding, row updates and typed publication | `ApplicationAssignmentsGrid` |
+| Assignment-grid columns and selector options | `ApplicationAssignmentsGridColumns` |
+| Assignment-grid cell-to-command mapping | `ApplicationAssignmentCellChangeMapper` |
+| Assignment enabled-state painting | `ApplicationAssignmentEnabledCellRenderer` |
+| Assignment selector data-error classification | `ApplicationAssignmentSelectorErrorPolicy` |
 | Configuration use cases and dialogs | `ConfigurationForm` |
 | Selector editing contract | `ModernSelectorEditingControl` |
 
@@ -179,7 +183,7 @@ Native menu detection, menu-overlay creation, and cross-filter refresh are subor
 
 ## Configuration grid boundary
 
-`ApplicationAssignmentsGrid` owns columns, rows, selectors, status painting, selection, empty state, stable executable-path keys, separate typed change events, row updates, and failed-cell restoration. It does not know about persistence or dialogs.
+`ApplicationAssignmentsGrid` remains the UserControl boundary and owns selection, binding, row updates, empty-state visibility, stable executable-path keys and typed change publication. Stable column/selector construction lives in `ApplicationAssignmentsGridColumns`; pure cell-to-command decoding lives in `ApplicationAssignmentCellChangeMapper`; enabled-state indicator geometry/painting lives in `ApplicationAssignmentEnabledCellRenderer`; selector data-error classification and diagnostics live in `ApplicationAssignmentSelectorErrorPolicy`. The grid does not know about persistence or dialogs.
 
 `ConfigurationForm` resolves current committed assignments and translates typed grid events into domain-service mutations wrapped by `SettingsCoordinator.Commit`. It suppresses only its own synchronous full refresh during a grid-originated commit.
 
