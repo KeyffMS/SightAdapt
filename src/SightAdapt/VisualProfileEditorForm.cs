@@ -3,6 +3,7 @@ namespace SightAdapt;
 internal sealed class VisualProfileEditorForm : Form
 {
     private readonly VisualProfile _workingProfile;
+    private readonly VisualProfileDefinition _definition;
     private readonly ColorProfilePreview _preview;
     private readonly OutputLimitPreview _outputPreview;
     private readonly IReadOnlyDictionary<string, VisualAdjustmentBinding>
@@ -16,9 +17,21 @@ internal sealed class VisualProfileEditorForm : Form
     private bool _loadingValues;
 
     internal VisualProfileEditorForm(VisualProfile profile)
+        : this(profile, VisualProfileCatalog.Default)
+    {
+    }
+
+    internal VisualProfileEditorForm(
+        VisualProfile profile,
+        VisualProfileCatalog catalog)
     {
         ArgumentNullException.ThrowIfNull(profile);
-        if (!profile.SupportsTuning)
+        ArgumentNullException.ThrowIfNull(catalog);
+
+        _definition =
+            catalog.GetRequiredTransformDefinition(
+                profile.TransformId);
+        if (!_definition.SupportsTuning)
         {
             throw new ArgumentException(
                 "Only editable visual profiles can be edited.",
@@ -31,14 +44,14 @@ internal sealed class VisualProfileEditorForm : Form
             Dock = DockStyle.Fill,
             Margin = Padding.Empty,
             Profile = _workingProfile,
-            TransformCatalog = VisualProfileCatalog.Default,
+            TransformCatalog = catalog,
         };
         _outputPreview = new OutputLimitPreview
         {
             Dock = DockStyle.Fill,
             Margin = Padding.Empty,
             Profile = _workingProfile,
-            TransformCatalog = VisualProfileCatalog.Default,
+            TransformCatalog = catalog,
         };
         _adjustments = VisualAdjustmentDefinitions.All
             .Select(definition => new VisualAdjustmentBinding(
@@ -299,13 +312,12 @@ internal sealed class VisualProfileEditorForm : Form
     private Control CreateActionBar()
     {
         var reset = CreateButton(
-            "Reset soft profile",
+            "Reset profile",
             ModernButtonStyle.Secondary,
             160);
         reset.AccessibleDescription =
-            $"Restore the canonical {VisualProfileCatalog.Default.GetTransformDisplayName(
-                SoftInvertVisualTransform.TransformId)} tuning values.";
-        reset.Click += (_, _) => ResetValues();
+            $"Restore the canonical {_definition.DisplayName} tuning values.";
+        reset.Click += (_, _) => ResetToCanonicalTuning();
 
         var cancel = CreateButton("Cancel", ModernButtonStyle.Ghost, 100);
         cancel.DialogResult = DialogResult.Cancel;
@@ -411,11 +423,12 @@ internal sealed class VisualProfileEditorForm : Form
         }
     }
 
-    private void ResetValues()
+    internal VisualProfile WorkingProfile =>
+        _workingProfile;
+
+    internal void ResetToCanonicalTuning()
     {
-        VisualProfileDefaults.ApplyTuning(
-            _workingProfile,
-            VisualProfileDefaults.SoftInvertTuning);
+        _definition.ResetTuning(_workingProfile);
         LoadValues();
         InvalidatePreviews();
     }
