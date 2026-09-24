@@ -11,6 +11,7 @@ internal sealed class VisualProfileDefinition
         string displayName,
         bool supportsTuning,
         IVisualTransform transform,
+        VisualProfileTuning canonicalTuning,
         Func<VisualProfile, VisualProfileTuning> normalizeTuning)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(profileId);
@@ -24,6 +25,7 @@ internal sealed class VisualProfileDefinition
         DisplayName = displayName;
         SupportsTuning = supportsTuning;
         Transform = transform;
+        CanonicalTuning = canonicalTuning;
         _normalizeTuning = normalizeTuning;
     }
 
@@ -37,6 +39,8 @@ internal sealed class VisualProfileDefinition
 
     public IVisualTransform Transform { get; }
 
+    public VisualProfileTuning CanonicalTuning { get; }
+
     public VisualProfile CreateBuiltInProfile()
     {
         var profile = new VisualProfile
@@ -45,9 +49,7 @@ internal sealed class VisualProfileDefinition
             Name = DisplayName,
             TransformId = TransformId,
         };
-        VisualProfileDefaults.ApplyTuning(
-            profile,
-            _normalizeTuning(profile));
+        ResetTuning(profile);
         return profile;
     }
 
@@ -72,10 +74,14 @@ internal sealed class VisualProfileDefinition
         profile.Id = ProfileId;
         profile.Name = DisplayName;
         profile.TransformId = TransformId;
-        return VisualProfileDefaults.ApplyTuningIfChanged(
-                profile,
-                _normalizeTuning(profile)) ||
-            changed;
+        return NormalizeTuning(profile) || changed;
+    }
+
+    public VisualProfileTuning GetNormalizedTuning(
+        VisualProfile profile)
+    {
+        ArgumentNullException.ThrowIfNull(profile);
+        return _normalizeTuning(profile);
     }
 
     public bool NormalizeTuning(
@@ -84,7 +90,16 @@ internal sealed class VisualProfileDefinition
         ArgumentNullException.ThrowIfNull(profile);
         return VisualProfileDefaults.ApplyTuningIfChanged(
             profile,
-            _normalizeTuning(profile));
+            GetNormalizedTuning(profile));
+    }
+
+    public void ResetTuning(
+        VisualProfile profile)
+    {
+        ArgumentNullException.ThrowIfNull(profile);
+        VisualProfileDefaults.ApplyTuning(
+            profile,
+            CanonicalTuning);
     }
 }
 
@@ -105,6 +120,7 @@ internal sealed class VisualProfileCatalog
                 "Exact invert",
                 supportsTuning: false,
                 new InvertVisualTransform(),
+                VisualProfileDefaults.ExactInvertTuning,
                 _ => VisualProfileDefaults.ExactInvertTuning),
             new(
                 DefaultSoftInvertId,
@@ -112,6 +128,7 @@ internal sealed class VisualProfileCatalog
                 "Soft invert",
                 supportsTuning: true,
                 new SoftInvertVisualTransform(),
+                VisualProfileDefaults.SoftInvertTuning,
                 VisualProfileDefaults.NormalizeSoftInvertTuning),
             new(
                 DefaultNoneId,
@@ -119,13 +136,13 @@ internal sealed class VisualProfileCatalog
                 "None",
                 supportsTuning: false,
                 new NoneVisualTransform(),
+                VisualProfileDefaults.ExactInvertTuning,
                 _ => VisualProfileDefaults.ExactInvertTuning),
         ];
 
-    private static readonly IReadOnlyList<VisualProfileDefinition>
-        ReadOnlyDefinitions = Array.AsReadOnly(
-            CanonicalDefinitions);
-
+    private readonly VisualProfileDefinition[] _definitions;
+    private readonly IReadOnlyList<VisualProfileDefinition>
+        _readOnlyDefinitions;
     private readonly IReadOnlyDictionary<
         string,
         VisualProfileDefinition> _definitionsByProfileId;
@@ -134,25 +151,43 @@ internal sealed class VisualProfileCatalog
         VisualProfileDefinition> _definitionsByTransformId;
 
     private VisualProfileCatalog()
+        : this(CanonicalDefinitions)
     {
+    }
+
+    internal VisualProfileCatalog(
+        IEnumerable<VisualProfileDefinition> definitions)
+    {
+        ArgumentNullException.ThrowIfNull(definitions);
+
+        _definitions = definitions.ToArray();
+        if (_definitions.Length == 0)
+        {
+            throw new ArgumentException(
+                "At least one visual profile definition is required.",
+                nameof(definitions));
+        }
+
         _definitionsByProfileId =
-            CanonicalDefinitions.ToDictionary(
+            _definitions.ToDictionary(
                 definition => definition.ProfileId,
                 StringComparer.OrdinalIgnoreCase);
         _definitionsByTransformId =
-            CanonicalDefinitions.ToDictionary(
+            _definitions.ToDictionary(
                 definition => definition.TransformId,
                 StringComparer.OrdinalIgnoreCase);
+        _readOnlyDefinitions =
+            Array.AsReadOnly(_definitions);
     }
 
     public static VisualProfileCatalog Default { get; } = new();
 
     public IReadOnlyList<VisualProfileDefinition> Definitions =>
-        ReadOnlyDefinitions;
+        _readOnlyDefinitions;
 
     public IEnumerable<VisualProfile> CreateBuiltInProfiles()
     {
-        return CanonicalDefinitions.Select(
+        return _definitions.Select(
             definition => definition.CreateBuiltInProfile());
     }
 
@@ -228,11 +263,19 @@ internal sealed class VisualProfileCatalog
     public IVisualTransform GetRequiredTransform(
         string transformId)
     {
+        return GetRequiredTransformDefinition(
+                transformId)
+            .Transform;
+    }
+
+    public VisualProfileDefinition GetRequiredTransformDefinition(
+        string transformId)
+    {
         if (TryGetTransformDefinition(
                 transformId,
                 out var definition))
         {
-            return definition.Transform;
+            return definition;
         }
 
         throw new InvalidOperationException(
@@ -243,13 +286,9 @@ internal sealed class VisualProfileCatalog
         VisualProfile profile)
     {
         ArgumentNullException.ThrowIfNull(profile);
-
-        return TryGetTransformDefinition(
-                profile.TransformId,
-                out var definition)
-            ? definition.NormalizeTuning(profile)
-            : throw new InvalidOperationException(
-                $"The visual transform '{profile.TransformId}' is not registered.");
+        return GetRequiredTransformDefinition(
+                profile.TransformId)
+            .NormalizeTuning(profile);
     }
 
     private bool TryGetTransformDefinition(
