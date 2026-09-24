@@ -15,7 +15,7 @@ public sealed class ApplicationAssignmentsGridDataErrorTests
         string columnName)
     {
         Assert.IsTrue(
-            ApplicationAssignmentsGrid.IsExpectedSelectorDataError(
+            ApplicationAssignmentSelectorErrorPolicy.IsRecoverable(
                 new ArgumentException("Transient selector value"),
                 DataGridViewDataErrorContexts.Formatting |
                     DataGridViewDataErrorContexts.Display,
@@ -26,7 +26,7 @@ public sealed class ApplicationAssignmentsGridDataErrorTests
     public void CommitErrorIsNotClassifiedAsPresentationRace()
     {
         Assert.IsFalse(
-            ApplicationAssignmentsGrid.IsExpectedSelectorDataError(
+            ApplicationAssignmentSelectorErrorPolicy.IsRecoverable(
                 new ArgumentException("Invalid committed value"),
                 DataGridViewDataErrorContexts.Commit,
                 ApplicationAssignmentsGrid.VisualProfileColumnName));
@@ -36,7 +36,7 @@ public sealed class ApplicationAssignmentsGridDataErrorTests
     public void InvalidOperationIsNeverBlanketSuppressed()
     {
         Assert.IsFalse(
-            ApplicationAssignmentsGrid.IsExpectedSelectorDataError(
+            ApplicationAssignmentSelectorErrorPolicy.IsRecoverable(
                 new InvalidOperationException("Broken selector"),
                 DataGridViewDataErrorContexts.Formatting,
                 ApplicationAssignmentsGrid.VisualProfileColumnName));
@@ -46,7 +46,7 @@ public sealed class ApplicationAssignmentsGridDataErrorTests
     public void NonSelectorArgumentErrorIsNotSuppressed()
     {
         Assert.IsFalse(
-            ApplicationAssignmentsGrid.IsExpectedSelectorDataError(
+            ApplicationAssignmentSelectorErrorPolicy.IsRecoverable(
                 new ArgumentException("Invalid enabled value"),
                 DataGridViewDataErrorContexts.Formatting,
                 "Enabled"));
@@ -56,7 +56,7 @@ public sealed class ApplicationAssignmentsGridDataErrorTests
     public void DiagnosticContainsRowColumnPathAndContext()
     {
         var diagnostic =
-            ApplicationAssignmentsGrid.CreateDataErrorDiagnostic(
+            ApplicationAssignmentSelectorErrorPolicy.CreateDiagnostic(
                 new ArgumentException("Transient selector value"),
                 DataGridViewDataErrorContexts.Display,
                 rowIndex: 4,
