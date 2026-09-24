@@ -109,12 +109,18 @@ A failed mutation or failed write does not replace committed settings and does n
 | Per-application overlay scope | `ApplicationAssignment.OverlayScopeId` |
 | Optional native-menu profile reference and inheritance sentinel | `ApplicationAssignment.MenuVisualProfileId` and `ApplicationMenuProfilePolicy` |
 | Scope enum values, canonical identifiers, aliases, default, and display names | `OverlayScopePolicy` definition table |
-| Built-in profile IDs, names, transforms, ordering, tuning capability and canonicalization | `VisualProfileCatalog` definition table |
+| Built-in profile IDs, names, transforms, ordering, tuning capability, canonical tuning and normalization policy | `VisualProfileCatalog` definition table |
 | Assignment defaults, fallbacks, user-ID and user-name rules | `VisualProfilePolicy` |
-| Canonical tuning values and numeric normalization | `VisualProfileDefaults` |
+| Built-in tuning constants and shared numeric helpers | `VisualProfileDefaults` |
 | Parameter ranges | `VisualProfileLimits` |
 | Runtime polling, refresh, transition and fault-recovery intervals | `RuntimeTimingPolicy.Default` |
 | Product name, version, milestone, repository, author, and license | project and assembly metadata exposed through `ProductInfo` |
+
+## Visual-profile tuning authority
+
+Each registered `VisualProfileDefinition` is the authority for its transform's editable status, canonical/reset tuning and normalization function. `VisualProfileManagementService.UpdateTuning` resolves the target profile's transform definition before normalizing submitted values, and `VisualProfileEditorForm` resolves the same definition for reset wording and canonical reset values. Adding another editable transform therefore does not inherit Soft Invert normalization or defaults implicitly.
+
+`VisualProfileDefaults` retains the built-in numeric constants and reusable normalization helpers used by the current definitions; it is not a second transform registry.
 
 `ApplicationIdentityCache` is an optimization, not a product source of truth. Entries are keyed by both PID and process creation time so a reused PID cannot inherit another process lifetime's identity.
 
