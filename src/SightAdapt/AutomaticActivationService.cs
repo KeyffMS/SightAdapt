@@ -4,19 +4,19 @@ internal sealed class AutomaticActivationService
 {
     private readonly ApplicationStateController _stateController;
     private readonly RuntimeOverlayActivator _overlayActivator;
-    private readonly IRuntimeEnvironment _environment;
+    private readonly IRuntimeTargetResolver _targetResolver;
 
     public AutomaticActivationService(
         ApplicationStateController stateController,
         RuntimeOverlayActivator overlayActivator,
-        IRuntimeEnvironment environment)
+        IRuntimeTargetResolver targetResolver)
     {
         _stateController = stateController ??
             throw new ArgumentNullException(nameof(stateController));
         _overlayActivator = overlayActivator ??
             throw new ArgumentNullException(nameof(overlayActivator));
-        _environment = environment ??
-            throw new ArgumentNullException(nameof(environment));
+        _targetResolver = targetResolver ??
+            throw new ArgumentNullException(nameof(targetResolver));
     }
 
     public void Evaluate(
@@ -29,7 +29,7 @@ internal sealed class AutomaticActivationService
         if (!settings.AutomaticMode ||
             !_stateController.AllowsAutomaticActivation ||
             currentState == ApplicationRunState.ManualActive ||
-            !_environment.IsSupportedTarget(targetWindow))
+            !_targetResolver.IsSupportedTarget(targetWindow))
         {
             return;
         }
@@ -47,7 +47,7 @@ internal sealed class AutomaticActivationService
         }
 
         var identity =
-            _environment.ResolveIdentity(targetWindow);
+            _targetResolver.ResolveIdentity(targetWindow);
         if (identity is null)
         {
             DisableAutomaticOverlayIfActive(currentState);
@@ -79,7 +79,7 @@ internal sealed class AutomaticActivationService
         ArgumentNullException.ThrowIfNull(settings);
 
         var identity =
-            _environment.ResolveIdentity(targetWindow);
+            _targetResolver.ResolveIdentity(targetWindow);
         return identity is not null &&
             ProfileResolver.FindEnabledAssignment(
                 settings,
@@ -101,7 +101,7 @@ internal sealed class AutomaticActivationService
         _stateController.ClearAutomaticSuppression();
 
         var targetWindow =
-            _environment.ResolveTargetWindow();
+            _targetResolver.ResolveTargetWindow();
         if (targetWindow != nint.Zero)
         {
             Evaluate(settings, targetWindow);
@@ -138,7 +138,7 @@ internal sealed class AutomaticActivationService
         }
 
         var targetWindow =
-            _environment.ResolveTargetWindow();
+            _targetResolver.ResolveTargetWindow();
         if (targetWindow != nint.Zero)
         {
             Evaluate(settings, targetWindow);
@@ -151,14 +151,14 @@ internal sealed class AutomaticActivationService
         var targetWindow =
             _stateController.Current.TargetWindow;
         if (targetWindow == nint.Zero ||
-            !_environment.IsSupportedTarget(targetWindow))
+            !_targetResolver.IsSupportedTarget(targetWindow))
         {
             _overlayActivator.Disable();
             return;
         }
 
         var identity =
-            _environment.ResolveIdentity(targetWindow);
+            _targetResolver.ResolveIdentity(targetWindow);
         var assignment = identity is null
             ? null
             : ProfileResolver.FindAssignment(

@@ -318,7 +318,7 @@ internal sealed class OverlaySession : IDisposable
             primary.Show();
             if (primary.IsDisposed)
             {
-                throw new InvalidOperationException(
+                throw new RuntimeOverlayUnavailableException(
                     "The overlay target became unavailable during activation.");
             }
 

@@ -1,32 +1,32 @@
 namespace SightAdapt;
 
-internal interface IRuntimeEnvironment
+internal interface IRuntimeTargetResolver
 {
     nint ResolveTargetWindow();
 
     bool IsSupportedTarget(nint targetWindow);
 
     ApplicationIdentity? ResolveIdentity(nint targetWindow);
+}
 
+internal interface IRuntimeFeedback
+{
     void ShowNotification(string message);
 
     void SynchronizeAutomaticMode(bool enabled);
 }
 
-internal sealed class DelegateRuntimeEnvironment : IRuntimeEnvironment
+internal sealed class DelegateRuntimeTargetResolver :
+    IRuntimeTargetResolver
 {
     private readonly Func<nint> _resolveTargetWindow;
     private readonly Func<nint, bool> _isSupportedTarget;
     private readonly Func<nint, ApplicationIdentity?> _resolveIdentity;
-    private readonly Action<string> _showNotification;
-    private readonly Action<bool> _synchronizeAutomaticMode;
 
-    public DelegateRuntimeEnvironment(
+    public DelegateRuntimeTargetResolver(
         Func<nint> resolveTargetWindow,
         Func<nint, bool> isSupportedTarget,
-        Func<nint, ApplicationIdentity?> resolveIdentity,
-        Action<string> showNotification,
-        Action<bool> synchronizeAutomaticMode)
+        Func<nint, ApplicationIdentity?> resolveIdentity)
     {
         _resolveTargetWindow = resolveTargetWindow ??
             throw new ArgumentNullException(nameof(resolveTargetWindow));
@@ -34,10 +34,6 @@ internal sealed class DelegateRuntimeEnvironment : IRuntimeEnvironment
             throw new ArgumentNullException(nameof(isSupportedTarget));
         _resolveIdentity = resolveIdentity ??
             throw new ArgumentNullException(nameof(resolveIdentity));
-        _showNotification = showNotification ??
-            throw new ArgumentNullException(nameof(showNotification));
-        _synchronizeAutomaticMode = synchronizeAutomaticMode ??
-            throw new ArgumentNullException(nameof(synchronizeAutomaticMode));
     }
 
     public nint ResolveTargetWindow() =>
@@ -48,6 +44,23 @@ internal sealed class DelegateRuntimeEnvironment : IRuntimeEnvironment
 
     public ApplicationIdentity? ResolveIdentity(nint targetWindow) =>
         _resolveIdentity(targetWindow);
+}
+
+internal sealed class DelegateRuntimeFeedback :
+    IRuntimeFeedback
+{
+    private readonly Action<string> _showNotification;
+    private readonly Action<bool> _synchronizeAutomaticMode;
+
+    public DelegateRuntimeFeedback(
+        Action<string> showNotification,
+        Action<bool> synchronizeAutomaticMode)
+    {
+        _showNotification = showNotification ??
+            throw new ArgumentNullException(nameof(showNotification));
+        _synchronizeAutomaticMode = synchronizeAutomaticMode ??
+            throw new ArgumentNullException(nameof(synchronizeAutomaticMode));
+    }
 
     public void ShowNotification(string message) =>
         _showNotification(message);

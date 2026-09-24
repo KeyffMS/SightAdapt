@@ -1,5 +1,21 @@
 namespace SightAdapt;
 
+internal sealed class RuntimeOverlayUnavailableException :
+    Exception
+{
+    public RuntimeOverlayUnavailableException(string message)
+        : base(message)
+    {
+    }
+
+    public RuntimeOverlayUnavailableException(
+        string message,
+        Exception innerException)
+        : base(message, innerException)
+    {
+    }
+}
+
 internal sealed class OverlayActivationRequest
 {
     public OverlayActivationRequest(

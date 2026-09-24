@@ -9,67 +9,48 @@ internal sealed class RuntimeCoordinator
 {
     private readonly SettingsCoordinator _settingsCoordinator;
     private readonly ApplicationStateController _stateController;
-    private readonly IRuntimeEnvironment _environment;
+    private readonly IRuntimeTargetResolver _targetResolver;
+    private readonly IRuntimeFeedback _feedback;
     private readonly RuntimeOverlayActivator _overlayActivator;
     private readonly AutomaticActivationService _automaticActivation;
     private readonly Func<IReadOnlySightAdaptSettings> _readSettings;
     private bool _committingSettings;
 
-    public RuntimeCoordinator(
-        SettingsCoordinator settingsCoordinator,
-        ApplicationStateController stateController,
-        IRuntimeOverlay overlay,
-        Func<nint> resolveTargetWindow,
-        Func<nint, bool> isSupportedTarget,
-        Func<nint, ApplicationIdentity?> resolveIdentity,
-        Action<string> showNotification,
-        Action<bool> synchronizeAutomaticMode)
-        : this(
-            settingsCoordinator,
-            stateController,
-            overlay,
-            new DelegateRuntimeEnvironment(
-                resolveTargetWindow,
-                isSupportedTarget,
-                resolveIdentity,
-                showNotification,
-                synchronizeAutomaticMode),
-            readSettings: null)
-    {
-    }
-
     internal RuntimeCoordinator(
         SettingsCoordinator settingsCoordinator,
         ApplicationStateController stateController,
         IRuntimeOverlay overlay,
-        IRuntimeEnvironment environment,
-        Func<IReadOnlySightAdaptSettings>? readSettings)
+        IRuntimeTargetResolver targetResolver,
+        IRuntimeFeedback feedback,
+        Func<IReadOnlySightAdaptSettings>? readSettings = null)
     {
         _settingsCoordinator = settingsCoordinator ??
             throw new ArgumentNullException(nameof(settingsCoordinator));
         _stateController = stateController ??
             throw new ArgumentNullException(nameof(stateController));
-        _environment = environment ??
-            throw new ArgumentNullException(nameof(environment));
+        _targetResolver = targetResolver ??
+            throw new ArgumentNullException(nameof(targetResolver));
+        _feedback = feedback ??
+            throw new ArgumentNullException(nameof(feedback));
         _readSettings = readSettings ??
             (() => _settingsCoordinator.Current);
         _overlayActivator = new RuntimeOverlayActivator(
             stateController,
             overlay,
-            environment);
+            feedback);
         _automaticActivation = new AutomaticActivationService(
             stateController,
             _overlayActivator,
-            environment);
+            targetResolver);
     }
 
     public void ToggleForActiveWindow()
     {
         var targetWindow =
-            _environment.ResolveTargetWindow();
+            _targetResolver.ResolveTargetWindow();
         if (targetWindow == nint.Zero)
         {
-            _environment.ShowNotification(
+            _feedback.ShowNotification(
                 RuntimeMessages.NoSupportedWindow);
             return;
         }
@@ -93,7 +74,7 @@ internal sealed class RuntimeCoordinator
         }
 
         var identity =
-            _environment.ResolveIdentity(targetWindow);
+            _targetResolver.ResolveIdentity(targetWindow);
         var assignment = identity is null
             ? null
             : ProfileResolver.FindAssignment(
@@ -111,13 +92,13 @@ internal sealed class RuntimeCoordinator
     public void ToggleActiveApplicationAssignment()
     {
         var targetWindow =
-            _environment.ResolveTargetWindow();
+            _targetResolver.ResolveTargetWindow();
         var identity = targetWindow == nint.Zero
             ? null
-            : _environment.ResolveIdentity(targetWindow);
+            : _targetResolver.ResolveIdentity(targetWindow);
         if (identity is null)
         {
-            _environment.ShowNotification(
+            _feedback.ShowNotification(
                 RuntimeMessages.IdentityUnavailable);
             return;
         }
@@ -157,7 +138,7 @@ internal sealed class RuntimeCoordinator
             _automaticActivation.HandleSettingsChanged(settings);
         }
 
-        _environment.ShowNotification(
+        _feedback.ShowNotification(
             RuntimeMessages.AssignmentToggled(result));
     }
 
@@ -171,7 +152,7 @@ internal sealed class RuntimeCoordinator
         var settings = ReadSettings();
         if (!commit.Succeeded)
         {
-            _environment.SynchronizeAutomaticMode(
+            _feedback.SynchronizeAutomaticMode(
                 settings.AutomaticMode);
             ShowCommitError(commit.ErrorMessage);
             return;
@@ -238,15 +219,15 @@ internal sealed class RuntimeCoordinator
 
         if (commit.Succeeded)
         {
-            _environment.ShowNotification(
+            _feedback.ShowNotification(
                 "All overlays were disabled. Automatic mode is off.");
             return;
         }
 
         var settings = ReadSettings();
-        _environment.SynchronizeAutomaticMode(
+        _feedback.SynchronizeAutomaticMode(
             settings.AutomaticMode);
-        _environment.ShowNotification(
+        _feedback.ShowNotification(
             "All overlays were disabled for this session, but " +
             (commit.ErrorMessage ??
              "automatic mode could not be saved."));
@@ -280,7 +261,7 @@ internal sealed class RuntimeCoordinator
 
     private void ShowCommitError(string? message)
     {
-        _environment.ShowNotification(
+        _feedback.ShowNotification(
             string.IsNullOrWhiteSpace(message)
                 ? RuntimeMessages.SettingsChangeFailed
                 : message);

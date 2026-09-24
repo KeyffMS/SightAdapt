@@ -131,22 +131,26 @@ public sealed class RuntimeCoordinatorTests
         using var context = new RuntimeTestContext();
         context.AddEnabledAssignment();
         var reads = 0;
-        var environment = new DelegateRuntimeEnvironment(
-            () => context.Target,
-            target => target == context.Target,
-            target => target == context.Target
-                ? new ApplicationIdentity(
-                    "Reader",
-                    "reader.exe",
-                    @"C:\Apps\reader.exe")
-                : null,
-            _ => { },
-            _ => { });
+        var targetResolver =
+            new DelegateRuntimeTargetResolver(
+                () => context.Target,
+                target => target == context.Target,
+                target => target == context.Target
+                    ? new ApplicationIdentity(
+                        "Reader",
+                        "reader.exe",
+                        @"C:\Apps\reader.exe")
+                    : null);
+        var feedback =
+            new DelegateRuntimeFeedback(
+                _ => { },
+                _ => { });
         var coordinator = new RuntimeCoordinator(
             context.Settings,
             context.State,
             context.Overlay,
-            environment,
+            targetResolver,
+            feedback,
             () =>
             {
                 reads++;
@@ -182,17 +186,23 @@ public sealed class RuntimeCoordinatorTests
                     "settings.json")));
             State = new ApplicationStateController();
             Overlay = new FakeRuntimeOverlay();
+            var targetResolver =
+                new DelegateRuntimeTargetResolver(
+                    () => Target,
+                    target => target != nint.Zero,
+                    target => target == Target
+                        ? _identity
+                        : null);
+            var feedback =
+                new DelegateRuntimeFeedback(
+                    Notifications.Add,
+                    SynchronizedAutomaticModes.Add);
             Coordinator = new RuntimeCoordinator(
                 Settings,
                 State,
                 Overlay,
-                () => Target,
-                target => target != nint.Zero,
-                target => target == Target
-                    ? _identity
-                    : null,
-                Notifications.Add,
-                SynchronizedAutomaticModes.Add);
+                targetResolver,
+                feedback);
         }
 
         public nint Target { get; } = (nint)100;

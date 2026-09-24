@@ -83,17 +83,23 @@ public sealed class RuntimeMenuProfileTests
                     _directory,
                     "settings.json")));
             Overlay = new FakeRuntimeOverlay();
+            var targetResolver =
+                new DelegateRuntimeTargetResolver(
+                    () => Target,
+                    target => target == Target,
+                    target => target == Target
+                        ? _identity
+                        : null);
+            var feedback =
+                new DelegateRuntimeFeedback(
+                    _ => { },
+                    _ => { });
             Coordinator = new RuntimeCoordinator(
                 Settings,
                 new ApplicationStateController(),
                 Overlay,
-                () => Target,
-                target => target == Target,
-                target => target == Target
-                    ? _identity
-                    : null,
-                _ => { },
-                _ => { });
+                targetResolver,
+                feedback);
         }
 
         public nint Target { get; } = (nint)100;
