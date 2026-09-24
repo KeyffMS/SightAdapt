@@ -16,7 +16,6 @@ internal sealed class ConfigurationForm : Form
     private readonly ApplicationAssignmentsGrid _assignmentsGrid;
     private readonly ModernButton _editVisualProfileButton;
     private bool _refreshing;
-    private bool _committingGridValue;
 
     public ConfigurationForm(
         SettingsCoordinator settingsCoordinator,
@@ -445,7 +444,11 @@ internal sealed class ConfigurationForm : Form
         {
             ShowCommitError(result.ErrorMessage);
             RefreshProfiles();
+            return;
         }
+
+        UpdateAutomaticModeState(
+            _automaticModeSwitch.Checked);
     }
 
     private void UpdateAutomaticModeState(bool automaticMode)
@@ -474,17 +477,7 @@ internal sealed class ConfigurationForm : Form
         var displayedRow =
             ApplicationAssignmentRowMapper.Map(
                 displayedAssignment);
-        SettingsCommitResult result;
-
-        _committingGridValue = true;
-        try
-        {
-            result = _useCases.Apply(change);
-        }
-        finally
-        {
-            _committingGridValue = false;
-        }
+        var result = _useCases.Apply(change);
 
         if (!result.Succeeded)
         {
@@ -557,7 +550,10 @@ internal sealed class ConfigurationForm : Form
         {
             ShowCommitError(result.ErrorMessage);
             RefreshProfiles();
+            return;
         }
+
+        RefreshProfiles();
     }
 
     internal void ManageVisualProfiles()
@@ -638,6 +634,8 @@ internal sealed class ConfigurationForm : Form
             return;
         }
 
+        RefreshProfiles();
+
         MessageBox.Show(
             this,
             result.Value
@@ -671,12 +669,17 @@ internal sealed class ConfigurationForm : Form
         if (!result.Succeeded)
         {
             ShowCommitError(result.ErrorMessage);
+            return;
         }
+
+        RefreshProfiles();
     }
 
-    private void SettingsChanged(object? sender, EventArgs eventArgs)
+    private void SettingsChanged(
+        object? sender,
+        SettingsChangedEventArgs eventArgs)
     {
-        if (_committingGridValue)
+        if (_useCases.IsLocalChange(eventArgs))
         {
             return;
         }
