@@ -9,7 +9,6 @@ internal sealed class VisualProfileManagerForm : Form
     private readonly ModernButton _renameButton;
     private readonly ModernButton _editButton;
     private readonly ModernButton _deleteButton;
-    private bool _committingLocalChange;
 
     internal VisualProfileManagerForm(
         SettingsCoordinator settingsCoordinator)
@@ -404,16 +403,7 @@ internal sealed class VisualProfileManagerForm : Form
     {
         ArgumentNullException.ThrowIfNull(command);
 
-        SettingsCommitResult<string> result;
-        _committingLocalChange = true;
-        try
-        {
-            result = command(_useCases);
-        }
-        finally
-        {
-            _committingLocalChange = false;
-        }
+        var result = command(_useCases);
 
         if (result.Succeeded)
         {
@@ -430,12 +420,16 @@ internal sealed class VisualProfileManagerForm : Form
         RefreshProfiles();
     }
 
-    private void SettingsChanged(object? sender, EventArgs eventArgs)
+    private void SettingsChanged(
+        object? sender,
+        SettingsChangedEventArgs eventArgs)
     {
-        if (!_committingLocalChange)
+        if (_useCases.IsLocalChange(eventArgs))
         {
-            RefreshProfiles();
+            return;
         }
+
+        RefreshProfiles();
     }
 
 }

@@ -23,11 +23,15 @@ internal sealed class VisualProfileUseCases
     public IReadOnlySightAdaptSettings Snapshot =>
         _settings.Snapshot;
 
-    public event EventHandler? Changed
+    public event EventHandler<SettingsChangedEventArgs>? Changed
     {
         add => _settings.Changed += value;
         remove => _settings.Changed -= value;
     }
+
+    public bool IsLocalChange(
+        SettingsChangedEventArgs eventArgs) =>
+        _settings.IsLocalChange(eventArgs);
 
     public string CreateAvailableName(string baseName)
     {

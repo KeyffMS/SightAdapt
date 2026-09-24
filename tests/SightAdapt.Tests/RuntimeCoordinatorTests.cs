@@ -254,8 +254,10 @@ public sealed class RuntimeCoordinatorTests
 
         public void WireSettingsChanged()
         {
-            Settings.Changed += (_, _) =>
-                Coordinator.HandleSettingsChanged();
+            Settings.Changed += (_, eventArgs) =>
+                Coordinator.HandleSettingsChanged(
+                    Settings.Current,
+                    eventArgs);
         }
 
         public void Dispose()

@@ -58,16 +58,18 @@ SettingsStore atomic file replacement
       ↓
 Current.ReplaceWith
       ↓
-one synchronous Changed event
+one synchronous Changed(origin) event
 ```
 
 A failed mutation or failed write does not replace committed settings and does not publish a settings change. `SettingsCoordinator.Current` exposes `IReadOnlySightAdaptSettings` and returns a defensive snapshot. Mutable `SightAdaptSettings` is confined to explicit transaction callbacks and normalization/persistence boundaries. `SettingsUseCaseContext` centralizes snapshot, change-event and commit plumbing for application use-case façades without sharing their domain commands. `Commit` and `PersistCurrent` use one persistence execution path; only `Commit` publishes the synchronous `Changed` event after a successful write.
+
+Every published `SettingsChangedEventArgs` carries the explicit change origin supplied by the transaction boundary. A use-case context marks its own commits with a private origin token; local presentation code performs its one explicit post-commit follow-up and ignores only that origin, while external changes still refresh it. `RuntimeCoordinator` uses itself as the origin for runtime commands and ignores only its own generic callback because those commands already perform their runtime follow-up. Nested commits retain independent origins, so reentrant event delivery does not rely on component Boolean suppression flags.
 
 ## Authorities
 
 | Concern | Authority |
 |---|---|
-| Settings transaction and published read-only snapshots | `SettingsCoordinator` |
+| Settings transaction, change origin and published read-only snapshots | `SettingsCoordinator` |
 | Shared use-case snapshot/event/commit plumbing | `SettingsUseCaseContext` |
 | Settings JSON persistence and atomic replacement | `SettingsStore` |
 | Persisted JSON DTOs and legacy-field migration | `PersistedSettingsMapper` |

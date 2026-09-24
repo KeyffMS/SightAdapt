@@ -26,11 +26,15 @@ internal sealed class ConfigurationUseCases
     public string SettingsPath =>
         _settings.SettingsPath;
 
-    public event EventHandler? Changed
+    public event EventHandler<SettingsChangedEventArgs>? Changed
     {
         add => _settings.Changed += value;
         remove => _settings.Changed -= value;
     }
+
+    public bool IsLocalChange(
+        SettingsChangedEventArgs eventArgs) =>
+        _settings.IsLocalChange(eventArgs);
 
     public SettingsCommitResult SetAutomaticMode(bool enabled)
     {
