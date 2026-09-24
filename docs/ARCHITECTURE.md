@@ -73,6 +73,8 @@ A failed mutation or failed write does not replace committed settings and does n
 | Persisted JSON DTOs and legacy-field migration | `PersistedSettingsMapper` |
 | Schema, profile, assignment and reference normalization | explicit `ISettingsNormalizationPass` implementations |
 | Runtime command/event façade | `RuntimeCoordinator` |
+| Runtime target discovery and identity resolution | `IRuntimeTargetResolver` |
+| Runtime user feedback and automatic-mode synchronization | `IRuntimeFeedback` |
 | Overlay activation and automatic evaluation use cases | `RuntimeOverlayActivator` and `AutomaticActivationService` |
 | Application assignment mutations and overlay scope | `ApplicationAssignmentService` |
 | Visual-profile lifecycle and tuning | `VisualProfileManagementService` |
@@ -124,6 +126,15 @@ Each registered `VisualProfileDefinition` is the authority for its transform's e
 
 `ApplicationIdentityCache` is an optimization, not a product source of truth. Entries are keyed by both PID and process creation time so a reused PID cannot inherit another process lifetime's identity.
 
+## Runtime ports
+
+Runtime orchestration uses two narrow ports instead of one mixed environment abstraction:
+
+- `IRuntimeTargetResolver` owns target-window resolution, target support checks and application identity lookup;
+- `IRuntimeFeedback` owns user notifications and synchronization of the tray's automatic-mode state.
+
+`SightAdaptContext` is the composition root that creates the concrete delegate adapters. Runtime services can substitute either collaborator independently in tests, and `RuntimeCoordinator` no longer exposes the previous five-delegate constructor.
+
 ## Foreground and overlay lifecycle
 
 The foreground tracker polls every 75 ms and publishes only a changed supported application handle. Native `#32768` popup-menu windows are deliberately rejected as application targets, so opening a menu does not replace the active assignment. When an enabled assignment exists, the context resolves the application profile, the inherited or explicit menu profile, and the overlay scope.
@@ -160,7 +171,9 @@ Raw imports exist only in `NativeInterop`. Production components depend on focus
 - **transient** geometry, positioning, and source-update failures are diagnosed, hide the overlay, and allow a later timer tick to recover;
 - **best effort** cleanup failures are diagnosed without replacing the primary application failure.
 
-Every failure is emitted through the structured `Diagnostics` authority. Native menu detection, menu-overlay creation, and cross-filter refresh are subordinate operations. Their failure closes transient menu overlays and restores the primary overlay's self-filter instead of disabling the application correction.
+Every native failure is emitted through the structured `Diagnostics` authority. `RuntimeOverlayActivator` also classifies top-level activation failures: expected native or target-availability failures are diagnosed, cleaned up best-effort, transitioned into a safe `Fault` state and surfaced through `IRuntimeFeedback`; contract or programming failures are diagnosed, cleaned up without replacing the primary exception, and rethrown. Automatic activation retains the failed target as the suppression target so a failing foreground window is not immediately retried in a loop.
+
+Native menu detection, menu-overlay creation, and cross-filter refresh are subordinate operations. Their failure closes transient menu overlays and restores the primary overlay's self-filter instead of disabling the application correction.
 
 `ShowWindow` and `InvalidateRect` are handled explicitly at their call sites because their Boolean return values do not represent a standard extended-error success contract.
 
