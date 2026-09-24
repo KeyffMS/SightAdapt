@@ -2,23 +2,31 @@ namespace SightAdapt;
 
 internal sealed class VisualProfileUseCases
 {
-    private readonly SettingsCoordinator _settingsCoordinator;
+    private readonly SettingsUseCaseContext _settings;
 
     public VisualProfileUseCases(
         SettingsCoordinator settingsCoordinator)
-    {
-        _settingsCoordinator = settingsCoordinator ??
+        : this(new SettingsUseCaseContext(
+            settingsCoordinator ??
             throw new ArgumentNullException(
-                nameof(settingsCoordinator));
+                nameof(settingsCoordinator))))
+    {
     }
 
-    public SightAdaptSettings Snapshot =>
-        _settingsCoordinator.Current;
+    internal VisualProfileUseCases(
+        SettingsUseCaseContext settings)
+    {
+        _settings = settings ??
+            throw new ArgumentNullException(nameof(settings));
+    }
+
+    public IReadOnlySightAdaptSettings Snapshot =>
+        _settings.Snapshot;
 
     public event EventHandler? Changed
     {
-        add => _settingsCoordinator.Changed += value;
-        remove => _settingsCoordinator.Changed -= value;
+        add => _settings.Changed += value;
+        remove => _settings.Changed -= value;
     }
 
     public string CreateAvailableName(string baseName)
@@ -31,7 +39,7 @@ internal sealed class VisualProfileUseCases
 
     public SettingsCommitResult<string> Create(string name)
     {
-        return _settingsCoordinator.Commit(settings =>
+        return _settings.Commit(settings =>
             VisualProfileManagementService.Create(
                 settings,
                 name).Id);
@@ -43,7 +51,7 @@ internal sealed class VisualProfileUseCases
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(sourceProfileId);
 
-        return _settingsCoordinator.Commit(settings =>
+        return _settings.Commit(settings =>
             VisualProfileManagementService.Duplicate(
                 settings,
                 ProfileResolver.RequireVisualProfile(
@@ -58,7 +66,7 @@ internal sealed class VisualProfileUseCases
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(profileId);
 
-        return _settingsCoordinator.Commit(settings =>
+        return _settings.Commit(settings =>
         {
             VisualProfileManagementService.Rename(
                 settings,
@@ -77,7 +85,7 @@ internal sealed class VisualProfileUseCases
         ArgumentException.ThrowIfNullOrWhiteSpace(profileId);
         ArgumentNullException.ThrowIfNull(values);
 
-        return _settingsCoordinator.Commit(settings =>
+        return _settings.Commit(settings =>
         {
             VisualProfileManagementService.UpdateTuning(
                 settings,
@@ -97,7 +105,7 @@ internal sealed class VisualProfileUseCases
         ArgumentException.ThrowIfNullOrWhiteSpace(
             fallbackProfileId);
 
-        return _settingsCoordinator.Commit(settings =>
+        return _settings.Commit(settings =>
         {
             VisualProfileManagementService.Delete(
                 settings,
