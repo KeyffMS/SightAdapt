@@ -1,24 +1,13 @@
-using System.Drawing.Drawing2D;
-
 namespace SightAdapt;
 
 internal sealed class ApplicationAssignmentsGrid : UserControl
 {
-    private const string EnabledColumnName = "Enabled";
-    private const string ApplicationColumnName = "Application";
-    internal const string VisualProfileColumnName = "VisualProfile";
+    internal const string VisualProfileColumnName =
+        ApplicationAssignmentsGridColumns.VisualProfileColumnName;
     internal const string MenuVisualProfileColumnName =
-        "MenuVisualProfile";
-    internal const string OverlayScopeColumnName = "OverlayScope";
-
-    private const DataGridViewDataErrorContexts
-        RecoverableSelectorContexts =
-            DataGridViewDataErrorContexts.Formatting |
-            DataGridViewDataErrorContexts.Display |
-            DataGridViewDataErrorContexts.PreferredSize |
-            DataGridViewDataErrorContexts.InitialValueRestoration;
-    private const string ExecutableColumnName = "Executable";
-    private const string PathColumnName = "Path";
+        ApplicationAssignmentsGridColumns.MenuVisualProfileColumnName;
+    internal const string OverlayScopeColumnName =
+        ApplicationAssignmentsGridColumns.OverlayScopeColumnName;
 
     private readonly DataGridView _grid;
     private readonly Label _emptyStateLabel;
@@ -62,9 +51,10 @@ internal sealed class ApplicationAssignmentsGrid : UserControl
         _binding = true;
         try
         {
-            SetVisualProfiles(visualProfiles);
-            SetMenuVisualProfiles(visualProfiles);
-            SetOverlayScopes();
+            ApplicationAssignmentsGridColumns
+                .SetSelectorOptions(
+                    _grid,
+                    visualProfiles);
             _grid.Rows.Clear();
 
             foreach (var assignment in assignments)
@@ -78,10 +68,13 @@ internal sealed class ApplicationAssignmentsGrid : UserControl
         }
 
         UpdateVisibility(assignments.Count);
-        SelectedApplicationChanged?.Invoke(this, EventArgs.Empty);
+        SelectedApplicationChanged?.Invoke(
+            this,
+            EventArgs.Empty);
     }
 
-    public void UpdateAssignment(ApplicationAssignmentRow assignment)
+    public void UpdateAssignment(
+        ApplicationAssignmentRow assignment)
     {
         ArgumentNullException.ThrowIfNull(assignment);
 
@@ -102,7 +95,6 @@ internal sealed class ApplicationAssignmentsGrid : UserControl
         }
     }
 
-
     private DataGridView CreateGrid()
     {
         var grid = new DataGridView
@@ -115,79 +107,23 @@ internal sealed class ApplicationAssignmentsGrid : UserControl
             EditMode = DataGridViewEditMode.EditOnEnter,
             MultiSelect = false,
             ReadOnly = false,
-            SelectionMode = DataGridViewSelectionMode.FullRowSelect,
+            SelectionMode =
+                DataGridViewSelectionMode.FullRowSelect,
         };
         AppTheme.StyleGrid(grid);
-
-        var enabled = new DataGridViewCheckBoxColumn
-        {
-            Name = EnabledColumnName,
-            HeaderText = "ACTIVE",
-            Width = 92,
-            MinimumWidth = 92,
-            Resizable = DataGridViewTriState.False,
-            FlatStyle = FlatStyle.Flat,
-            SortMode = DataGridViewColumnSortMode.NotSortable,
-        };
-        enabled.HeaderCell.Style.Alignment =
-            DataGridViewContentAlignment.MiddleCenter;
-        enabled.DefaultCellStyle.Alignment =
-            DataGridViewContentAlignment.MiddleCenter;
-        enabled.DefaultCellStyle.Padding = Padding.Empty;
-
-        grid.Columns.Add(enabled);
-        grid.Columns.Add(FormPresentation.CreateReadOnlyTextColumn(
-            ApplicationColumnName,
-            "APPLICATION",
-            205));
-        grid.Columns.Add(new StableModernSelectorComboBoxColumn
-        {
-            Name = VisualProfileColumnName,
-            HeaderText = "VISUAL PROFILE",
-            DisplayStyle = DataGridViewComboBoxDisplayStyle.ComboBox,
-            FlatStyle = FlatStyle.Flat,
-            Width = 185,
-            MinimumWidth = 160,
-            SortMode = DataGridViewColumnSortMode.NotSortable,
-        });
-        grid.Columns.Add(new StableModernSelectorComboBoxColumn
-        {
-            Name = MenuVisualProfileColumnName,
-            HeaderText = "MENU PROFILE",
-            DisplayStyle = DataGridViewComboBoxDisplayStyle.ComboBox,
-            FlatStyle = FlatStyle.Flat,
-            Width = 185,
-            MinimumWidth = 160,
-            SortMode = DataGridViewColumnSortMode.NotSortable,
-        });
-        grid.Columns.Add(new StableModernSelectorComboBoxColumn
-        {
-            Name = OverlayScopeColumnName,
-            HeaderText = "OVERLAY SCOPE",
-            DisplayStyle = DataGridViewComboBoxDisplayStyle.ComboBox,
-            FlatStyle = FlatStyle.Flat,
-            Width = 170,
-            MinimumWidth = 150,
-            SortMode = DataGridViewColumnSortMode.NotSortable,
-        });
-        grid.Columns.Add(FormPresentation.CreateReadOnlyTextColumn(
-            ExecutableColumnName,
-            "EXECUTABLE",
-            155));
-        grid.Columns.Add(FormPresentation.CreateReadOnlyTextColumn(
-            PathColumnName,
-            "FULL PATH",
-            220,
-            fill: true));
+        ApplicationAssignmentsGridColumns.AddTo(grid);
 
         grid.CellPainting += GridCellPainting;
         grid.CellValueChanged += GridCellValueChanged;
-        grid.CurrentCellDirtyStateChanged += GridCurrentCellDirtyStateChanged;
+        grid.CurrentCellDirtyStateChanged +=
+            GridCurrentCellDirtyStateChanged;
         grid.SelectionChanged += (_, _) =>
         {
             if (!_binding)
             {
-                SelectedApplicationChanged?.Invoke(this, EventArgs.Empty);
+                SelectedApplicationChanged?.Invoke(
+                    this,
+                    EventArgs.Empty);
             }
         };
         grid.DataError += GridDataError;
@@ -211,69 +147,46 @@ internal sealed class ApplicationAssignmentsGrid : UserControl
         }
 
         row.Selected = true;
-        _grid.CurrentCell = row.Cells[ApplicationColumnName];
+        _grid.CurrentCell =
+            row.Cells[
+                ApplicationAssignmentsGridColumns
+                    .ApplicationColumnName];
     }
 
     private static void WriteRow(
         DataGridViewRow row,
         ApplicationAssignmentRow assignment)
     {
-        row.Cells[EnabledColumnName].Value = assignment.Enabled;
-        row.Cells[ApplicationColumnName].Value = assignment.DisplayName;
-        row.Cells[VisualProfileColumnName].Value = assignment.VisualProfileId;
-        row.Cells[MenuVisualProfileColumnName].Value =
+        row.Cells[
+            ApplicationAssignmentsGridColumns
+                .EnabledColumnName].Value =
+            assignment.Enabled;
+        row.Cells[
+            ApplicationAssignmentsGridColumns
+                .ApplicationColumnName].Value =
+            assignment.DisplayName;
+        row.Cells[
+            VisualProfileColumnName].Value =
+            assignment.VisualProfileId;
+        row.Cells[
+            MenuVisualProfileColumnName].Value =
             assignment.MenuVisualProfileSelectorId;
-        row.Cells[OverlayScopeColumnName].Value = assignment.OverlayScopeId;
-        row.Cells[ExecutableColumnName].Value = assignment.ExecutableName;
-        row.Cells[PathColumnName].Value = assignment.ExecutablePath;
+        row.Cells[
+            OverlayScopeColumnName].Value =
+            assignment.OverlayScopeId;
+        row.Cells[
+            ApplicationAssignmentsGridColumns
+                .ExecutableColumnName].Value =
+            assignment.ExecutableName;
+        row.Cells[
+            ApplicationAssignmentsGridColumns
+                .PathColumnName].Value =
+            assignment.ExecutablePath;
         row.Tag = assignment.ExecutablePath;
     }
 
-    private void SetVisualProfiles(IReadOnlyList<VisualProfile> profiles)
-    {
-        if (_grid.Columns[VisualProfileColumnName] is
-            StableModernSelectorComboBoxColumn column)
-        {
-            column.SetProfiles(profiles);
-        }
-    }
-
-    private void SetMenuVisualProfiles(
-        IReadOnlyList<VisualProfile> profiles)
-    {
-        if (_grid.Columns[MenuVisualProfileColumnName] is not
-            StableModernSelectorComboBoxColumn column)
-        {
-            return;
-        }
-
-        column.SetOptions(
-            new[]
-            {
-                new ModernSelectorOption(
-                    ApplicationMenuProfilePolicy.InheritSelectorId,
-                    ApplicationMenuProfilePolicy.InheritDisplayName),
-            }.Concat(profiles.Select(profile =>
-                new ModernSelectorOption(
-                    profile.Id,
-                    profile.Name))));
-    }
-
-    private void SetOverlayScopes()
-    {
-        if (_grid.Columns[OverlayScopeColumnName] is not
-            StableModernSelectorComboBoxColumn column)
-        {
-            return;
-        }
-
-        column.SetOptions(OverlayScopePolicy.All.Select(scope =>
-            new ModernSelectorOption(
-                OverlayScopePolicy.ToId(scope),
-                OverlayScopePolicy.GetDisplayName(scope))));
-    }
-
-    private DataGridViewRow? FindRow(string executablePath)
+    private DataGridViewRow? FindRow(
+        string executablePath)
     {
         return _grid.Rows
             .Cast<DataGridViewRow>()
@@ -297,7 +210,8 @@ internal sealed class ApplicationAssignmentsGrid : UserControl
     {
         if (_grid.IsCurrentCellDirty)
         {
-            _grid.CommitEdit(DataGridViewDataErrorContexts.Commit);
+            _grid.CommitEdit(
+                DataGridViewDataErrorContexts.Commit);
         }
     }
 
@@ -305,7 +219,9 @@ internal sealed class ApplicationAssignmentsGrid : UserControl
         object? sender,
         DataGridViewCellEventArgs eventArgs)
     {
-        if (_binding || eventArgs.RowIndex < 0 || eventArgs.ColumnIndex < 0)
+        if (_binding ||
+            eventArgs.RowIndex < 0 ||
+            eventArgs.ColumnIndex < 0)
         {
             return;
         }
@@ -316,39 +232,16 @@ internal sealed class ApplicationAssignmentsGrid : UserControl
             return;
         }
 
-        var columnName = _grid.Columns[eventArgs.ColumnIndex].Name;
-        if (columnName == EnabledColumnName &&
-            row.Cells[eventArgs.ColumnIndex].Value is bool enabled)
+        var columnName =
+            _grid.Columns[eventArgs.ColumnIndex].Name;
+        var change =
+            ApplicationAssignmentCellChangeMapper.Map(
+                executablePath,
+                columnName,
+                row.Cells[eventArgs.ColumnIndex].Value);
+        if (change is not null)
         {
-            AssignmentChanged?.Invoke(
-                new ApplicationAssignmentChange.Enabled(
-                    executablePath,
-                    enabled));
-        }
-        else if (columnName == VisualProfileColumnName &&
-                 row.Cells[eventArgs.ColumnIndex].Value is string profileId)
-        {
-            AssignmentChanged?.Invoke(
-                new ApplicationAssignmentChange.VisualProfile(
-                    executablePath,
-                    profileId));
-        }
-        else if (columnName == MenuVisualProfileColumnName &&
-                 row.Cells[eventArgs.ColumnIndex].Value is string menuProfileId)
-        {
-            AssignmentChanged?.Invoke(
-                new ApplicationAssignmentChange.MenuVisualProfile(
-                    executablePath,
-                    ApplicationMenuProfilePolicy.FromSelectorId(
-                        menuProfileId)));
-        }
-        else if (columnName == OverlayScopeColumnName &&
-                 row.Cells[eventArgs.ColumnIndex].Value is string scopeId)
-        {
-            AssignmentChanged?.Invoke(
-                new ApplicationAssignmentChange.OverlayScope(
-                    executablePath,
-                    OverlayScopePolicy.ParseRequired(scopeId)));
+            AssignmentChanged?.Invoke(change);
         }
     }
 
@@ -363,10 +256,12 @@ internal sealed class ApplicationAssignmentsGrid : UserControl
         var executablePath = GetExecutablePath(
             grid,
             eventArgs.RowIndex);
-        var recovered = IsExpectedSelectorDataError(
-            eventArgs.Exception,
-            eventArgs.Context,
-            columnName);
+        var recovered =
+            ApplicationAssignmentSelectorErrorPolicy
+                .IsRecoverable(
+                    eventArgs.Exception,
+                    eventArgs.Context,
+                    columnName);
 
         Diagnostics.Report(
             nameof(ApplicationAssignmentsGrid),
@@ -377,70 +272,17 @@ internal sealed class ApplicationAssignmentsGrid : UserControl
             recovered
                 ? DiagnosticFailurePolicy.Recovered
                 : DiagnosticFailurePolicy.None,
-            CreateDataErrorDiagnostic(
-                eventArgs.Exception,
-                eventArgs.Context,
-                eventArgs.RowIndex,
-                eventArgs.ColumnIndex,
-                columnName,
-                executablePath,
-                recovered),
+            ApplicationAssignmentSelectorErrorPolicy
+                .CreateDiagnostic(
+                    eventArgs.Exception,
+                    eventArgs.Context,
+                    eventArgs.RowIndex,
+                    eventArgs.ColumnIndex,
+                    columnName,
+                    executablePath,
+                    recovered),
             eventArgs.Exception);
         eventArgs.ThrowException = !recovered;
-    }
-
-    internal static bool IsExpectedSelectorDataError(
-        Exception? exception,
-        DataGridViewDataErrorContexts context,
-        string? columnName)
-    {
-        if (exception is not ArgumentException ||
-            !IsSelectorColumn(columnName))
-        {
-            return false;
-        }
-
-        var recoverableContext =
-            context & RecoverableSelectorContexts;
-        var unexpectedContext =
-            context & ~RecoverableSelectorContexts;
-        return recoverableContext != 0 &&
-            unexpectedContext == 0;
-    }
-
-    internal static string CreateDataErrorDiagnostic(
-        Exception? exception,
-        DataGridViewDataErrorContexts context,
-        int rowIndex,
-        int columnIndex,
-        string? columnName,
-        string? executablePath,
-        bool recovered)
-    {
-        return
-            $"SightAdapt grid data error; recovered={recovered}; " +
-            $"row={rowIndex}; column={columnIndex}; " +
-            $"columnName={columnName ?? "<unknown>"}; " +
-            $"executablePath={executablePath ?? "<unknown>"}; " +
-            $"context={context}; " +
-            $"exception={exception?.ToString() ?? "<none>"}";
-    }
-
-    private static bool IsSelectorColumn(
-        string? columnName)
-    {
-        return string.Equals(
-                columnName,
-                VisualProfileColumnName,
-                StringComparison.Ordinal) ||
-            string.Equals(
-                columnName,
-                MenuVisualProfileColumnName,
-                StringComparison.Ordinal) ||
-            string.Equals(
-                columnName,
-                OverlayScopeColumnName,
-                StringComparison.Ordinal);
     }
 
     private static string? GetColumnName(
@@ -475,7 +317,8 @@ internal sealed class ApplicationAssignmentsGrid : UserControl
             eventArgs.ColumnIndex < 0 ||
             !string.Equals(
                 grid.Columns[eventArgs.ColumnIndex].Name,
-                EnabledColumnName,
+                ApplicationAssignmentsGridColumns
+                    .EnabledColumnName,
                 StringComparison.Ordinal))
         {
             return;
@@ -487,40 +330,23 @@ internal sealed class ApplicationAssignmentsGrid : UserControl
             return;
         }
 
+        var selected =
+            (eventArgs.State &
+             DataGridViewElementStates.Selected) != 0;
         eventArgs.PaintBackground(
             eventArgs.CellBounds,
-            (eventArgs.State & DataGridViewElementStates.Selected) != 0);
+            selected);
 
-        var enabled = eventArgs.FormattedValue is true;
-        const int diameter = 15;
-        var bounds = new Rectangle(
-            eventArgs.CellBounds.Left +
-                (eventArgs.CellBounds.Width - diameter) / 2,
-            eventArgs.CellBounds.Top +
-                (eventArgs.CellBounds.Height - diameter) / 2,
-            diameter,
-            diameter);
-
-        graphics.SmoothingMode = SmoothingMode.AntiAlias;
-        using var fill = new SolidBrush(
-            enabled ? AppTheme.Success : AppTheme.Surface);
-        using var border = new Pen(
-            enabled ? AppTheme.Success : AppTheme.TextMuted,
-            enabled ? 1.5f : 1.2f);
-        graphics.FillEllipse(fill, bounds);
-        graphics.DrawEllipse(border, bounds);
-
-        if ((eventArgs.State & DataGridViewElementStates.Selected) != 0 &&
-            grid.CurrentCellAddress.X == eventArgs.ColumnIndex &&
-            grid.CurrentCellAddress.Y == eventArgs.RowIndex)
-        {
-            var focusBounds = Rectangle.Inflate(bounds, 5, 5);
-            ControlPaint.DrawFocusRectangle(
-                graphics,
-                focusBounds,
-                AppTheme.TextPrimary,
-                AppTheme.Selection);
-        }
+        ApplicationAssignmentEnabledCellRenderer.Paint(
+            graphics,
+            eventArgs.CellBounds,
+            new EnabledCellRenderState(
+                eventArgs.FormattedValue is true,
+                selected,
+                grid.CurrentCellAddress.X ==
+                    eventArgs.ColumnIndex &&
+                grid.CurrentCellAddress.Y ==
+                    eventArgs.RowIndex));
 
         eventArgs.Handled = true;
     }
@@ -540,6 +366,4 @@ internal sealed class ApplicationAssignmentsGrid : UserControl
             Visible = false,
         };
     }
-
-
 }
