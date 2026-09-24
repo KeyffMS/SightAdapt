@@ -12,6 +12,12 @@ internal sealed record SettingsCommitResult(
         new(false, message);
 }
 
+internal sealed class SettingsChangedEventArgs(
+    object? origin) : EventArgs
+{
+    public object? Origin { get; } = origin;
+}
+
 internal sealed class SettingsCommitResult<T>
 {
     private readonly T _value;
@@ -74,18 +80,21 @@ internal sealed class SettingsCoordinator
 
     public bool SettingsWereMigrated => _store.SettingsWereMigrated;
 
-    public event EventHandler? Changed;
+    public event EventHandler<SettingsChangedEventArgs>? Changed;
 
     public SettingsCommitResult Commit(
-        Action<SightAdaptSettings> mutation)
+        Action<SightAdaptSettings> mutation,
+        object? origin = null)
     {
         ArgumentNullException.ThrowIfNull(mutation);
 
-        var result = Commit<object?>(settings =>
-        {
-            mutation(settings);
-            return null;
-        });
+        var result = Commit<object?>(
+            settings =>
+            {
+                mutation(settings);
+                return null;
+            },
+            origin);
 
         return result.Succeeded
             ? SettingsCommitResult.Success()
@@ -95,19 +104,22 @@ internal sealed class SettingsCoordinator
     }
 
     public SettingsCommitResult<T> Commit<T>(
-        Func<SightAdaptSettings, T> mutation)
+        Func<SightAdaptSettings, T> mutation,
+        object? origin = null)
     {
         ArgumentNullException.ThrowIfNull(mutation);
         return ExecuteTransaction(
             mutation,
-            publishChanged: true);
+            publishChanged: true,
+            origin);
     }
 
     public SettingsCommitResult PersistCurrent()
     {
         var result = ExecuteTransaction<object?>(
             _ => null,
-            publishChanged: false);
+            publishChanged: false,
+            origin: null);
 
         return result.Succeeded
             ? SettingsCommitResult.Success()
@@ -118,7 +130,8 @@ internal sealed class SettingsCoordinator
 
     private SettingsCommitResult<T> ExecuteTransaction<T>(
         Func<SightAdaptSettings, T> operation,
-        bool publishChanged)
+        bool publishChanged,
+        object? origin)
     {
         ArgumentNullException.ThrowIfNull(operation);
 
@@ -145,7 +158,9 @@ internal sealed class SettingsCoordinator
         _current.ReplaceWith(candidate);
         if (publishChanged)
         {
-            Changed?.Invoke(this, EventArgs.Empty);
+            Changed?.Invoke(
+                this,
+                new SettingsChangedEventArgs(origin));
         }
 
         return SettingsCommitResult<T>.Success(value);
