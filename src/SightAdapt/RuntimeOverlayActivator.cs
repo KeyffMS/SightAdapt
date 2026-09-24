@@ -1,3 +1,5 @@
+using System.ComponentModel;
+
 namespace SightAdapt;
 
 internal enum RuntimeActivationMode
@@ -10,19 +12,19 @@ internal sealed class RuntimeOverlayActivator
 {
     private readonly ApplicationStateController _stateController;
     private readonly IRuntimeOverlay _overlay;
-    private readonly IRuntimeEnvironment _environment;
+    private readonly IRuntimeFeedback _feedback;
 
     public RuntimeOverlayActivator(
         ApplicationStateController stateController,
         IRuntimeOverlay overlay,
-        IRuntimeEnvironment environment)
+        IRuntimeFeedback feedback)
     {
         _stateController = stateController ??
             throw new ArgumentNullException(nameof(stateController));
         _overlay = overlay ??
             throw new ArgumentNullException(nameof(overlay));
-        _environment = environment ??
-            throw new ArgumentNullException(nameof(environment));
+        _feedback = feedback ??
+            throw new ArgumentNullException(nameof(feedback));
     }
 
     public IRuntimeOverlay Overlay => _overlay;
@@ -72,8 +74,15 @@ internal sealed class RuntimeOverlayActivator
             }
         }
         catch (Exception exception)
+            when (IsExpectedOperationalFailure(exception))
         {
-            _overlay.Disable();
+            ReportActivationFailure(
+                exception,
+                activationMode,
+                targetWindow,
+                expectedOperationalFailure: true);
+            DisableAfterFailure(exception);
+
             var message =
                 RuntimeMessages.OverlayCreationFailed(exception);
             _stateController.SetFault(
@@ -81,7 +90,17 @@ internal sealed class RuntimeOverlayActivator
                 activationMode == RuntimeActivationMode.Automatic
                     ? targetWindow
                     : nint.Zero);
-            _environment.ShowNotification(message);
+            _feedback.ShowNotification(message);
+        }
+        catch (Exception exception)
+        {
+            ReportActivationFailure(
+                exception,
+                activationMode,
+                targetWindow,
+                expectedOperationalFailure: false);
+            DisableAfterFailure(exception);
+            throw;
         }
     }
 
@@ -102,5 +121,51 @@ internal sealed class RuntimeOverlayActivator
     {
         _overlay.Disable();
         _stateController.SetInactive();
+    }
+
+    private static bool IsExpectedOperationalFailure(
+        Exception exception)
+    {
+        return exception is Win32Exception or
+            RuntimeOverlayUnavailableException;
+    }
+
+    private static void ReportActivationFailure(
+        Exception exception,
+        RuntimeActivationMode activationMode,
+        nint targetWindow,
+        bool expectedOperationalFailure)
+    {
+        Diagnostics.Report(
+            nameof(RuntimeOverlayActivator),
+            "Activate overlay",
+            DiagnosticSeverity.Error,
+            expectedOperationalFailure
+                ? DiagnosticFailurePolicy.Recovered
+                : DiagnosticFailurePolicy.Critical,
+            $"Overlay activation failed in {activationMode} mode " +
+            $"for target 0x{targetWindow.ToInt64():X}.",
+            exception);
+    }
+
+    private void DisableAfterFailure(
+        Exception primaryException)
+    {
+        try
+        {
+            _overlay.Disable();
+        }
+        catch (Exception cleanupException)
+        {
+            Diagnostics.Report(
+                nameof(RuntimeOverlayActivator),
+                "Clean up failed activation",
+                DiagnosticSeverity.Warning,
+                DiagnosticFailurePolicy.BestEffort,
+                "Overlay cleanup failed after activation failure; " +
+                $"the primary {primaryException.GetType().Name} " +
+                "remains authoritative.",
+                cleanupException);
+        }
     }
 }
