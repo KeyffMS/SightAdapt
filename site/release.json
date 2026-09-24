@@ -1,0 +1,15 @@
+{
+  "version": "0.5.0.50-alpha",
+  "releaseDate": "2026-09-24",
+  "status": "Alpha prerelease",
+  "architecture": "Windows x64",
+  "archiveName": "SightAdapt-0.5.0.50-alpha-win-x64.zip",
+  "archiveSizeBytes": 74486106,
+  "sha256": "c6dc5ba5c0356c84b32a74d298015d63158c57886b835e411da0b60f306fd711",
+  "releaseUrl": "https://github.com/KeyffMS/SightAdapt/releases/tag/v0.5.0.50-alpha",
+  "tagUrl": "https://github.com/KeyffMS/SightAdapt/tree/v0.5.0.50-alpha",
+  "downloadUrl": "https://github.com/KeyffMS/SightAdapt/releases/download/v0.5.0.50-alpha/SightAdapt-0.5.0.50-alpha-win-x64.zip",
+  "checksumUrl": "https://github.com/KeyffMS/SightAdapt/releases/download/v0.5.0.50-alpha/SHA256SUMS.txt",
+  "sbomUrl": "https://github.com/KeyffMS/SightAdapt/releases/download/v0.5.0.50-alpha/SBOM.spdx.json",
+  "complianceUrl": "https://github.com/KeyffMS/SightAdapt/releases/download/v0.5.0.50-alpha/SightAdapt-0.5.0.50-alpha-win-x64-compliance.json"
+}
