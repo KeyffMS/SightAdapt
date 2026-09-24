@@ -109,6 +109,52 @@ public sealed class SettingsCoordinatorTests
         Assert.AreEqual(0, changedEvents);
     }
 
+
+    [TestMethod]
+    public void ChangedEventPublishesOriginAndNestedCommitIndependently()
+    {
+        using var temporaryDirectory =
+            new TestWorkspace();
+        var coordinator =
+            new SettingsCoordinator(
+                new SettingsStore(Path.Combine(
+                    temporaryDirectory.Path,
+                    "settings.json")));
+        var outerOrigin = new object();
+        var nestedOrigin = new object();
+        var origins = new List<object?>();
+        var nestedCommitted = false;
+
+        coordinator.Changed += (_, eventArgs) =>
+        {
+            origins.Add(eventArgs.Origin);
+            if (nestedCommitted)
+            {
+                return;
+            }
+
+            nestedCommitted = true;
+            var nested = coordinator.Commit(
+                settings =>
+                    AutomaticModeManagementService
+                        .Enable(settings),
+                nestedOrigin);
+            Assert.IsTrue(nested.Succeeded);
+        };
+
+        var outer = coordinator.Commit(
+            settings =>
+                AutomaticModeManagementService
+                    .Disable(settings),
+            outerOrigin);
+
+        Assert.IsTrue(outer.Succeeded);
+        Assert.AreEqual(2, origins.Count);
+        Assert.AreSame(outerOrigin, origins[0]);
+        Assert.AreSame(nestedOrigin, origins[1]);
+        Assert.IsTrue(coordinator.Current.AutomaticMode);
+    }
+
     [TestMethod]
     public void FailedPersistenceDoesNotPublishCandidateState()
     {
