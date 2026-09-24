@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SightAdapt™ FAQ</title>
+  <meta name="description" content="Answers about SightAdapt licensing, privacy, overlays, application compatibility, native menus, Windows warnings, emergency shutdown and building from source.">
+  <link rel="canonical" href="https://aiteracja.pl/sightadapt/faq/">
+  <link rel="icon" href="../assets/sightadapt-mark.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to main content</a>
+  <header class="site-header">
+    <div class="container header-inner">
+      <a class="brand" href="../" aria-label="SightAdapt home"><img src="../assets/sightadapt-lockup-dark.svg" alt="SightAdapt home" width="820" height="200"></a>
+      <nav class="desktop-nav" aria-label="Primary">
+        <a href="../features/">Features</a>
+        <a class="button" href="../download/">Download alpha</a>
+        <a href="../docs/">Documentation</a>
+        <a href="../faq/" aria-current="page">FAQ</a>
+        <a href="../releases/">Releases</a>
+        <a href="../privacy/">Privacy</a>
+        <a href="../security/">Security</a>
+        <a href="https://github.com/KeyffMS/SightAdapt">GitHub</a>
+      </nav>
+      <details class="mobile-menu">
+        <summary>Menu</summary>
+        <nav class="mobile-nav" aria-label="Mobile">
+          <a href="../features/">Features</a>
+          <a class="button" href="../download/">Download alpha</a>
+          <a href="../docs/">Documentation</a>
+          <a href="../faq/" aria-current="page">FAQ</a>
+          <a href="../releases/">Releases</a>
+          <a href="../privacy/">Privacy</a>
+          <a href="../security/">Security</a>
+          <a href="https://github.com/KeyffMS/SightAdapt">GitHub</a>
+        </nav>
+      </details>
+    </div>
+  </header>
+  
+  <main id="main">
+    <header class="page-hero"><div class="container"><p class="eyebrow">FAQ</p><h1>Common questions about SightAdapt™.</h1></div></header>
+    <section><div class="container">
+      <div class="grid-2">
+        <article class="card"><h2>Is SightAdapt free?</h2><p>Yes. SightAdapt is free and open source under the MIT License.</p></article>
+        <article class="card"><h2>Does SightAdapt change application files?</h2><p>No. It uses a separate Windows overlay and does not modify the target application's installed files.</p></article>
+        <article class="card"><h2>Does it inject code into other applications?</h2><p>No. The current alpha does not use DLL injection or write another process's memory.</p></article>
+        <article class="card"><h2>Does it record or upload my screen?</h2><p>The current alpha does not save or transmit captured screen content. See <a href="../privacy/">privacy</a> and <a href="../security/">security</a> for the exact boundaries.</p></article>
+        <article class="card"><h2>Why does it store executable paths?</h2><p>Paths are used locally to identify saved application assignments. A path can contain a Windows account or organization name, so redact it from public bug reports when necessary.</p></article>
+        <article class="card"><h2>Does it work with every application?</h2><p>No guarantee is made. Framework, privilege level, protected content, remote sessions and graphics drivers can affect behavior.</p></article>
+        <article class="card"><h2>Can it correct only menus?</h2><p>For supported native Win32 popup menus, an application can use <code>None</code> while an explicit menu profile is assigned. Custom-rendered menus are not separately detected.</p></article>
+        <article class="card"><h2>Is SightAdapt a medical device?</h2><p>The current project is a general-purpose visual-accessibility and display-personalization utility. It does not diagnose or treat medical conditions.</p></article>
+        <article class="card"><h2>Why might Windows show a warning?</h2><p>New or unsigned binaries may have limited Microsoft Defender SmartScreen reputation. Download only from project-controlled sources and verify the published checksum.</p></article>
+        <article class="card"><h2>How do I stop all overlays?</h2><p>Use <strong>Emergency disable all overlays</strong> from the notification-area menu, or exit SightAdapt.</p></article>
+        <article class="card"><h2>Can I build it myself?</h2><p>Yes. The repository documents the pinned .NET 8 build and publish process. <a href="https://github.com/KeyffMS/SightAdapt/blob/main/docs/BUILD.md">Read the build instructions</a>.</p></article>
+        <article class="card"><h2>Where do I report a problem?</h2><p>Use the <a href="https://github.com/KeyffMS/SightAdapt/issues">GitHub issue tracker</a> for reproducible defects. Do not attach private screenshots or unredacted paths. Security-sensitive reports should follow the <a href="../security/">private reporting guidance</a>.</p></article>
+      </div>
+    </div></section>
+  </main>
+  <footer class="site-footer">
+    <div class="container">
+      <div class="footer-grid">
+        <div class="footer-brand">
+          <img src="../assets/sightadapt-lockup-light.svg" alt="SightAdapt" width="820" height="200">
+          <p>A SightAdapt project by <a href="https://github.com/KeyffMS">KeyffMS</a> / <a href="https://aiteracja.pl/">aiteracja.pl</a>.</p>
+        </div>
+        <div>
+          <h2>Product</h2>
+          <ul class="footer-links">
+            <li><a href="../features/">Features</a></li>
+            <li><a href="../download/">Download</a></li>
+            <li><a href="../docs/">Documentation</a></li>
+            <li><a href="../releases/">Releases</a></li>
+          </ul>
+        </div>
+        <div>
+          <h2>Project</h2>
+          <ul class="footer-links">
+            <li><a href="https://github.com/KeyffMS/SightAdapt">GitHub</a></li>
+            <li><a href="https://github.com/KeyffMS/SightAdapt/issues">Issue tracker</a></li>
+            <li><a href="../security/">Security</a></li>
+            <li><a href="../legal/">License</a></li>
+          </ul>
+        </div>
+        <div>
+          <h2>Policies</h2>
+          <ul class="footer-links">
+            <li><a href="../privacy/">Privacy</a></li>
+            <li><a href="../legal/#third-party">Third-party notices</a></li>
+            <li><a href="../legal/#trademarks">Trademark notice</a></li>
+            <li><a href="../support/">Support</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="small-print">
+        <p>SightAdapt™ is an unregistered product mark used by KeyffMS / aiteracja.pl.</p>
+        <p>SightAdapt is free and open-source software distributed under the MIT License. Third-party components remain subject to their respective terms.</p>
+      </div>
+    </div>
+  </footer>
+</body>
+</html>

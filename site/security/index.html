@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SightAdapt™ security and reporting</title>
+  <meta name="description" content="Review SightAdapt security boundaries, current-user privilege behavior, emergency shutdown, elevated-application limitations and vulnerability-reporting guidance.">
+  <link rel="canonical" href="https://aiteracja.pl/sightadapt/security/">
+  <link rel="icon" href="../assets/sightadapt-mark.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to main content</a>
+  <header class="site-header">
+    <div class="container header-inner">
+      <a class="brand" href="../" aria-label="SightAdapt home"><img src="../assets/sightadapt-lockup-dark.svg" alt="SightAdapt home" width="820" height="200"></a>
+      <nav class="desktop-nav" aria-label="Primary">
+        <a href="../features/">Features</a>
+        <a class="button" href="../download/">Download alpha</a>
+        <a href="../docs/">Documentation</a>
+        <a href="../faq/">FAQ</a>
+        <a href="../releases/">Releases</a>
+        <a href="../privacy/">Privacy</a>
+        <a href="../security/" aria-current="page">Security</a>
+        <a href="https://github.com/KeyffMS/SightAdapt">GitHub</a>
+      </nav>
+      <details class="mobile-menu">
+        <summary>Menu</summary>
+        <nav class="mobile-nav" aria-label="Mobile">
+          <a href="../features/">Features</a>
+          <a class="button" href="../download/">Download alpha</a>
+          <a href="../docs/">Documentation</a>
+          <a href="../faq/">FAQ</a>
+          <a href="../releases/">Releases</a>
+          <a href="../privacy/">Privacy</a>
+          <a href="../security/" aria-current="page">Security</a>
+          <a href="https://github.com/KeyffMS/SightAdapt">GitHub</a>
+        </nav>
+      </details>
+    </div>
+  </header>
+  
+  <main id="main">
+    <header class="page-hero"><div class="container"><p class="eyebrow">Security</p><h1>SightAdapt™ security and reporting.</h1><p class="lead">The current alpha has explicit process and display boundaries and has not completed a formal security review.</p></div></header>
+    <section><div class="container grid-2">
+      <article><h2>Current application boundaries</h2><ul><li>No DLL or code injection into target applications.</li><li>No kernel driver installation.</li><li>No saved or transmitted captured screen content.</li><li>Runs with the current user's privileges.</li><li>Uses a separate input-transparent overlay.</li></ul></article>
+      <article><h2>Elevated applications</h2><p>Windows integrity boundaries can affect access to elevated target applications. A target may require SightAdapt to run at a compatible integrity level. Do not weaken operating-system security settings to force compatibility.</p></article>
+      <article><h2>Emergency shutdown</h2><p>The notification-area menu provides <strong>Emergency disable all overlays</strong>. It removes active overlays immediately and disables automatic mode before settings persistence is attempted.</p></article>
+      <article><h2>Alpha review status</h2><p>The current alpha has not completed a formal security review and must not be treated as production-ready assistive software. Compatibility and endurance testing remain incomplete.</p></article>
+    </div></section>
+    <section><div class="container">
+      <div class="callout warning"><h2>Report a vulnerability privately</h2><p>Do not disclose security-sensitive issues in a public GitHub issue. Until a dedicated private reporting channel is configured, contact the <a href="https://github.com/KeyffMS">repository owner through GitHub</a> and request a private communication channel.</p><p>Do not post passwords, tokens, private keys, confidential screenshots, unredacted executable paths or sensitive customer information.</p></div>
+      <p><a href="https://github.com/KeyffMS/SightAdapt/blob/main/SECURITY.md">Read SECURITY.md</a> · <a href="../#limitations">Review current limitations</a></p>
+    </div></section>
+  </main>
+  <footer class="site-footer">
+    <div class="container">
+      <div class="footer-grid">
+        <div class="footer-brand">
+          <img src="../assets/sightadapt-lockup-light.svg" alt="SightAdapt" width="820" height="200">
+          <p>A SightAdapt project by <a href="https://github.com/KeyffMS">KeyffMS</a> / <a href="https://aiteracja.pl/">aiteracja.pl</a>.</p>
+        </div>
+        <div><h2>Product</h2><ul class="footer-links"><li><a href="../features/">Features</a></li><li><a href="../download/">Download</a></li><li><a href="../docs/">Documentation</a></li><li><a href="../releases/">Releases</a></li></ul></div>
+        <div><h2>Project</h2><ul class="footer-links"><li><a href="https://github.com/KeyffMS/SightAdapt">GitHub</a></li><li><a href="https://github.com/KeyffMS/SightAdapt/issues">Issue tracker</a></li><li><a href="../security/">Security</a></li><li><a href="../legal/">License</a></li></ul></div>
+        <div><h2>Policies</h2><ul class="footer-links"><li><a href="../privacy/">Privacy</a></li><li><a href="../legal/#third-party">Third-party notices</a></li><li><a href="../legal/#trademarks">Trademark notice</a></li><li><a href="../support/">Support</a></li></ul></div>
+      </div>
+      <div class="small-print"><p>SightAdapt™ is an unregistered product mark used by KeyffMS / aiteracja.pl.</p><p>SightAdapt is free and open-source software distributed under the MIT License. Third-party components remain subject to their respective terms.</p></div>
+    </div>
+  </footer>
+</body>
+</html>

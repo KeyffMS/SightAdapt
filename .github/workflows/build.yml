@@ -45,6 +45,10 @@ jobs:
         shell: pwsh
         run: .\tools\test-public-materials-negative.ps1
 
+      - name: Verify static product site
+        shell: pwsh
+        run: .\tools\test-site.ps1
+
       - name: Restore application
         run: dotnet restore src/SightAdapt/SightAdapt.csproj
 

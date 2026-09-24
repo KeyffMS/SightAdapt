@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Download SightAdapt™ for Windows</title>
+  <meta name="description" content="Download the current SightAdapt Windows x64 alpha from the authoritative GitHub Release, verify its SHA-256 checksum and review system requirements and removal steps.">
+  <link rel="canonical" href="https://aiteracja.pl/sightadapt/download/">
+  <link rel="icon" href="../assets/sightadapt-mark.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to main content</a>
+  <header class="site-header">
+    <div class="container header-inner">
+      <a class="brand" href="../" aria-label="SightAdapt home"><img src="../assets/sightadapt-lockup-dark.svg" alt="SightAdapt home" width="820" height="200"></a>
+      <nav class="desktop-nav" aria-label="Primary">
+        <a href="../features/">Features</a>
+        <a class="button" href="../download/" aria-current="page">Download alpha</a>
+        <a href="../docs/">Documentation</a>
+        <a href="../faq/">FAQ</a>
+        <a href="../releases/">Releases</a>
+        <a href="../privacy/">Privacy</a>
+        <a href="../security/">Security</a>
+        <a href="https://github.com/KeyffMS/SightAdapt">GitHub</a>
+      </nav>
+      <details class="mobile-menu">
+        <summary>Menu</summary>
+        <nav class="mobile-nav" aria-label="Mobile">
+          <a href="../features/">Features</a>
+          <a class="button" href="../download/" aria-current="page">Download alpha</a>
+          <a href="../docs/">Documentation</a>
+          <a href="../faq/">FAQ</a>
+          <a href="../releases/">Releases</a>
+          <a href="../privacy/">Privacy</a>
+          <a href="../security/">Security</a>
+          <a href="https://github.com/KeyffMS/SightAdapt">GitHub</a>
+        </nav>
+      </details>
+    </div>
+  </header>
+  <aside class="alpha-banner" aria-label="Alpha status"><div class="container"><p><strong>Alpha release:</strong> Core functionality is available, but broad compatibility and endurance testing are still in progress. <a href="../#limitations">Review current limitations</a>.</p></div></aside>
+  <main id="main">
+    <header class="page-hero"><div class="container"><p class="eyebrow">Download</p><h1>Download the current SightAdapt™ release.</h1><p class="lead">GitHub Releases are the authoritative source for official SightAdapt binaries. The website links to those immutable release assets instead of duplicating them.</p></div></header>
+    <section><div class="container">
+      <article class="release-card">
+        <h2>SightAdapt™ 0.5.0.50-alpha</h2>
+        <dl class="definition-list">
+          <dt>Published</dt><dd>24 September 2026</dd>
+          <dt>Status</dt><dd>Alpha / prerelease</dd>
+          <dt>Windows</dt><dd>Windows 10 version 2004 or later, or Windows 11</dd>
+          <dt>Architecture</dt><dd>x64</dd>
+          <dt>Package</dt><dd>Self-contained portable ZIP</dd>
+          <dt>Archive size</dt><dd>74,486,106 bytes (about 71.0 MiB)</dd>
+          <dt>SHA-256</dt><dd><code>c6dc5ba5c0356c84b32a74d298015d63158c57886b835e411da0b60f306fd711</code></dd>
+        </dl>
+        <div class="actions">
+          <a class="button" href="https://github.com/KeyffMS/SightAdapt/releases/download/v0.5.0.50-alpha/SightAdapt-0.5.0.50-alpha-win-x64.zip">Download SightAdapt™ for Windows x64</a>
+          <a class="button secondary" href="https://github.com/KeyffMS/SightAdapt/releases/tag/v0.5.0.50-alpha">View this release on GitHub</a>
+        </div>
+        <p><a href="https://github.com/KeyffMS/SightAdapt/tree/v0.5.0.50-alpha">Source tag</a> · <a href="https://github.com/KeyffMS/SightAdapt/releases/download/v0.5.0.50-alpha/SHA256SUMS.txt">SHA256SUMS.txt</a> · <a href="https://github.com/KeyffMS/SightAdapt/releases/download/v0.5.0.50-alpha/SBOM.spdx.json">SPDX SBOM</a> · <a href="https://github.com/KeyffMS/SightAdapt/releases/download/v0.5.0.50-alpha/SightAdapt-0.5.0.50-alpha-win-x64-compliance.json">Compliance report</a></p>
+      </article>
+    </div></section>
+    <section><div class="container grid-2">
+      <article><h2>System requirements</h2><ul><li>Windows 10 version 2004 or later, or Windows 11.</li><li>x64 processor.</li><li>User permission to start a desktop application.</li><li>Compatible desktop composition and graphics driver.</li></ul></article>
+      <article><h2>Install and start</h2><ol><li>Download only from a project-controlled URL or approved package listing.</li><li>Verify the checksum when practical.</li><li>Extract the archive to a user-controlled directory.</li><li>Start <code>SightAdapt.exe</code>.</li><li>Use the notification-area icon to open configuration.</li></ol></article>
+    </div></section>
+    <section><div class="container">
+      <div class="section-heading"><h2>Verify the archive</h2><p>Run the following in PowerShell from the directory containing the downloaded ZIP:</p></div>
+      <pre class="code"><code>Get-FileHash .\SightAdapt-0.5.0.50-alpha-win-x64.zip -Algorithm SHA256</code></pre>
+      <p>The resulting hash must equal:</p>
+      <pre class="code"><code>c6dc5ba5c0356c84b32a74d298015d63158c57886b835e411da0b60f306fd711</code></pre>
+    </div></section>
+    <section><div class="container grid-2">
+      <article><h2>Windows reputation warning</h2><p>Unsigned or newly published open-source binaries may trigger Microsoft Defender SmartScreen. Do not disable system protection to run SightAdapt. Verify the source URL, release page and checksum before deciding whether to run a downloaded file.</p></article>
+      <article><h2>Removal</h2><p>Exit SightAdapt, then remove the extracted application files. To remove saved profiles and assignments as well, delete <code>%LOCALAPPDATA%\SightAdapt\settings.json</code>. Deleting that file permanently removes the local SightAdapt configuration.</p></article>
+    </div></section>
+    <section><div class="container"><div class="callout warning"><h2>Alpha use</h2><p>This is an alpha release. Keep the emergency-disable command available and test the application with non-critical work before relying on it for extended sessions.</p></div></div></section>
+  </main>
+  <footer class="site-footer">
+    <div class="container">
+      <div class="footer-grid">
+        <div class="footer-brand">
+          <img src="../assets/sightadapt-lockup-light.svg" alt="SightAdapt" width="820" height="200">
+          <p>A SightAdapt project by <a href="https://github.com/KeyffMS">KeyffMS</a> / <a href="https://aiteracja.pl/">aiteracja.pl</a>.</p>
+        </div>
+        <div><h2>Product</h2><ul class="footer-links"><li><a href="../features/">Features</a></li><li><a href="../download/">Download</a></li><li><a href="../docs/">Documentation</a></li><li><a href="../releases/">Releases</a></li></ul></div>
+        <div><h2>Project</h2><ul class="footer-links"><li><a href="https://github.com/KeyffMS/SightAdapt">GitHub</a></li><li><a href="https://github.com/KeyffMS/SightAdapt/issues">Issue tracker</a></li><li><a href="../security/">Security</a></li><li><a href="../legal/">License</a></li></ul></div>
+        <div><h2>Policies</h2><ul class="footer-links"><li><a href="../privacy/">Privacy</a></li><li><a href="../legal/#third-party">Third-party notices</a></li><li><a href="../legal/#trademarks">Trademark notice</a></li><li><a href="../support/">Support</a></li></ul></div>
+      </div>
+      <div class="small-print"><p>SightAdapt™ is an unregistered product mark used by KeyffMS / aiteracja.pl.</p><p>SightAdapt is free and open-source software distributed under the MIT License. Third-party components remain subject to their respective terms.</p></div>
+    </div>
+  </footer>
+</body>
+</html>
