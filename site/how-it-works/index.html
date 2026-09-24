@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>How SightAdapt™ works on Windows</title>
+  <meta name="description" content="See how SightAdapt resolves the foreground application and uses a separate input-transparent Windows Magnification API overlay without modifying target applications.">
+  <link rel="canonical" href="https://aiteracja.pl/sightadapt/how-it-works/">
+  <link rel="icon" href="../assets/sightadapt-mark.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to main content</a>
+  <header class="site-header">
+    <div class="container header-inner">
+      <a class="brand" href="../" aria-label="SightAdapt home"><img src="../assets/sightadapt-lockup-dark.svg" alt="SightAdapt home" width="820" height="200"></a>
+      <nav class="desktop-nav" aria-label="Primary">
+        <a href="../features/">Features</a>
+        <a href="../download/">Download</a>
+        <a href="../docs/">Documentation</a>
+        <a href="../faq/">FAQ</a>
+        <a href="../releases/">Releases</a>
+        <a href="../privacy/">Privacy</a>
+        <a href="../security/">Security</a>
+        <a href="https://github.com/KeyffMS/SightAdapt">GitHub</a>
+      </nav>
+      <details class="mobile-menu">
+        <summary>Menu</summary>
+        <nav class="mobile-nav" aria-label="Mobile">
+          <a href="../features/">Features</a>
+          <a href="../download/">Download</a>
+          <a href="../docs/">Documentation</a>
+          <a href="../faq/">FAQ</a>
+          <a href="../releases/">Releases</a>
+          <a href="../privacy/">Privacy</a>
+          <a href="../security/">Security</a>
+          <a href="https://github.com/KeyffMS/SightAdapt">GitHub</a>
+        </nav>
+      </details>
+    </div>
+  </header>
+  
+  <main id="main">
+    <header class="page-hero"><div class="container"><p class="eyebrow">How it works</p><h1>A separate overlay, not a modification of the target application.</h1><p class="lead">SightAdapt observes window metadata, resolves your saved assignment and renders correction through Windows display APIs.</p></div></header>
+    <section><div class="container">
+      <ol class="steps">
+        <li>SightAdapt observes the foreground window and resolves the corresponding application assignment.</li>
+        <li>It creates or retargets an input-transparent overlay.</li>
+        <li>The Windows Magnification API applies the selected color transform to the chosen source area.</li>
+        <li>Filtering prevents the overlay from recursively capturing itself.</li>
+        <li>Native popup menus may receive transient overlays when supported.</li>
+        <li>Emergency shutdown removes active overlays.</li>
+      </ol>
+    </div></section>
+    <section><div class="container">
+      <div class="section-heading"><h2>Architecture at a glance</h2><p>The diagram is built from text and HTML so its meaning remains available when images or styles are unavailable.</p></div>
+      <figure class="diagram" aria-labelledby="architecture-caption">
+        <div class="diagram-flow" role="img" aria-label="Foreground Windows application flows to the SightAdapt assignment resolver, then to the selected visual profile and scope, then to a separate Windows Magnification API overlay.">
+          <div class="diagram-node">Foreground Windows application</div>
+          <div class="diagram-node">SightAdapt assignment resolver</div>
+          <div class="diagram-node">Visual profile + overlay scope</div>
+          <div class="diagram-node">Separate Magnification API overlay</div>
+        </div>
+        <figcaption id="architecture-caption">SightAdapt keeps the target application separate from the correction overlay; native popup menus may receive additional transient overlays.</figcaption>
+      </figure>
+    </div></section>
+    <section><div class="container">
+      <div class="callout"><h2>Security boundary</h2><p>SightAdapt does not inject DLLs, write target-process memory or modify target application files. It reads limited window and process metadata required to identify the selected application.</p></div>
+      <p><a href="https://github.com/KeyffMS/SightAdapt/blob/main/docs/ARCHITECTURE.md">Read the full architecture documentation</a>.</p>
+    </div></section>
+  </main>
+  <footer class="site-footer">
+    <div class="container">
+      <div class="footer-grid">
+        <div class="footer-brand">
+          <img src="../assets/sightadapt-lockup-light.svg" alt="SightAdapt" width="820" height="200">
+          <p>A SightAdapt project by <a href="https://github.com/KeyffMS">KeyffMS</a> / <a href="https://aiteracja.pl/">aiteracja.pl</a>.</p>
+        </div>
+        <div>
+          <h2>Product</h2>
+          <ul class="footer-links">
+            <li><a href="../features/">Features</a></li>
+            <li><a href="../download/">Download</a></li>
+            <li><a href="../docs/">Documentation</a></li>
+            <li><a href="../releases/">Releases</a></li>
+          </ul>
+        </div>
+        <div>
+          <h2>Project</h2>
+          <ul class="footer-links">
+            <li><a href="https://github.com/KeyffMS/SightAdapt">GitHub</a></li>
+            <li><a href="https://github.com/KeyffMS/SightAdapt/issues">Issue tracker</a></li>
+            <li><a href="../security/">Security</a></li>
+            <li><a href="../legal/">License</a></li>
+          </ul>
+        </div>
+        <div>
+          <h2>Policies</h2>
+          <ul class="footer-links">
+            <li><a href="../privacy/">Privacy</a></li>
+            <li><a href="../legal/#third-party">Third-party notices</a></li>
+            <li><a href="../legal/#trademarks">Trademark notice</a></li>
+            <li><a href="../support/">Support</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="small-print">
+        <p>SightAdapt™ is an unregistered product mark used by KeyffMS / aiteracja.pl.</p>
+        <p>SightAdapt is free and open-source software distributed under the MIT License. Third-party components remain subject to their respective terms.</p>
+      </div>
+    </div>
+  </footer>
+</body>
+</html>
