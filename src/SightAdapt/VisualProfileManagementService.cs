@@ -69,7 +69,8 @@ internal static class VisualProfileManagementService
     public static void UpdateTuning(
         SightAdaptSettings settings,
         VisualProfile profile,
-        VisualProfile values)
+        VisualProfile values,
+        VisualProfileCatalog? catalog = null)
     {
         ArgumentNullException.ThrowIfNull(settings);
         ArgumentNullException.ThrowIfNull(profile);
@@ -77,7 +78,11 @@ internal static class VisualProfileManagementService
         settings.EnsureCollections();
         EnsureMember(settings, profile);
 
-        if (!profile.SupportsTuning)
+        catalog ??= VisualProfileCatalog.Default;
+        var definition =
+            catalog.GetRequiredTransformDefinition(
+                profile.TransformId);
+        if (!definition.SupportsTuning)
         {
             throw new SettingsValidationException(
                 "Only editable visual profiles can be tuned.");
@@ -85,8 +90,7 @@ internal static class VisualProfileManagementService
 
         VisualProfileDefaults.ApplyTuning(
             profile,
-            VisualProfileDefaults
-                .NormalizeSoftInvertTuning(values));
+            definition.GetNormalizedTuning(values));
     }
 
     public static int Delete(
