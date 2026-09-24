@@ -36,15 +36,21 @@ internal sealed class SightAdaptContext : ApplicationContext
             EmergencyDisable,
             ExitThread);
 
+        var runtimeTargetResolver =
+            new DelegateRuntimeTargetResolver(
+                _foregroundTracker.ResolveTargetWindow,
+                ForegroundWindowTracker.IsSupportedTarget,
+                ResolveApplicationIdentity);
+        var runtimeFeedback =
+            new DelegateRuntimeFeedback(
+                _tray.ShowNotification,
+                _tray.SetAutomaticMode);
         _runtimeCoordinator = new RuntimeCoordinator(
             _settingsCoordinator,
             _stateController,
             _overlayController,
-            _foregroundTracker.ResolveTargetWindow,
-            ForegroundWindowTracker.IsSupportedTarget,
-            ResolveApplicationIdentity,
-            _tray.ShowNotification,
-            _tray.SetAutomaticMode);
+            runtimeTargetResolver,
+            runtimeFeedback);
         _hotkeys = new HotkeyWindow(HandleHotkey);
 
         _settingsCoordinator.Changed += SettingsChanged;
