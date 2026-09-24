@@ -60,17 +60,52 @@ public sealed class SettingsCoordinatorTests
 
         var changedEvents = 0;
         coordinator.Changed += (_, _) => changedEvents++;
-        var snapshot = coordinator.Current;
-        snapshot.AutomaticMode = false;
-        snapshot.Assignments[0].Enabled = false;
-        snapshot.Assignments.Clear();
-        snapshot.VisualProfiles.Clear();
+        IReadOnlySightAdaptSettings snapshot =
+            coordinator.Current;
+        var mutableSnapshot =
+            (SightAdaptSettings)snapshot;
+        mutableSnapshot.AutomaticMode = false;
+        mutableSnapshot.Assignments[0].Enabled = false;
+        mutableSnapshot.Assignments.Clear();
+        mutableSnapshot.VisualProfiles.Clear();
 
         var current = coordinator.Current;
         Assert.IsTrue(current.AutomaticMode);
         Assert.AreEqual(1, current.Assignments.Count);
         Assert.IsTrue(current.Assignments[0].Enabled);
         Assert.AreEqual(3, current.VisualProfiles.Count);
+        Assert.AreEqual(0, changedEvents);
+    }
+
+
+    [TestMethod]
+    public void CurrentExposesReadOnlySnapshotContract()
+    {
+        var property = typeof(SettingsCoordinator)
+            .GetProperty(nameof(SettingsCoordinator.Current));
+
+        Assert.IsNotNull(property);
+        Assert.AreEqual(
+            typeof(IReadOnlySightAdaptSettings),
+            property.PropertyType);
+    }
+
+    [TestMethod]
+    public void PersistCurrentDoesNotPublishChangedEvent()
+    {
+        using var temporaryDirectory =
+            new TestWorkspace();
+        var coordinator =
+            new SettingsCoordinator(
+                new SettingsStore(Path.Combine(
+                    temporaryDirectory.Path,
+                    "settings.json")));
+        var changedEvents = 0;
+        coordinator.Changed += (_, _) => changedEvents++;
+
+        var result = coordinator.PersistCurrent();
+
+        Assert.IsTrue(result.Succeeded);
         Assert.AreEqual(0, changedEvents);
     }
 
