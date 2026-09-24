@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SightAdapt™ — per-application visual accessibility for Windows | Aiteracja</title>
+  <meta name="description" content="SightAdapt is a free, open-source Windows application that applies configurable color correction to selected application windows through an input-transparent overlay.">
+  <link rel="canonical" href="https://aiteracja.pl/sightadapt/">
+  <link rel="icon" href="assets/sightadapt-mark.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="assets/site.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to main content</a>
+  <header class="site-header">
+    <div class="container header-inner">
+      <a class="brand" href="" aria-label="SightAdapt home"><img src="assets/sightadapt-lockup-dark.svg" alt="SightAdapt home" width="820" height="200"></a>
+      <nav class="desktop-nav" aria-label="Primary">
+        <a href="features/">Features</a>
+        <a href="download/">Download</a>
+        <a href="docs/">Documentation</a>
+        <a href="faq/">FAQ</a>
+        <a href="releases/">Releases</a>
+        <a href="privacy/">Privacy</a>
+        <a href="security/">Security</a>
+        <a href="https://github.com/KeyffMS/SightAdapt">GitHub</a>
+      </nav>
+      <details class="mobile-menu">
+        <summary>Menu</summary>
+        <nav class="mobile-nav" aria-label="Mobile">
+          <a href="features/">Features</a>
+          <a href="download/">Download</a>
+          <a href="docs/">Documentation</a>
+          <a href="faq/">FAQ</a>
+          <a href="releases/">Releases</a>
+          <a href="privacy/">Privacy</a>
+          <a href="security/">Security</a>
+          <a href="https://github.com/KeyffMS/SightAdapt">GitHub</a>
+        </nav>
+      </details>
+    </div>
+  </header>
+  <aside class="alpha-banner" aria-label="Alpha status"><div class="container"><p><strong>Alpha release:</strong> Core functionality is available, but broad compatibility and endurance testing are still in progress. <a href="#limitations">Review current limitations</a>.</p></div></aside>
+  <main id="main">
+    <section class="hero">
+      <div class="container hero-grid">
+        <div>
+          <p class="eyebrow">Free and open source · Windows 10 and 11 · Alpha</p>
+          <h1>Adapt the application in front of you.</h1>
+          <p class="lead">SightAdapt™ applies configurable color correction to individual Windows application windows. Keep the rest of the desktop unchanged, assign profiles per application and stop every overlay immediately when needed.</p>
+          <div class="actions">
+            <a class="button light" href="download/">Download SightAdapt™ Alpha</a>
+            <a class="button light secondary" href="https://github.com/KeyffMS/SightAdapt">View source on GitHub</a>
+            <a class="button light secondary" href="docs/">Read the documentation</a>
+          </div>
+        </div>
+        <aside class="release-card" aria-labelledby="current-release">
+          <h2 id="current-release">Current release</h2>
+          <ul class="meta-list">
+            <li><strong>Version:</strong> 0.5.0.50-alpha</li>
+            <li><strong>Published:</strong> 24 September 2026</li>
+            <li><strong>Platform:</strong> Windows x64</li>
+            <li><strong>License:</strong> MIT</li>
+            <li><strong>Status:</strong> Alpha / prerelease</li>
+          </ul>
+          <a href="releases/">Release details and verification</a>
+        </aside>
+      </div>
+    </section>
+    <section class="trust-strip" aria-label="Product boundaries">
+      <div class="container trust-grid">
+        <a href="how-it-works/">No code injection</a>
+        <a href="security/">No driver installation</a>
+        <a href="privacy/">No screen-content telemetry</a>
+        <a href="security/">Runs with the current user's privileges</a>
+      </div>
+    </section>
+    <section>
+      <div class="container">
+        <div class="section-heading"><h2>Change one application, not your entire desktop.</h2><p>System-wide display filters can affect every monitor, application and notification. SightAdapt targets the active application through a separate overlay, allowing different applications to use different visual profiles while unrelated windows remain unchanged.</p></div>
+        <div class="grid-3">
+          <article class="card"><h3>Profiles per application</h3><p>Assign a saved color profile to an application and let SightAdapt activate it when that application becomes active.</p></article>
+          <article class="card"><h3>Separate native-menu correction</h3><p>Use the application profile for native popup menus or assign a different menu profile when menu contrast needs separate treatment.</p></article>
+          <article class="card"><h3>Flexible overlay scope</h3><p>Choose the client area, full window, current screen or all screens according to the application and display setup.</p></article>
+          <article class="card"><h3>Editable visual profiles</h3><p>Adjust output black and white levels, brightness, contrast, saturation and hue, then preview the result before assigning it.</p></article>
+          <article class="card"><h3>Manual and automatic controls</h3><p>Toggle the active window temporarily or save an automatic application assignment.</p></article>
+          <article class="card"><h3>Immediate shutdown</h3><p>Remove active overlays from the notification-area menu through the emergency-disable command.</p></article>
+        </div>
+      </div>
+    </section>
+    <section>
+      <div class="container">
+        <div class="section-heading"><h2>Three steps to a per-application profile.</h2></div>
+        <ol class="steps">
+          <li>Select or activate an application.</li>
+          <li>Choose or create a visual profile.</li>
+          <li>Enable the assignment or use the temporary shortcut.</li>
+        </ol>
+        <p><a href="docs/">See the complete quick start</a>.</p>
+      </div>
+    </section>
+    <section>
+      <div class="container">
+        <div class="section-heading"><h2>Built-in starting points, editable when appropriate.</h2></div>
+        <div class="grid-2">
+          <article class="card"><h3>None</h3><p>Leave the application unchanged.</p></article>
+          <article class="card"><h3>Exact invert</h3><p>Apply a fixed full inversion.</p></article>
+          <article class="card"><h3>Soft invert</h3><p>Use an editable lower-intensity starting profile.</p></article>
+          <article class="card"><h3>Custom profiles</h3><p>Duplicate and adjust a profile for a particular application or display.</p></article>
+        </div>
+        <p class="callout"><strong>Individual preferences:</strong> Visual preferences are individual. SightAdapt does not choose a medically appropriate profile and does not replace professional advice.</p>
+      </div>
+    </section>
+    <section>
+      <div class="container grid-2">
+        <div>
+          <h2>Local settings. No screen-content upload.</h2>
+          <p>SightAdapt stores its configuration locally. The current alpha does not transmit captured screen content, does not inject code into target applications and does not install a kernel driver. Application assignments may include executable paths and file metadata stored in the local settings file.</p>
+          <p><a href="privacy/">Read privacy details</a> · <a href="security/">Review security boundaries</a></p>
+        </div>
+        <div>
+          <h2>Built in public.</h2>
+          <p>SightAdapt is developed in a public GitHub repository and distributed under the MIT License. Source code, architecture documentation, test results, issues and release history are available for inspection.</p>
+          <p><a href="https://github.com/KeyffMS/SightAdapt">Browse the source</a> · <a href="https://github.com/KeyffMS/SightAdapt/issues">Report an issue</a> · <a href="legal/">Read the license</a></p>
+        </div>
+      </div>
+    </section>
+    <section id="limitations">
+      <div class="container">
+        <div class="section-heading"><h2>Current alpha limitations</h2></div>
+        <ul>
+          <li>Only one foreground application session is corrected at a time.</li>
+          <li>Native menu-specific handling applies only to Win32 <code>#32768</code> popup menus.</li>
+          <li>Protected or digital-rights-management (DRM) controlled content may not be capturable.</li>
+          <li>Elevated applications may require a compatible integrity level.</li>
+          <li>Remote desktop and some graphics drivers may behave differently.</li>
+          <li>Broad compatibility and endurance testing are incomplete.</li>
+        </ul>
+        <p><a href="features/#boundaries">Read all known limitations</a>.</p>
+      </div>
+    </section>
+    <section>
+      <div class="container">
+        <div class="section-heading"><h2>Try SightAdapt™ and inspect every part of it.</h2></div>
+        <div class="actions">
+          <a class="button" href="download/">Download the current alpha</a>
+          <a class="button secondary" href="https://github.com/KeyffMS/SightAdapt">View the GitHub repository</a>
+        </div>
+      </div>
+    </section>
+  </main>
+  <footer class="site-footer">
+    <div class="container">
+      <div class="footer-grid">
+        <div class="footer-brand">
+          <img src="assets/sightadapt-lockup-light.svg" alt="SightAdapt" width="820" height="200">
+          <p>A SightAdapt project by <a href="https://github.com/KeyffMS">KeyffMS</a> / <a href="https://aiteracja.pl/">aiteracja.pl</a>.</p>
+        </div>
+        <div>
+          <h2>Product</h2>
+          <ul class="footer-links">
+            <li><a href="features/">Features</a></li>
+            <li><a href="download/">Download</a></li>
+            <li><a href="docs/">Documentation</a></li>
+            <li><a href="releases/">Releases</a></li>
+          </ul>
+        </div>
+        <div>
+          <h2>Project</h2>
+          <ul class="footer-links">
+            <li><a href="https://github.com/KeyffMS/SightAdapt">GitHub</a></li>
+            <li><a href="https://github.com/KeyffMS/SightAdapt/issues">Issue tracker</a></li>
+            <li><a href="security/">Security</a></li>
+            <li><a href="legal/">License</a></li>
+          </ul>
+        </div>
+        <div>
+          <h2>Policies</h2>
+          <ul class="footer-links">
+            <li><a href="privacy/">Privacy</a></li>
+            <li><a href="legal/#third-party">Third-party notices</a></li>
+            <li><a href="legal/#trademarks">Trademark notice</a></li>
+            <li><a href="support/">Support</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="small-print">
+        <p>SightAdapt™ is an unregistered product mark used by KeyffMS / aiteracja.pl.</p>
+        <p>SightAdapt is free and open-source software distributed under the MIT License. Third-party components remain subject to their respective terms.</p>
+      </div>
+    </div>
+  </footer>
+</body>
+</html>
