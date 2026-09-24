@@ -65,7 +65,7 @@ internal sealed class SettingsCoordinator
         _current = _store.Load();
     }
 
-    public SightAdaptSettings Current =>
+    public IReadOnlySightAdaptSettings Current =>
         _current.CreateWorkingCopy();
 
     public string SettingsPath => _store.SettingsPath;
@@ -98,13 +98,36 @@ internal sealed class SettingsCoordinator
         Func<SightAdaptSettings, T> mutation)
     {
         ArgumentNullException.ThrowIfNull(mutation);
+        return ExecuteTransaction(
+            mutation,
+            publishChanged: true);
+    }
+
+    public SettingsCommitResult PersistCurrent()
+    {
+        var result = ExecuteTransaction<object?>(
+            _ => null,
+            publishChanged: false);
+
+        return result.Succeeded
+            ? SettingsCommitResult.Success()
+            : SettingsCommitResult.Failure(
+                result.ErrorMessage ??
+                "Settings could not be saved.");
+    }
+
+    private SettingsCommitResult<T> ExecuteTransaction<T>(
+        Func<SightAdaptSettings, T> operation,
+        bool publishChanged)
+    {
+        ArgumentNullException.ThrowIfNull(operation);
 
         var candidate = _current.CreateWorkingCopy();
         T value;
 
         try
         {
-            value = mutation(candidate);
+            value = operation(candidate);
             _store.Save(candidate);
         }
         catch (Exception exception)
@@ -120,32 +143,12 @@ internal sealed class SettingsCoordinator
         }
 
         _current.ReplaceWith(candidate);
-        Changed?.Invoke(this, EventArgs.Empty);
+        if (publishChanged)
+        {
+            Changed?.Invoke(this, EventArgs.Empty);
+        }
+
         return SettingsCommitResult<T>.Success(value);
-    }
-
-    public SettingsCommitResult PersistCurrent()
-    {
-        var candidate = _current.CreateWorkingCopy();
-
-        try
-        {
-            _store.Save(candidate);
-        }
-        catch (Exception exception)
-            when (IsExpectedError(exception))
-        {
-            return SettingsCommitResult.Failure(
-                FormatError(exception));
-        }
-        catch (Exception exception)
-        {
-            _reportUnexpectedError(exception);
-            throw;
-        }
-
-        _current.ReplaceWith(candidate);
-        return SettingsCommitResult.Success();
     }
 
     private static bool IsExpectedError(

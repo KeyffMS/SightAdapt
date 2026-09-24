@@ -12,7 +12,7 @@ internal sealed class RuntimeCoordinator
     private readonly IRuntimeEnvironment _environment;
     private readonly RuntimeOverlayActivator _overlayActivator;
     private readonly AutomaticActivationService _automaticActivation;
-    private readonly Func<SightAdaptSettings> _readSettings;
+    private readonly Func<IReadOnlySightAdaptSettings> _readSettings;
     private bool _committingSettings;
 
     public RuntimeCoordinator(
@@ -43,7 +43,7 @@ internal sealed class RuntimeCoordinator
         ApplicationStateController stateController,
         IRuntimeOverlay overlay,
         IRuntimeEnvironment environment,
-        Func<SightAdaptSettings>? readSettings)
+        Func<IReadOnlySightAdaptSettings>? readSettings)
     {
         _settingsCoordinator = settingsCoordinator ??
             throw new ArgumentNullException(nameof(settingsCoordinator));
@@ -257,7 +257,7 @@ internal sealed class RuntimeCoordinator
         _overlayActivator.DisableForExit();
     }
 
-    private SightAdaptSettings ReadSettings()
+    private IReadOnlySightAdaptSettings ReadSettings()
     {
         return _readSettings();
     }

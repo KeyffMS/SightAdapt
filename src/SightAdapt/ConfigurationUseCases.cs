@@ -2,31 +2,39 @@ namespace SightAdapt;
 
 internal sealed class ConfigurationUseCases
 {
-    private readonly SettingsCoordinator _settingsCoordinator;
+    private readonly SettingsUseCaseContext _settings;
 
     public ConfigurationUseCases(
         SettingsCoordinator settingsCoordinator)
-    {
-        _settingsCoordinator = settingsCoordinator ??
+        : this(new SettingsUseCaseContext(
+            settingsCoordinator ??
             throw new ArgumentNullException(
-                nameof(settingsCoordinator));
+                nameof(settingsCoordinator))))
+    {
     }
 
-    public SightAdaptSettings Snapshot =>
-        _settingsCoordinator.Current;
+    internal ConfigurationUseCases(
+        SettingsUseCaseContext settings)
+    {
+        _settings = settings ??
+            throw new ArgumentNullException(nameof(settings));
+    }
+
+    public IReadOnlySightAdaptSettings Snapshot =>
+        _settings.Snapshot;
 
     public string SettingsPath =>
-        _settingsCoordinator.SettingsPath;
+        _settings.SettingsPath;
 
     public event EventHandler? Changed
     {
-        add => _settingsCoordinator.Changed += value;
-        remove => _settingsCoordinator.Changed -= value;
+        add => _settings.Changed += value;
+        remove => _settings.Changed -= value;
     }
 
     public SettingsCommitResult SetAutomaticMode(bool enabled)
     {
-        return _settingsCoordinator.Commit(settings =>
+        return _settings.Commit(settings =>
         {
             AutomaticModeManagementService.Set(
                 settings,
@@ -41,7 +49,7 @@ internal sealed class ConfigurationUseCases
         ArgumentException.ThrowIfNullOrWhiteSpace(
             change.ExecutablePath);
 
-        return _settingsCoordinator.Commit(settings =>
+        return _settings.Commit(settings =>
         {
             var assignment =
                 ProfileResolver.RequireAssignmentByExecutablePath(
@@ -85,7 +93,7 @@ internal sealed class ConfigurationUseCases
     {
         ArgumentNullException.ThrowIfNull(identity);
 
-        return _settingsCoordinator.Commit(settings =>
+        return _settings.Commit(settings =>
         {
             var result =
                 ApplicationAssignmentService.AddOrEnable(
@@ -100,7 +108,7 @@ internal sealed class ConfigurationUseCases
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(executablePath);
 
-        return _settingsCoordinator.Commit(settings =>
+        return _settings.Commit(settings =>
             ApplicationAssignmentService.Remove(
                 settings,
                 ProfileResolver.RequireAssignmentByExecutablePath(
@@ -115,7 +123,7 @@ internal sealed class ConfigurationUseCases
         ArgumentException.ThrowIfNullOrWhiteSpace(profileId);
         ArgumentNullException.ThrowIfNull(values);
 
-        return _settingsCoordinator.Commit(settings =>
+        return _settings.Commit(settings =>
             VisualProfileManagementService.UpdateTuning(
                 settings,
                 ProfileResolver.RequireVisualProfile(
