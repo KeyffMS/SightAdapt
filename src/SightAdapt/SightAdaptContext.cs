@@ -157,14 +157,16 @@ internal sealed class SightAdaptContext : ApplicationContext
 
     private void SettingsChanged(
         object? sender,
-        EventArgs eventArgs)
+        SettingsChangedEventArgs eventArgs)
     {
         var settings = _settingsCoordinator.Current;
         _tray.SetAutomaticMode(settings.AutomaticMode);
         ApplyApplicationState(
             _stateController.Current,
             settings);
-        _runtimeCoordinator.HandleSettingsChanged(settings);
+        _runtimeCoordinator.HandleSettingsChanged(
+            settings,
+            eventArgs);
     }
 
     private void ShowConfiguration()
