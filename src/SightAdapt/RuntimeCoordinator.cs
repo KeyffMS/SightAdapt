@@ -14,7 +14,6 @@ internal sealed class RuntimeCoordinator
     private readonly RuntimeOverlayActivator _overlayActivator;
     private readonly AutomaticActivationService _automaticActivation;
     private readonly Func<IReadOnlySightAdaptSettings> _readSettings;
-    private bool _committingSettings;
 
     internal RuntimeCoordinator(
         SettingsCoordinator settingsCoordinator,
@@ -187,14 +186,19 @@ internal sealed class RuntimeCoordinator
 
     public void HandleSettingsChanged()
     {
-        HandleSettingsChanged(ReadSettings());
+        HandleSettingsChanged(
+            ReadSettings(),
+            eventArgs: null);
     }
 
     internal void HandleSettingsChanged(
-        IReadOnlySightAdaptSettings settings)
+        IReadOnlySightAdaptSettings settings,
+        SettingsChangedEventArgs? eventArgs)
     {
         ArgumentNullException.ThrowIfNull(settings);
-        if (_committingSettings)
+        if (ReferenceEquals(
+                eventArgs?.Origin,
+                this))
         {
             return;
         }
@@ -248,15 +252,9 @@ internal sealed class RuntimeCoordinator
     {
         ArgumentNullException.ThrowIfNull(mutation);
 
-        _committingSettings = true;
-        try
-        {
-            return _settingsCoordinator.Commit(mutation);
-        }
-        finally
-        {
-            _committingSettings = false;
-        }
+        return _settingsCoordinator.Commit(
+            mutation,
+            origin: this);
     }
 
     private void ShowCommitError(string? message)
