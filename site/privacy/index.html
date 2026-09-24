@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SightAdapt™ privacy</title>
+  <meta name="description" content="Read how the current SightAdapt alpha processes application and window metadata locally, stores settings and handles voluntarily submitted support information.">
+  <link rel="canonical" href="https://aiteracja.pl/sightadapt/privacy/">
+  <link rel="icon" href="../assets/sightadapt-mark.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="../assets/site.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to main content</a>
+  <header class="site-header">
+    <div class="container header-inner">
+      <a class="brand" href="../" aria-label="SightAdapt home"><img src="../assets/sightadapt-lockup-dark.svg" alt="SightAdapt home" width="820" height="200"></a>
+      <nav class="desktop-nav" aria-label="Primary">
+        <a href="../features/">Features</a>
+        <a href="../download/">Download</a>
+        <a href="../docs/">Documentation</a>
+        <a href="../faq/">FAQ</a>
+        <a href="../releases/">Releases</a>
+        <a href="../privacy/" aria-current="page">Privacy</a>
+        <a href="../security/">Security</a>
+        <a href="https://github.com/KeyffMS/SightAdapt">GitHub</a>
+      </nav>
+      <details class="mobile-menu">
+        <summary>Menu</summary>
+        <nav class="mobile-nav" aria-label="Mobile">
+          <a href="../features/">Features</a>
+          <a href="../download/">Download</a>
+          <a href="../docs/">Documentation</a>
+          <a href="../faq/">FAQ</a>
+          <a href="../releases/">Releases</a>
+          <a href="../privacy/" aria-current="page">Privacy</a>
+          <a href="../security/">Security</a>
+          <a href="https://github.com/KeyffMS/SightAdapt">GitHub</a>
+        </nav>
+      </details>
+    </div>
+  </header>
+  
+  <main id="main">
+    <header class="page-hero"><div class="container"><p class="eyebrow">Privacy</p><h1>Local settings and explicit support sharing.</h1><p class="lead">The current SightAdapt alpha stores configuration locally and does not transmit captured screen content or behavioral telemetry.</p></div></header>
+    <section><div class="container grid-2">
+      <article><h2>Data processed locally</h2><p>To identify the active application and render the configured overlay, SightAdapt may read window handles, process and GUI thread identifiers, display names, executable names and paths, file-description metadata, window geometry and foreground state.</p><p>Saved settings can include assignments, enabled states, selected profiles, menu-profile references, overlay scopes and user-defined tuning values.</p></article>
+      <article><h2>Local storage</h2><p>Settings are stored at <code>%LOCALAPPDATA%\SightAdapt\settings.json</code>. The file is human-readable JSON and can contain executable paths. Those paths may contain a Windows account, organization or project name.</p><p>To reset local configuration, exit SightAdapt and remove the file. Starting SightAdapt again recreates defaults.</p></article>
+      <article><h2>Screen content and network behavior</h2><p>The current application does not intentionally save screenshots, record the screen, build a screen-content history, perform image recognition or transmit captured screen content.</p><p>It contains no telemetry, product analytics, advertising, remote crash reporting, automatic diagnostic upload, cloud synchronization or automatic update check.</p></article>
+      <article><h2>Support information</h2><p>Information reaches the project owner only when a person voluntarily sends it through GitHub or another support route. Before sharing logs, settings, screenshots or paths, remove usernames, organization names, private directory names, tokens and unrelated content.</p></article>
+    </div></section>
+    <section><div class="container">
+      <div class="section-heading"><h2>Controller and contact for submitted support data</h2></div>
+      <p><strong>KeyffMS / aiteracja.pl</strong>. The current public contact route is the <a href="https://github.com/KeyffMS/SightAdapt">GitHub repository owner</a>. For non-public material, request a private communication route before sending it.</p>
+      <p>Privately submitted support material is limited to people needed to investigate the report and is normally deleted no later than 90 days after the related support matter closes, except when a longer period is needed for an active security investigation, legal obligation, dispute or agreed follow-up.</p>
+      <p><strong>Policy source:</strong> <a href="https://github.com/KeyffMS/SightAdapt/blob/main/PRIVACY.md">PRIVACY.md</a>. Last updated in the repository: 29 July 2026.</p>
+    </div></section>
+  </main>
+  <footer class="site-footer">
+    <div class="container">
+      <div class="footer-grid">
+        <div class="footer-brand">
+          <img src="../assets/sightadapt-lockup-light.svg" alt="SightAdapt" width="820" height="200">
+          <p>A SightAdapt project by <a href="https://github.com/KeyffMS">KeyffMS</a> / <a href="https://aiteracja.pl/">aiteracja.pl</a>.</p>
+        </div>
+        <div><h2>Product</h2><ul class="footer-links"><li><a href="../features/">Features</a></li><li><a href="../download/">Download</a></li><li><a href="../docs/">Documentation</a></li><li><a href="../releases/">Releases</a></li></ul></div>
+        <div><h2>Project</h2><ul class="footer-links"><li><a href="https://github.com/KeyffMS/SightAdapt">GitHub</a></li><li><a href="https://github.com/KeyffMS/SightAdapt/issues">Issue tracker</a></li><li><a href="../security/">Security</a></li><li><a href="../legal/">License</a></li></ul></div>
+        <div><h2>Policies</h2><ul class="footer-links"><li><a href="../privacy/">Privacy</a></li><li><a href="../legal/#third-party">Third-party notices</a></li><li><a href="../legal/#trademarks">Trademark notice</a></li><li><a href="../support/">Support</a></li></ul></div>
+      </div>
+      <div class="small-print"><p>SightAdapt™ is an unregistered product mark used by KeyffMS / aiteracja.pl.</p><p>SightAdapt is free and open-source software distributed under the MIT License. Third-party components remain subject to their respective terms.</p></div>
+    </div>
+  </footer>
+</body>
+</html>
