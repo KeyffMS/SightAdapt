@@ -40,8 +40,12 @@ MagnifierOverlay
 
 ```text
 SettingsCoordinator.Current
+(read-only snapshot contract)
       ↓
 CreateWorkingCopy
+      ↓
+SettingsUseCaseContext
+(shared snapshot/event/commit plumbing)
       ↓
 Domain-service mutation
       ↓
@@ -57,13 +61,14 @@ Current.ReplaceWith
 one synchronous Changed event
 ```
 
-A failed mutation or failed write does not replace committed settings and does not publish a settings change. `SettingsCoordinator.Current` returns a defensive snapshot, so consumers cannot mutate the committed in-memory object outside a transaction.
+A failed mutation or failed write does not replace committed settings and does not publish a settings change. `SettingsCoordinator.Current` exposes `IReadOnlySightAdaptSettings` and returns a defensive snapshot. Mutable `SightAdaptSettings` is confined to explicit transaction callbacks and normalization/persistence boundaries. `SettingsUseCaseContext` centralizes snapshot, change-event and commit plumbing for application use-case façades without sharing their domain commands. `Commit` and `PersistCurrent` use one persistence execution path; only `Commit` publishes the synchronous `Changed` event after a successful write.
 
 ## Authorities
 
 | Concern | Authority |
 |---|---|
-| Settings transaction and published snapshots | `SettingsCoordinator` |
+| Settings transaction and published read-only snapshots | `SettingsCoordinator` |
+| Shared use-case snapshot/event/commit plumbing | `SettingsUseCaseContext` |
 | Settings JSON persistence and atomic replacement | `SettingsStore` |
 | Persisted JSON DTOs and legacy-field migration | `PersistedSettingsMapper` |
 | Schema, profile, assignment and reference normalization | explicit `ISettingsNormalizationPass` implementations |
