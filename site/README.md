@@ -39,6 +39,13 @@ Canonical repository SVG assets are copied into `site/assets/` so the public pag
 - `/security/`
 - `/support/`
 
+## Visual provenance
+
+- Brand SVG files are byte-for-byte copies of the canonical repository assets in `assets/brand/`.
+- The architecture diagram on `/how-it-works/` is project-owned HTML/CSS derived from `docs/ARCHITECTURE.md`; it contains no third-party imagery and exposes a full text alternative.
+- No third-party product logos, screenshots or private user content are included.
+- An authentic product screenshot for the home-page hero remains a content-production follow-up; a fabricated or generated screenshot must not be substituted for it.
+
 ## Local preview
 
 From the repository root, run any local static HTTP server. With Python 3:
