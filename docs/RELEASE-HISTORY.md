@@ -4,9 +4,9 @@ GitHub Releases are the authoritative binary publication record. This page is th
 
 | Version | Status | Tag | GitHub Release | Platform |
 |---|---|---|---|---|
-| 0.5.0.50-alpha | Publication gated | [`v0.5.0.50-alpha`](https://github.com/KeyffMS/SightAdapt/releases/tag/v0.5.0.50-alpha) | [SightAdapt™ 0.5.0.50-alpha](https://github.com/KeyffMS/SightAdapt/releases/tag/v0.5.0.50-alpha) | Windows x64 |
+| 0.5.0.50-alpha | Published prerelease — 2026-09-24 | [`v0.5.0.50-alpha`](https://github.com/KeyffMS/SightAdapt/releases/tag/v0.5.0.50-alpha) | [SightAdapt™ 0.5.0.50-alpha](https://github.com/KeyffMS/SightAdapt/releases/tag/v0.5.0.50-alpha) | Windows x64 |
 
-The 0.5.0.50-alpha row becomes a published release record only after the GitHub Release workflow succeeds. Until then its status remains **Publication gated** and the target URL may not exist.
+The published release is immutable and points to source commit `f51db2f2a2566bde5994ff654dad04a67300a11a`. GitHub Releases remain the authoritative binary record.
 
 For every published version retain:
 
