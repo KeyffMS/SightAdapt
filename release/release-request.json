@@ -5,7 +5,7 @@
   "tag": "v0.5.0.50-alpha",
   "prerelease": true,
   "notesFile": "release/notes/v0.5.0.50-alpha.md",
-  "manualWindowsSmokeAccepted": false,
+  "manualWindowsSmokeAccepted": true,
   "immutableReleasesConfirmed": true,
   "maintainerDecisionIssue": 98
 }
